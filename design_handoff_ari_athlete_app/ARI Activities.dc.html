@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --color-canvas: #0a0c10; --color-surface: #12151b; --color-elevated: #1b1f27;
+  --color-ink: #e9edf3; --color-muted: #a4aebe; --color-faint: #8792a3;
+  --color-line: #242a34; --color-line-strong: #364050;
+  --color-accent: #4e8ef7; --color-accent-ink: #061225; --color-accent-soft: #14243d;
+  --color-positive: #7fc887; --color-caution: #e0a33c; --color-negative: #f0705c;
+  --color-ctl: #4e8ef7; --color-atl: #d8dee8; --color-tsb: #a9a094;
+  --color-gold: #d8b45f; --color-gold-soft: #2a2210;
+  --radius-card: 14px; --radius-control: 8px; --radius-pill: 999px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--color-canvas);color:var(--color-ink);font-family:'IBM Plex Sans',sans-serif;font-size:14px;line-height:1.45}
+a{color:var(--color-ink);text-decoration:none}
+a:hover{color:var(--color-accent)}
+.card{background:var(--color-surface);border:1px solid var(--color-line);border-radius:var(--radius-card)}
+.btn{display:inline-flex;align-items:center;gap:8px;font:500 13px 'IBM Plex Sans',sans-serif;padding:9px 16px;border-radius:var(--radius-control);border:1px solid transparent;cursor:pointer;white-space:nowrap}
+.btn-primary{background:var(--color-accent);color:var(--color-accent-ink)}
+.btn-secondary{background:transparent;color:var(--color-ink);border-color:var(--color-line-strong)}
+.tag{display:inline-flex;align-items:center;font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:var(--radius-pill)}
+.num{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:700px){.topnav{display:none !important}.grid2{grid-template-columns:1fr !important}.actrow{grid-template-columns:56px 1fr auto !important}.actrow .hide-m,.hide-m{display:none !important}.stat-grid{grid-template-columns:1fr 1fr !important;row-gap:14px}header{flex-wrap:wrap;gap:12px !important}}
+</style>
+</helmet>
+<div style="max-width:1280px;margin-inline:auto;padding:16px 24px 40px;display:flex;flex-direction:column;gap:12px" data-screen-label="Activities history">
+  <header style="display:flex;align-items:center;gap:24px;padding-block:6px 10px">
+    <div style="display:flex;align-items:center;gap:9px">
+      <span style="width:10px;height:10px;background:var(--color-accent);border-radius:2px;display:inline-block"></span>
+      <span class="num" style="font-weight:500;font-size:16px;letter-spacing:.12em">{{ copy.brand }}</span>
+    </div>
+    <nav class="topnav" style="display:flex;gap:20px;font-size:13px;color:var(--color-muted)">
+      <a href="ARI Dashboard.dc.html" style="color:var(--color-muted)">{{ copy.navHome }}</a>
+      <a href="#" style="color:var(--color-ink)">{{ copy.navActivities }}</a>
+      <a href="ARI Plan.dc.html" style="color:var(--color-muted)">{{ copy.navPlan }}</a>
+      <a href="ARI Settings.dc.html" style="color:var(--color-muted)">{{ copy.navSettings }}</a>
+    </nav>
+    <div style="flex:1"></div>
+    <div style="text-align:end">
+      <h1 style="margin:0;font-size:15px;font-weight:600">{{ copy.title }}</h1>
+      <p style="margin:0;font-size:11.5px;color:var(--color-muted)">{{ copy.subtitle }}</p>
+    </div>
+  </header>
+
+  <section class="card" class="stat-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;padding:16px 22px">
+    <sc-for list="{{ stats }}" as="s" hint-placeholder-count="5">
+      <div style="border-inline-start:1px solid {{ s.divider }};padding-inline-start:16px">
+        <p class="num" style="margin:0;font-size:20px;font-weight:500">{{ s.v }}<span style="font-size:11px;color:var(--color-faint)"> {{ s.unit }}</span></p>
+        <p style="margin:2px 0 0;font-size:11px;color:var(--color-muted)">{{ s.name }}</p>
+      </div>
+    </sc-for>
+  </section>
+
+  <section class="grid2">
+    <div class="card" style="padding:16px 20px">
+      <h2 style="margin:0;font-size:13px;font-weight:600">{{ copy.volTitle }}</h2>
+      <div style="display:flex;align-items:flex-end;gap:6px;height:90px;margin-block-start:14px">
+        <sc-for list="{{ volBars }}" as="v" hint-placeholder-count="4">
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+            <span class="num" style="font-size:10px;color:var(--color-muted)">{{ v.km }}</span>
+            <div title="{{ v.title }}" style="width:100%;height:{{ v.h }}px;background:var(--color-accent);opacity:{{ v.op }};border-radius:3px 3px 0 0"></div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex;gap:6px;margin-block-start:6px">
+        <sc-for list="{{ volLabels }}" as="l" hint-placeholder-count="4">
+          <span class="num" style="flex:1;text-align:center;font-size:9.5px;color:var(--color-faint)">{{ l.t }}</span>
+        </sc-for>
+      </div>
+    </div>
+    <div class="card" style="padding:16px 20px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between">
+        <h2 style="margin:0;font-size:13px;font-weight:600">{{ copy.paceTitle }}</h2>
+        <span class="num" style="font-size:10.5px;color:var(--color-faint)">{{ copy.paceSub }}</span>
+      </div>
+      <svg viewBox="0 0 540 96" style="width:100%;height:auto;margin-block-start:12px">
+        <sc-for list="{{ paceGrid }}" as="g" hint-placeholder-count="2">
+          <g><line x1="34" x2="536" y1="{{ g.y }}" y2="{{ g.y }}" stroke="var(--color-line)" stroke-width="1"></line>
+          <text x="28" y="{{ g.ty }}" fill="var(--color-faint)" font-size="8.5" font-family="IBM Plex Mono" text-anchor="end">{{ g.label }}</text></g>
+        </sc-for>
+        <path d="{{ paceArea }}" fill="var(--color-accent)" opacity="0.10"></path>
+        <path d="{{ pacePath }}" fill="none" stroke="var(--color-accent)" stroke-width="2"></path>
+        <sc-for list="{{ paceDots }}" as="d" hint-placeholder-count="4">
+          <circle cx="{{ d.x }}" cy="{{ d.y }}" r="3" fill="var(--color-accent)"></circle>
+        </sc-for>
+      </svg>
+    </div>
+  </section>
+
+  <section class="card" style="padding:16px 20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <h2 style="margin:0;font-size:13px;font-weight:600">{{ copy.histTitle }}</h2>
+      <div style="display:flex;gap:6px">
+        <sc-for list="{{ filters }}" as="f" hint-placeholder-count="5">
+          <button type="button" onClick="{{ f.pick }}" class="tag" style="cursor:pointer;border:1px solid {{ f.border }};background:{{ f.bg }};color:{{ f.color }}">{{ f.name }}</button>
+        </sc-for>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:64px 1.2fr 1fr 1fr 1fr 1fr 88px;gap:10px;padding:10px 12px 6px;border-block-end:1px solid var(--color-line);margin-block-start:8px" class="num actrow">
+      <span style="font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-faint)">{{ copy.hDate }}</span>
+      <span style="font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-faint)">{{ copy.hType }}</span>
+      <span style="font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-faint);text-align:end">{{ copy.hDist }}</span>
+      <span class="hide-m" style="font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-faint);text-align:end">{{ copy.hTime }}</span>
+      <span class="hide-m" style="font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-faint);text-align:end">{{ copy.hPace }}</span>
+      <span class="hide-m" style="font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-faint);text-align:end">{{ copy.hHr }}</span>
+      <span class="hide-m" style="font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-faint);text-align:end">{{ copy.hSpark }}</span>
+    </div>
+    <div style="display:flex;flex-direction:column">
+      <sc-for list="{{ rows }}" as="a" hint-placeholder-count="12">
+        <a href="ARI Activity Detail.dc.html" class="actrow" style="display:grid;grid-template-columns:64px 1.2fr 1fr 1fr 1fr 1fr 88px;gap:10px;align-items:center;padding:8px 12px;border-radius:var(--radius-control)" style-hover="background:var(--color-elevated)">
+          <span class="num" style="font-size:10.5px;color:var(--color-faint)">{{ a.date }}</span>
+          <span style="display:flex;align-items:center;gap:8px"><span style="width:7px;height:7px;border-radius:2px;background:{{ a.dot }};display:inline-block"></span><span style="font-size:12.5px;font-weight:500">{{ a.name }}</span></span>
+          <span class="num" style="font-size:12px;text-align:end">{{ a.km }} km</span>
+          <span class="num hide-m" style="font-size:12px;color:var(--color-muted);text-align:end">{{ a.time }}</span>
+          <span class="num hide-m" style="font-size:12px;color:var(--color-muted);text-align:end">{{ a.pace }}</span>
+          <span class="num hide-m" style="font-size:12px;color:var(--color-muted);text-align:end">{{ a.hr }}</span>
+          <svg class="hide-m" width="80" height="22" viewBox="0 0 80 22" style="justify-self:end"><path d="{{ a.spark }}" fill="none" stroke="{{ a.sparkColor }}" stroke-width="1.4"></path></svg>
+        </a>
+      </sc-for>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state={filter:'All'};
+  rng(seed){let a=seed>>>0;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+  build(){
+    if(this._d)return this._d;
+    const r=this.rng(11);
+    const names={easy:'Easy Run',tempo:'Tempo Run',int:'Intervals',long:'Long Run'};
+    const paceBase={easy:330,tempo:292,int:298,long:340};
+    const hrBase={easy:142,tempo:165,int:171,long:151};
+    const base=[['easy',5],['tempo',7],['int',9.6],['easy',6],['easy',8],['rest',0],['long',26]];
+    const mult=[0.82,0.88,0.61,1.0];
+    const mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const start=new Date(2026,6,19);
+    const fmtP=s=>Math.floor(s/60)+':'+String(Math.round(s%60)).padStart(2,'0');
+    const fmtT=s=>{const h=Math.floor(s/3600),m=Math.floor(s%3600/60),ss=Math.round(s%60);return (h?h+':':'')+String(m).padStart(h?2:1,'0')+':'+String(ss).padStart(2,'0')};
+    const spark=(fade,seed)=>{const rr=this.rng(seed);const n=26,pts=[];for(let i=0;i<n;i++){let p=0.5+(rr()-0.5)*0.34;if(fade&&i>13)p+=(i-13)*0.05;pts.push(p)}
+      const lo=Math.min(...pts),hi=Math.max(...pts);
+      return pts.map((p,i)=>(i?'L':'M')+(i/(n-1)*78+1).toFixed(1)+' '+(2+((p-lo)/(hi-lo||1))*18).toFixed(1)).join('')};
+    const acts=[];const weekKm=[0,0,0,0];
+    for(let w=0;w<4;w++)for(let d=0;d<7;d++){
+      const b=base[d];if(b[0]==='rest')continue;
+      if(w===1&&d===1)continue; // missed
+      if(w===3&&d>0)continue;   // current week: only Sunday done
+      const dt=new Date(start.getTime()+(w*7+d)*86400000);
+      const km=Math.round(b[1]*mult[w]*(0.97+r()*0.06)*10)/10;
+      const pace=paceBase[b[0]]*(0.98+r()*0.05);
+      const hr=Math.round(hrBase[b[0]]+(r()-0.5)*8);
+      const fade=b[0]==='long'||r()>0.75;
+      weekKm[w]+=km;
+      acts.push({type:b[0],name:names[b[0]],date:mo[dt.getMonth()]+' '+dt.getDate(),km:km.toFixed(1),
+        time:fmtT(km*pace),pace:fmtP(pace),paceSec:pace,hr:String(hr),kmN:km,
+        spark:spark(fade,w*10+d),sparkColor:fade?'var(--color-caution)':'var(--color-muted)'});
+    }
+    acts.reverse();
+    // weekly avg easy pace trend (4 weeks, improving slightly)
+    const wp=[338,334,331,326];
+    this._d={acts,weekKm:weekKm.map(k=>Math.round(k)),wp,fmtP};
+    return this._d;
+  }
+  renderVals(){
+    const {acts,weekKm,wp,fmtP}=this.build();
+    const f=this.state.filter;
+    const typeMap={'All':null,'Easy':'easy','Tempo':'tempo','Intervals':'int','Long':'long'};
+    const dot={easy:'var(--color-positive)',tempo:'var(--color-caution)',int:'var(--color-accent)',long:'var(--color-atl)'};
+    const rows=acts.filter(a=>!typeMap[f]||a.type===typeMap[f]).map(a=>({...a,dot:dot[a.type]}));
+    const filters=['All','Easy','Tempo','Intervals','Long'].map(n=>({name:n,
+      pick:()=>this.setState({filter:n}),
+      bg:f===n?'var(--color-accent)':'transparent',
+      color:f===n?'var(--color-accent-ink)':'var(--color-muted)',
+      border:f===n?'transparent':'var(--color-line-strong)'}));
+    const totalKm=acts.reduce((s,a)=>s+a.kmN,0);
+    const totalRuns=acts.length;
+    const avgPace=acts.reduce((s,a)=>s+a.paceSec*a.kmN,0)/totalKm;
+    const avgHr=Math.round(acts.reduce((s,a)=>s+(+a.hr),0)/totalRuns);
+    const stats=[
+      {v:String(totalRuns),unit:'runs',name:'Completed \u00b7 4 weeks',divider:'transparent'},
+      {v:Math.round(totalKm)+'',unit:'km',name:'Total distance',divider:'var(--color-line)'},
+      {v:fmtP(avgPace),unit:'/km',name:'Average pace',divider:'var(--color-line)'},
+      {v:String(avgHr),unit:'bpm',name:'Average heart rate',divider:'var(--color-line)'},
+      {v:'47:12',unit:'',name:'10K personal best',divider:'var(--color-line)'}];
+    const maxW=Math.max(...weekKm);
+    const volBars=weekKm.map((k,i)=>({km:k,h:Math.max(6,Math.round(k/maxW*62)),op:i===3?'0.45':'1',title:'Week '+(i+1)+' \u00b7 '+k+' km'+(i===3?' so far':'')}));
+    const volLabels=[{t:'W1'},{t:'W2'},{t:'W3'},{t:'W4 \u00b7 so far'}];
+    // pace trend chart
+    const pMin=320,pMax=344,X0=34,X1=536,Y0=10,Y1=82;
+    const px=i=>X0+i/(wp.length-1)*(X1-X0), py=v=>Y0+((v-pMin)/(pMax-pMin))*(Y1-Y0);
+    const pacePath=wp.map((v,i)=>(i?'L':'M')+px(i).toFixed(1)+' '+py(v).toFixed(1)).join('');
+    const paceArea=pacePath+'L'+X1+' '+Y1+'L'+X0+' '+Y1+'Z';
+    const paceDots=wp.map((v,i)=>({x:px(i).toFixed(1),y:py(v).toFixed(1)}));
+    const paceGrid=[{v:325},{v:340}].map(g=>({y:py(g.v).toFixed(1),ty:(py(g.v)+3).toFixed(1),label:fmtP(g.v)}));
+    const copy={brand:'ARI',navHome:'Home',navActivities:'Activities',navPlan:'Plan',navSettings:'Settings',
+      title:'Activities',subtitle:'Training history \u00b7 last 4 weeks',
+      volTitle:'Weekly distance',paceTitle:'Easy-run pace trend',paceSub:'faster \u2191 \u00b7 weekly average',
+      histTitle:'All runs',
+      hDate:'Date',hType:'Session',hDist:'Dist',hTime:'Time',hPace:'Pace',hHr:'Avg HR',hSpark:'Pace shape'};
+    return {copy,stats,rows,filters,volBars,volLabels,pacePath,paceArea,paceDots,paceGrid};
+  }
+}
+</script>
+</body>
+</html>

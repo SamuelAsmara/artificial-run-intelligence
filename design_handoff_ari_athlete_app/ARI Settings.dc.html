@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="./image-slot.js"></script>
+<style>
+:root{
+  --color-canvas: #0a0c10; --color-surface: #12151b; --color-elevated: #1b1f27;
+  --color-ink: #e9edf3; --color-muted: #a4aebe; --color-faint: #8792a3;
+  --color-line: #242a34; --color-line-strong: #364050;
+  --color-accent: #4e8ef7; --color-accent-ink: #061225; --color-accent-soft: #14243d;
+  --color-positive: #7fc887; --color-caution: #e0a33c; --color-negative: #f0705c;
+  --color-ctl: #4e8ef7; --color-atl: #d8dee8; --color-tsb: #a9a094;
+  --color-gold: #d8b45f; --color-gold-soft: #2a2210;
+  --color-strava: #fc4c02;
+  --radius-card: 14px; --radius-control: 8px; --radius-pill: 999px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--color-canvas);color:var(--color-ink);font-family:'IBM Plex Sans',sans-serif;font-size:14px;line-height:1.45}
+a{color:var(--color-ink);text-decoration:none}
+a:hover{color:var(--color-accent)}
+.card{background:var(--color-surface);border:1px solid var(--color-line);border-radius:var(--radius-card)}
+.btn{display:inline-flex;align-items:center;gap:8px;font:500 13px 'IBM Plex Sans',sans-serif;padding:9px 16px;border-radius:var(--radius-control);border:1px solid transparent;cursor:pointer;white-space:nowrap}
+.btn-primary{background:var(--color-accent);color:var(--color-accent-ink)}
+.btn-secondary{background:transparent;color:var(--color-ink);border-color:var(--color-line-strong)}
+.btn-secondary:hover{border-color:var(--color-faint)}
+.tag{display:inline-flex;align-items:center;font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:var(--radius-pill)}
+.num{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+.field{width:100%;background:var(--color-elevated);border:1px solid var(--color-line-strong);border-radius:var(--radius-control);color:var(--color-ink);font:400 13px 'IBM Plex Sans',sans-serif;padding:9px 12px;outline:none}
+.field:focus{border-color:var(--color-accent)}
+.set-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+@media (max-width:860px){.set-grid{grid-template-columns:1fr}.topnav{display:none !important}header{flex-wrap:wrap;gap:12px !important}}
+</style>
+</helmet>
+<div style="max-width:1080px;margin-inline:auto;padding:16px 24px 40px;display:flex;flex-direction:column;gap:12px" data-screen-label="Settings">
+  <header style="display:flex;align-items:center;gap:24px;padding-block:6px 10px">
+    <div style="display:flex;align-items:center;gap:9px">
+      <span style="width:10px;height:10px;background:var(--color-accent);border-radius:2px;display:inline-block"></span>
+      <span class="num" style="font-weight:500;font-size:16px;letter-spacing:.12em">{{ copy.brand }}</span>
+    </div>
+    <nav class="topnav" style="display:flex;gap:20px;font-size:13px;color:var(--color-muted)">
+      <a href="ARI Dashboard.dc.html" style="color:var(--color-muted)">{{ copy.navHome }}</a>
+      <a href="ARI Activities.dc.html" style="color:var(--color-muted)">{{ copy.navActivities }}</a>
+      <a href="ARI Plan.dc.html" style="color:var(--color-muted)">{{ copy.navPlan }}</a>
+      <a href="#" style="color:var(--color-ink)">{{ copy.navSettings }}</a>
+    </nav>
+    <div style="flex:1"></div>
+    <h1 style="margin:0;font-size:15px;font-weight:600">{{ copy.title }}</h1>
+  </header>
+
+  <div class="set-grid">
+    <section class="card" style="padding:20px 22px">
+      <h2 style="margin:0;font-size:14px;font-weight:600">{{ copy.profileTitle }}</h2>
+      <p style="margin:2px 0 0;font-size:11.5px;color:var(--color-faint)">{{ copy.profileSub }}</p>
+      <div style="display:flex;flex-direction:column;gap:14px;margin-block-start:16px">
+        <div style="display:flex;align-items:center;gap:16px">
+          <image-slot id="settings-avatar" shape="circle" style="width:72px;height:72px;flex:none" placeholder="Photo"></image-slot>
+          <div>
+            <p style="margin:0;font-size:12.5px;font-weight:500">{{ copy.fPhoto }}</p>
+            <p style="margin:2px 0 0;font-size:11px;color:var(--color-faint)">{{ copy.fPhotoSub }}</p>
+          </div>
+        </div>
+        <div>
+          <label for="f-name" style="display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted);margin-block-end:6px">{{ copy.fName }}</label>
+          <input id="f-name" class="field" value="{{ name }}" onChange="{{ setName }}">
+        </div>
+        <div>
+          <label for="f-bio" style="display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted);margin-block-end:6px">{{ copy.fBio }}</label>
+          <textarea id="f-bio" class="field" rows="3" style="resize:vertical;min-height:64px;font-family:'IBM Plex Sans',sans-serif" value="{{ bio }}" onChange="{{ setBio }}" placeholder="{{ copy.fBioPh }}"></textarea>
+          <p class="num" style="margin:4px 0 0;font-size:10px;color:var(--color-faint);text-align:end">{{ bioCount }}</p>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+          <div>
+            <label for="f-age" style="display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted);margin-block-end:6px">{{ copy.fAge }}</label>
+            <input id="f-age" class="field num" type="number" value="{{ age }}" onChange="{{ setAge }}">
+          </div>
+          <div>
+            <label for="f-height" style="display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted);margin-block-end:6px">{{ copy.fHeight }}</label>
+            <input id="f-height" class="field num" type="number" value="{{ height }}" onChange="{{ setHeight }}">
+          </div>
+          <div>
+            <label for="f-weight" style="display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted);margin-block-end:6px">{{ copy.fWeight }}</label>
+            <input id="f-weight" class="field num" type="number" value="{{ weight }}" onChange="{{ setWeight }}">
+          </div>
+        </div>
+        <div>
+          <span style="display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted);margin-block-end:6px">{{ copy.fLevel }}</span>
+          <div style="display:flex;border:1px solid var(--color-line-strong);border-radius:var(--radius-control);overflow:hidden">
+            <sc-for list="{{ levels }}" as="l" hint-placeholder-count="3">
+              <button type="button" onClick="{{ l.pick }}" style="flex:1;font:500 12px 'IBM Plex Sans',sans-serif;padding:9px 0;border:none;cursor:pointer;background:{{ l.bg }};color:{{ l.color }}">{{ l.name }}</button>
+            </sc-for>
+          </div>
+        </div>
+        <div>
+          <span style="display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted);margin-block-end:6px">{{ copy.fGoalRace }}</span>
+          <div style="display:flex;border:1px solid var(--color-line-strong);border-radius:var(--radius-control);overflow:hidden">
+            <sc-for list="{{ raceOpts }}" as="r" hint-placeholder-count="4">
+              <button type="button" onClick="{{ r.pick }}" style="flex:1;font:500 12px 'IBM Plex Sans',sans-serif;padding:9px 0;border:none;cursor:pointer;background:{{ r.bg }};color:{{ r.color }}">{{ r.name }}</button>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label for="f-target" style="display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted);margin-block-end:6px">{{ copy.fTarget }}</label>
+            <input id="f-target" class="field num" value="{{ target }}" onChange="{{ setTarget }}" placeholder="3:45:00">
+          </div>
+          <div>
+            <span style="display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted);margin-block-end:6px">{{ copy.fPace }}</span>
+            <p class="num" style="margin:0;padding:9px 12px;border:1px solid var(--color-line);border-radius:var(--radius-control);font-size:13px;color:var(--color-accent)">{{ goalPace }}</p>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;margin-block-start:2px">
+          <button class="btn btn-primary" type="button" onClick="{{ save }}">{{ copy.save }}</button>
+          <sc-if value="{{ saved }}" hint-placeholder-val="{{ false }}">
+            <span class="num" style="font-size:11px;color:var(--color-positive)">{{ copy.savedMsg }}</span>
+          </sc-if>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" style="padding:20px 22px">
+      <h2 style="margin:0;font-size:14px;font-weight:600">{{ copy.connTitle }}</h2>
+      <p style="margin:2px 0 0;font-size:11.5px;color:var(--color-faint)">{{ copy.connSub }}</p>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-block-start:14px">
+
+        <div style="display:flex;flex-direction:column;border:1px solid {{ stravaBorder }};border-radius:var(--radius-control);background:var(--color-elevated)">
+          <div style="display:flex;align-items:center;gap:12px;padding:12px 14px">
+            <span class="num" style="width:34px;height:34px;border-radius:8px;background:var(--color-strava);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:15px;font-weight:500">S</span>
+            <div style="flex:1">
+              <p style="margin:0;font-size:13px;font-weight:500">{{ copy.strava }}</p>
+              <p class="num" style="margin:1px 0 0;font-size:10.5px;color:{{ stravaSubColor }}">{{ stravaSub }}</p>
+            </div>
+            <sc-if value="{{ stravaOff }}" hint-placeholder-val="{{ true }}">
+              <button class="btn" type="button" onClick="{{ stravaConnect }}" style="background:var(--color-strava);color:#fff;padding:7px 14px">{{ copy.connect }}</button>
+            </sc-if>
+            <sc-if value="{{ stravaConnecting }}" hint-placeholder-val="{{ false }}">
+              <span class="num" style="font-size:11px;color:var(--color-muted)">{{ copy.connecting }}</span>
+            </sc-if>
+            <sc-if value="{{ stravaOn }}" hint-placeholder-val="{{ false }}">
+              <span class="tag" style="background:var(--color-surface);color:var(--color-positive)">{{ copy.connected }}</span>
+            </sc-if>
+          </div>
+          <sc-if value="{{ stravaOn }}" hint-placeholder-val="{{ false }}">
+            <div style="border-block-start:1px solid var(--color-line);padding:12px 14px;display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <span style="font-size:12px;color:var(--color-muted)">{{ copy.stAccount }}</span>
+                <span class="num" style="font-size:12px">{{ stravaAthlete }}</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <span style="font-size:12px;color:var(--color-muted)">{{ copy.stLastSync }}</span>
+                <span class="num" style="font-size:12px;color:{{ syncColor }}">{{ lastSync }}</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <span style="font-size:12px;color:var(--color-muted)">{{ copy.stAuto }}</span>
+                <button type="button" onClick="{{ toggleAuto }}" aria-label="Toggle auto-sync" style="width:38px;height:21px;border-radius:var(--radius-pill);border:none;cursor:pointer;position:relative;background:{{ autoBg }}">
+                  <span style="position:absolute;top:2.5px;inset-inline-start:{{ autoKnob }};width:16px;height:16px;border-radius:50%;background:var(--color-ink);transition:inset-inline-start .15s"></span>
+                </button>
+              </div>
+              <div style="display:flex;gap:8px;margin-block-start:2px">
+                <button class="btn btn-secondary" type="button" onClick="{{ syncNow }}" style="padding:7px 13px;font-size:12px">{{ copy.syncNow }}</button>
+                <button class="btn" type="button" onClick="{{ stravaDisconnect }}" style="padding:7px 13px;font-size:12px;color:var(--color-negative);border-color:transparent;background:transparent">{{ copy.disconnect }}</button>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+
+        <sc-for list="{{ providers }}" as="p" hint-placeholder-count="4">
+          <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--color-line);border-radius:var(--radius-control)">
+            <span class="num" style="width:34px;height:34px;border-radius:8px;background:{{ p.bg }};color:var(--color-ink);display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-weight:500">{{ p.letter }}</span>
+            <div style="flex:1">
+              <p style="margin:0;font-size:13px;font-weight:500;color:var(--color-muted)">{{ p.name }}</p>
+            </div>
+            <span class="tag" style="background:var(--color-elevated);color:var(--color-faint)">{{ copy.soon }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+  </div>
+
+  <section class="card" style="padding:20px 22px">
+    <h2 style="margin:0;font-size:14px;font-weight:600">{{ copy.secTitle }}</h2>
+    <p style="margin:2px 0 0;font-size:11.5px;color:var(--color-faint)">{{ copy.secSub }}</p>
+    <div class="set-grid" style="margin-block-start:16px">
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div>
+          <label for="s-email" style="display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted);margin-block-end:6px">{{ copy.curEmail }}</label>
+          <input id="s-email" class="field" type="email" value="{{ email }}" onChange="{{ setEmail }}">
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <button class="btn btn-secondary" type="button" onClick="{{ saveEmail }}">{{ copy.updEmail }}</button>
+          <sc-if value="{{ emailSaved }}" hint-placeholder-val="{{ false }}">
+            <span class="num" style="font-size:11px;color:var(--color-positive)">{{ copy.emailMsg }}</span>
+          </sc-if>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label for="s-pass0" style="display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted);margin-block-end:6px">{{ copy.curPass }}</label>
+            <input id="s-pass0" class="field" type="password" value="{{ pass0 }}" onChange="{{ setPass0 }}" placeholder="••••••••">
+          </div>
+          <div>
+            <label for="s-pass1" style="display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted);margin-block-end:6px">{{ copy.newPass }}</label>
+            <input id="s-pass1" class="field" type="password" value="{{ pass1 }}" onChange="{{ setPass1 }}" placeholder="min. 6 characters">
+          </div>
+        </div>
+        <sc-if value="{{ passErrShow }}" hint-placeholder-val="{{ false }}">
+          <p class="num" style="margin:0;font-size:11px;color:var(--color-negative)">{{ passErr }}</p>
+        </sc-if>
+        <div style="display:flex;align-items:center;gap:12px">
+          <button class="btn btn-secondary" type="button" onClick="{{ savePass }}">{{ copy.updPass }}</button>
+          <sc-if value="{{ passSaved }}" hint-placeholder-val="{{ false }}">
+            <span class="num" style="font-size:11px;color:var(--color-positive)">{{ copy.passMsg }}</span>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <sc-if value="{{ authOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;z-index:60" onClick="{{ authCancel }}">
+      <div class="card" style="width:min(420px,92vw);padding:24px 26px;box-shadow:0 20px 60px rgba(0,0,0,.6)" onClick="{{ stop }}">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="num" style="width:40px;height:40px;border-radius:10px;background:var(--color-strava);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:18px;font-weight:500">S</span>
+          <div>
+            <h3 style="margin:0;font-size:15px;font-weight:600">{{ copy.authTitle }}</h3>
+            <p class="num" style="margin:2px 0 0;font-size:11px;color:var(--color-faint)">{{ copy.authSub }}</p>
+          </div>
+        </div>
+        <p style="margin:16px 0 8px;font-size:12.5px;color:var(--color-muted)">{{ copy.authScopes }}</p>
+        <ul style="margin:0;padding-inline-start:18px;display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(--color-ink)">
+          <li>{{ copy.scope1 }}</li>
+          <li>{{ copy.scope2 }}</li>
+          <li>{{ copy.scope3 }}</li>
+        </ul>
+        <p style="margin:14px 0 0;font-size:11px;color:var(--color-faint)">{{ copy.authNote }}</p>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-block-start:18px">
+          <button class="btn btn-secondary" type="button" onClick="{{ authCancel }}">{{ copy.cancel }}</button>
+          <button class="btn" type="button" onClick="{{ authorize }}" style="background:var(--color-strava);color:#fff">{{ copy.authorize }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1080,&quot;height&quot;:760}}">
+class Component extends DCLogic {
+  state={name:'Samuel Cohen',email:'samuel@run.com',bio:'Marathoner in progress \u2014 chasing 3:45 in October. Early-morning runner, coffee after, never before.',age:34,height:178,weight:72,level:'Intermediate',goalRace:'Marathon',target:'3:45:00',saved:false,
+    emailSaved:false,pass0:'',pass1:'',passErr:'',passSaved:false,
+    strava:'off',authOpen:false,lastSync:'',autoSync:true,syncing:false};
+  renderVals(){
+    const s=this.state;
+    const levels=['Beginner','Intermediate','Advanced'].map(n=>({name:n,
+      pick:()=>this.setState({level:n,saved:false}),
+      bg:s.level===n?'var(--color-accent)':'transparent',
+      color:s.level===n?'var(--color-accent-ink)':'var(--color-muted)'}));
+    const providers=[
+      {name:'Garmin Connect',letter:'G',bg:'var(--color-line-strong)'},
+      {name:'Suunto',letter:'Su',bg:'var(--color-line-strong)'},
+      {name:'Apple Watch',letter:'A',bg:'var(--color-line-strong)'},
+      {name:'Runkeeper',letter:'R',bg:'var(--color-line-strong)'}];
+    const on=s.strava==='on',off=s.strava==='off',connecting=s.strava==='connecting';
+    const copy={brand:'ARI',navHome:'Home',navActivities:'Activities',navPlan:'Plan',navSettings:'Settings',
+      title:'Settings',
+      profileTitle:'Personal details',profileSub:'Used to calibrate training load and pace zones.',
+      fName:'Full name',fEmail:'Email',fBio:'About',fGoalRace:'Training for',fTarget:'Target time',fPace:'Required pace',fBioPh:'A short bio \u2014 what are you training for?',fPhoto:'Profile photo',fPhotoSub:'Drag an image onto the circle, or click to browse.',fAge:'Age',fHeight:'Height (cm)',fWeight:'Weight (kg)',fLevel:'Running level',
+      save:'Save changes',savedMsg:'Saved',
+      secTitle:'Account & security',secSub:'Change your sign-in email or password.',
+      curEmail:'Email',updEmail:'Update email',emailMsg:'Email updated \u2014 check your inbox to confirm.',
+      curPass:'Current password',newPass:'New password',updPass:'Update password',passMsg:'Password updated.',
+      connTitle:'Connectivity',connSub:'Connect a device or service to sync runs automatically.',
+      strava:'Strava',connect:'Connect',connecting:'Connecting\u2026',connected:'Connected',
+      stAccount:'Account',stLastSync:'Last sync',stAuto:'Auto-sync new activities',
+      syncNow:'Sync now',disconnect:'Disconnect',soon:'Coming soon',
+      authTitle:'Authorize ARI',authSub:'strava.com \u00b7 secure authorization',
+      authScopes:'ARI is requesting permission to:',
+      scope1:'View your activities and activity streams',
+      scope2:'View your public profile',
+      scope3:'Sync new runs automatically after upload',
+      authNote:'You can revoke access at any time from your Strava settings.',
+      cancel:'Cancel',authorize:'Authorize'};
+    return {copy,levels,providers,
+      name:s.name,email:s.email,bio:s.bio,age:s.age,weight:s.weight,saved:s.saved,
+      bioCount:(s.bio||'').length+' / 160',
+      setName:e=>this.setState({name:e.target.value,saved:false}),
+      setEmail:e=>this.setState({email:e.target.value,emailSaved:false}),
+      saveEmail:()=>this.setState({emailSaved:(this.state.email||'').includes('@')}),
+      emailSaved:s.emailSaved,
+      pass0:s.pass0,pass1:s.pass1,
+      setPass0:e=>this.setState({pass0:e.target.value,passSaved:false,passErr:''}),
+      setPass1:e=>this.setState({pass1:e.target.value,passSaved:false,passErr:''}),
+      passErrShow:!!s.passErr,passErr:s.passErr,passSaved:s.passSaved,
+      savePass:()=>{
+        if(!s.pass0)return this.setState({passErr:'Enter your current password.'});
+        if((s.pass1||'').length<6)return this.setState({passErr:'New password must be at least 6 characters.'});
+        this.setState({passSaved:true,passErr:'',pass0:'',pass1:''});
+      },
+      setBio:e=>this.setState({bio:e.target.value.slice(0,160),saved:false}),
+      raceOpts:['5K','10K','Half','Marathon'].map(n=>({name:n,
+        pick:()=>{
+          const defs={'5K':'22:00','10K':'47:00','Half':'1:45:00','Marathon':'3:45:00'};
+          const mem=this._targets||(this._targets={Marathon:this.state.target});
+          mem[this.state.goalRace]=this.state.target;
+          this.setState({goalRace:n,target:mem[n]||defs[n],saved:false});
+        },
+        bg:s.goalRace===n?'var(--color-accent)':'transparent',
+        color:s.goalRace===n?'var(--color-accent-ink)':'var(--color-muted)'})),
+      target:s.target,setTarget:e=>this.setState({target:e.target.value,saved:false}),
+      goalPace:(()=>{
+        const km={'5K':5,'10K':10,'Half':21.0975,'Marathon':42.195}[s.goalRace];
+        const p=(s.target||'').split(':').map(Number);
+        if(p.some(isNaN)||!p.length)return '\u2014';
+        const sec=p.length===3?p[0]*3600+p[1]*60+p[2]:p[0]*60+(p[1]||0);
+        const sk=sec/km;
+        return Math.floor(sk/60)+':'+String(Math.round(sk%60)).padStart(2,'0')+' /km';
+      })(),
+      height:s.height,setHeight:e=>this.setState({height:e.target.value,saved:false}),
+      setAge:e=>this.setState({age:e.target.value,saved:false}),
+      setWeight:e=>this.setState({weight:e.target.value,saved:false}),
+      save:()=>this.setState({saved:true}),
+      stravaOff:off,stravaOn:on,stravaConnecting:connecting,
+      stravaBorder:on?'var(--color-positive)':'var(--color-line-strong)',
+      stravaSub:off?'Sync runs, streams and gear from Strava':(connecting?'Exchanging tokens\u2026':(s.syncing?'Syncing activities\u2026':'Athlete ID 48291077 \u00b7 '+(s.autoSync?'auto-sync on':'auto-sync off'))),
+      stravaSubColor:on?'var(--color-positive)':'var(--color-faint)',
+      stravaAthlete:'Samuel C. \u00b7 #48291077',
+      lastSync:s.syncing?'Syncing\u2026':s.lastSync,
+      syncColor:s.syncing?'var(--color-caution)':'var(--color-ink)',
+      authOpen:s.authOpen,
+      stravaConnect:()=>this.setState({authOpen:true}),
+      authCancel:()=>this.setState({authOpen:false}),
+      stop:e=>e.stopPropagation(),
+      authorize:()=>{this.setState({authOpen:false,strava:'connecting'});
+        clearTimeout(this._t);this._t=setTimeout(()=>this.setState({strava:'on',lastSync:'Just now \u00b7 18 activities'}),1100)},
+      syncNow:()=>{this.setState({syncing:true});clearTimeout(this._t2);
+        this._t2=setTimeout(()=>this.setState({syncing:false,lastSync:'Just now \u00b7 up to date'}),900)},
+      stravaDisconnect:()=>this.setState({strava:'off',lastSync:''}),
+      toggleAuto:()=>this.setState({autoSync:!s.autoSync}),
+      autoBg:s.autoSync?'var(--color-accent)':'var(--color-line-strong)',
+      autoKnob:s.autoSync?'19px':'3px'};
+  }
+}
+</script>
+</body>
+</html>

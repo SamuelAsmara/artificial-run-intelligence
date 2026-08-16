@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* surfaces */
+  --color-canvas: #0a0c10;
+  --color-surface: #12151b;
+  --color-elevated: #1b1f27;
+  /* text */
+  --color-ink: #e9edf3;
+  --color-muted: #a4aebe;
+  --color-faint: #8792a3;
+  /* lines */
+  --color-line: #242a34;
+  --color-line-strong: #364050;
+  /* accent — exactly one */
+  --color-accent: #4e8ef7;
+  --color-accent-ink: #061225;
+  --color-accent-soft: #14243d;
+  /* semantic */
+  --color-positive: #7fc887;
+  --color-caution: #e0a33c;
+  --color-negative: #f0705c;
+  /* charts */
+  --color-ctl: #4e8ef7;
+  --color-atl: #d8dee8;
+  --color-tsb: #a9a094;
+  /* radii */
+  --radius-card: 14px;
+  --radius-control: 8px;
+  --radius-pill: 999px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--color-canvas);color:var(--color-ink);font-family:'IBM Plex Sans',sans-serif;font-size:14px;line-height:1.45}
+a{color:var(--color-ink);text-decoration:none}
+a:hover{color:var(--color-accent)}
+.card{background:var(--color-surface);border:1px solid var(--color-line);border-radius:var(--radius-card)}
+.btn{display:inline-flex;align-items:center;gap:8px;font:500 13px 'IBM Plex Sans',sans-serif;padding:9px 16px;border-radius:var(--radius-control);border:1px solid transparent;cursor:pointer;white-space:nowrap}
+.btn-primary{background:var(--color-accent);color:var(--color-accent-ink)}
+.btn-secondary{background:transparent;color:var(--color-ink);border-color:var(--color-line-strong)}
+.btn-secondary:hover{border-color:var(--color-faint)}
+.tag{display:inline-flex;align-items:center;font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:var(--radius-pill)}
+.num{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+.c5{grid-column:span 5}.c7{grid-column:span 7}.c12{grid-column:span 12}
+@media (max-width:700px){.grid>*{grid-column:span 12}.sumrow{flex-wrap:wrap;gap:18px !important}.topnav{display:none !important}header{flex-wrap:wrap;gap:12px !important}}
+</style>
+</helmet>
+<div style="max-width:1280px;margin-inline:auto;padding:18px 24px 48px;display:flex;flex-direction:column;gap:14px" data-screen-label="Activity detail">
+
+  <sc-if value="{{ coachView }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:center;gap:14px;padding:10px 16px;border:1px solid var(--color-accent-soft);background:var(--color-accent-soft);border-radius:var(--radius-control)">
+      <span class="tag" style="background:var(--color-accent);color:var(--color-accent-ink)">{{ copy.coachViewTag }}</span>
+      <p style="margin:0;font-size:12.5px;color:var(--color-ink);flex:1">{{ copy.coachViewMsg }}</p>
+      <a href="ARI Coach.dc.html" class="btn btn-secondary" style="padding:6px 12px;font-size:12px">{{ copy.coachBack }}</a>
+    </div>
+  </sc-if>
+  <header style="display:flex;align-items:center;gap:24px;padding-block:6px 10px">
+    <div style="display:flex;align-items:center;gap:9px">
+      <span style="width:10px;height:10px;background:var(--color-accent);border-radius:2px;display:inline-block"></span>
+      <span class="num" style="font-weight:500;font-size:16px;letter-spacing:.12em">{{ copy.brand }}</span>
+    </div>
+    <nav class="topnav" style="display:flex;gap:20px;font-size:13px;color:var(--color-muted)">
+      <a href="ARI Dashboard.dc.html" style="color:var(--color-muted)">{{ copy.navHome }}</a>
+      <a href="ARI Activities.dc.html" style="color:var(--color-ink)">{{ copy.navActivities }}</a>
+      <a href="ARI Plan.dc.html" style="color:var(--color-muted)">{{ copy.navPlan }}</a>
+      <a href="ARI Settings.dc.html" style="color:var(--color-muted)">{{ copy.navSettings }}</a>
+    </nav>
+    <div style="flex:1"></div>
+    <a href="ARI Dashboard.dc.html" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--color-muted)">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>{{ copy.back }}</a>
+  </header>
+
+  <section class="card" style="padding:22px 26px">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div>
+        <h1 style="margin:0;font-size:19px;font-weight:600">{{ copy.runTitle }}</h1>
+        <p class="num" style="margin:3px 0 0;font-size:12px;color:var(--color-faint)">{{ copy.runDate }}</p>
+      </div>
+      <span class="tag" style="background:var(--color-elevated);color:var(--color-muted)">{{ copy.runType }}</span>
+    </div>
+    <div class="sumrow" style="display:flex;gap:40px;margin-block-start:18px">
+      <sc-for list="{{ summary }}" as="s" hint-placeholder-count="5">
+        <div>
+          <p class="num" style="margin:0;font-size:24px;font-weight:500">{{ s.v }}<span style="font-size:12px;color:var(--color-faint)"> {{ s.unit }}</span></p>
+          <p style="margin:2px 0 0;font-size:11px;color:var(--color-muted)">{{ s.name }}</p>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section class="card" style="padding:20px 26px;display:grid;grid-template-columns:auto 1fr auto;gap:24px;align-items:center">
+    <div>
+      <p style="margin:0;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-faint)">{{ copy.pvaTitle }}</p>
+      <p class="num" style="margin:6px 0 0;font-size:13px;color:var(--color-muted)">{{ copy.pvaPlanned }}</p>
+      <p class="num" style="margin:2px 0 0;font-size:13px;color:var(--color-ink)">{{ copy.pvaActual }}</p>
+    </div>
+    <div style="height:100%;border-inline-start:1px solid var(--color-line)"></div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+      <span class="tag" style="background:{{ pvaBg }};color:{{ pvaColor }}">{{ pvaLabel }}</span>
+      <p style="margin:0;font-size:12px;color:var(--color-muted);max-width:340px;text-align:end;text-wrap:pretty">{{ pvaNote }}</p>
+    </div>
+  </section>
+
+  <section class="card" style="padding:20px 26px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <div>
+        <h2 style="margin:0;font-size:14px;font-weight:600">{{ copy.chartTitle }}</h2>
+        <p style="margin:2px 0 0;font-size:11.5px;color:var(--color-faint)">{{ copy.chartSub }}</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:16px">
+        <div style="display:flex;gap:8px;font-size:11px;color:var(--color-muted)">
+          <button type="button" onClick="{{ togglePace }}" class="tag" style="cursor:pointer;gap:6px;background:var(--color-elevated);color:var(--color-ink);border:1px solid {{ paceBorder }};opacity:{{ paceOp }}"><span style="width:12px;height:2px;background:var(--color-accent);display:inline-block"></span>{{ copy.legPace }}</button>
+          <button type="button" onClick="{{ toggleHr }}" class="tag" style="cursor:pointer;gap:6px;background:var(--color-elevated);color:var(--color-ink);border:1px solid {{ hrBorder }};opacity:{{ hrOp }}"><span style="width:12px;height:2px;background:var(--color-tsb);display:inline-block"></span>{{ copy.legHr }}</button>
+          <button type="button" onClick="{{ toggleElev }}" class="tag" style="cursor:pointer;gap:6px;background:var(--color-elevated);color:var(--color-ink);border:1px solid {{ elevBorder }};opacity:{{ elevOp }}"><span style="width:12px;height:7px;background:var(--color-elevated);border:1px solid var(--color-line-strong);display:inline-block"></span>{{ copy.legElev }}</button>
+        </div>
+        <div style="display:flex;border:1px solid var(--color-line-strong);border-radius:var(--radius-control);overflow:hidden">
+          <button type="button" onClick="{{ setDist }}" class="num" style="font-size:11px;padding:5px 12px;border:none;cursor:pointer;background:{{ distBg }};color:{{ distColor }}">{{ copy.xDist }}</button>
+          <button type="button" onClick="{{ setTime }}" class="num" style="font-size:11px;padding:5px 12px;border:none;cursor:pointer;background:{{ timeBg }};color:{{ timeColor }}">{{ copy.xTime }}</button>
+        </div>
+      </div>
+    </div>
+    <div style="position:relative;margin-block-start:14px">
+      <svg viewBox="0 0 1180 300" style="width:100%;height:auto;display:block" onMouseMove="{{ onMove }}" onMouseLeave="{{ onLeave }}">
+        <text x="6" y="14" fill="var(--color-faint)" font-size="9" font-family="IBM Plex Mono">{{ copy.paceAxis }}</text>
+        <text x="1174" y="14" fill="var(--color-faint)" font-size="9" font-family="IBM Plex Mono" text-anchor="end">{{ copy.hrAxis }}</text>
+        <sc-for list="{{ gridY }}" as="g" hint-placeholder-count="3">
+          <g><line x1="44" x2="1136" y1="{{ g.y }}" y2="{{ g.y }}" stroke="var(--color-line)" stroke-width="1"></line>
+          <text x="38" y="{{ g.ty }}" fill="var(--color-faint)" font-size="9" font-family="IBM Plex Mono" text-anchor="end">{{ g.pace }}</text>
+          <text x="1142" y="{{ g.ty }}" fill="var(--color-faint)" font-size="9" font-family="IBM Plex Mono">{{ g.hr }}</text></g>
+        </sc-for>
+        <sc-for list="{{ gridX }}" as="g" hint-placeholder-count="6">
+          <text x="{{ g.x }}" y="296" fill="var(--color-faint)" font-size="9" font-family="IBM Plex Mono" text-anchor="middle">{{ g.label }}</text>
+        </sc-for>
+        <rect x="44" y="{{ planYTop }}" width="1092" height="{{ planYH }}" fill="var(--color-accent)" opacity="0.06"></rect>
+        <line x1="44" x2="1136" y1="{{ planY }}" y2="{{ planY }}" stroke="var(--color-accent)" stroke-width="1" stroke-dasharray="6 4" opacity="0.55"></line>
+        <text x="48" y="{{ planLabelY }}" fill="var(--color-accent)" font-size="9" font-family="IBM Plex Mono" opacity="0.85">{{ copy.planLine }}</text>
+        <path d="{{ elevArea }}" fill="var(--color-elevated)" stroke="var(--color-line-strong)" stroke-width="1" opacity="{{ elevVis }}"></path>
+        <path d="{{ hrPath }}" fill="none" stroke="var(--color-tsb)" stroke-width="1.3" opacity="{{ hrVis85 }}"></path>
+        <path d="{{ pacePath }}" fill="none" stroke="var(--color-accent)" stroke-width="1.8" opacity="{{ paceVis }}"></path>
+        <sc-if value="{{ hovering }}" hint-placeholder-val="{{ false }}">
+          <g><line x1="{{ tipX }}" x2="{{ tipX }}" y1="20" y2="284" stroke="var(--color-faint)" stroke-width="1" stroke-dasharray="3 3"></line>
+          <circle cx="{{ tipX }}" cy="{{ tipPaceY }}" r="3.5" fill="var(--color-accent)" opacity="{{ paceVis }}"></circle>
+          <circle cx="{{ tipX }}" cy="{{ tipHrY }}" r="3" fill="var(--color-tsb)" opacity="{{ hrVis }}"></circle></g>
+        </sc-if>
+      </svg>
+      <sc-if value="{{ hovering }}" hint-placeholder-val="{{ false }}">
+        <div class="num" style="position:absolute;top:12px;left:{{ tipLeft }};transform:{{ tipShift }};background:var(--color-elevated);border:1px solid var(--color-line-strong);border-radius:var(--radius-control);padding:8px 12px;font-size:11px;pointer-events:none;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.5)">
+          <div style="color:var(--color-faint);margin-block-end:3px">{{ tipHead }}</div>
+          <div style="color:var(--color-accent);display:{{ paceRow }}">{{ tipPace }}</div>
+          <div style="color:var(--color-tsb);display:{{ hrRow }}">{{ tipHr }}</div>
+          <div style="color:var(--color-muted);display:{{ elevRow }}">{{ tipElev }}</div>
+          <div style="color:{{ tipDeltaColor }};border-block-start:1px solid var(--color-line);margin-block-start:4px;padding-block-start:4px">{{ tipDelta }}</div>
+        </div>
+      </sc-if>
+    </div>
+  </section>
+
+  <section class="grid">
+    <div class="card c7" style="padding:20px 26px">
+      <h2 style="margin:0;font-size:14px;font-weight:600">{{ copy.splitsTitle }}</h2>
+      <div style="display:flex;flex-direction:column;gap:5px;margin-block-start:14px">
+        <sc-for list="{{ splits }}" as="s" hint-placeholder-count="6">
+          <div style="display:grid;grid-template-columns:28px 1fr 52px;align-items:center;gap:12px">
+            <span class="num" style="font-size:11px;color:var(--color-faint)">{{ s.km }}</span>
+            <div style="height:16px;background:var(--color-elevated);border-radius:3px;overflow:hidden">
+              <div style="width:{{ s.w }}%;height:16px;background:{{ s.bg }};border-radius:3px"></div>
+            </div>
+            <span class="num" style="font-size:11.5px;color:{{ s.txt }};text-align:end">{{ s.pace }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <p style="margin:14px 0 0;font-size:12.5px;color:var(--color-muted);text-wrap:pretty">{{ copy.splitsNote }}</p>
+    </div>
+    <div class="card c5" style="padding:20px 26px;display:flex;flex-direction:column;gap:12px">
+      <div><span class="tag" style="background:var(--color-accent-soft);color:var(--color-accent)">{{ copy.aiTag }}</span></div>
+      <p style="margin:0;font-size:14px;line-height:1.6;text-wrap:pretty">{{ copy.aiNote }}</p>
+      <div style="margin-block-start:auto;display:flex;gap:10px">
+        <button class="btn btn-secondary" type="button">{{ copy.btnReason }}</button>
+      </div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;paceState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;ontarget&quot;,&quot;options&quot;:[&quot;ontarget&quot;,&quot;toofast&quot;,&quot;tooslow&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Demo states&quot;}}">
+class Component extends DCLogic {
+  state={hi:-1,xMode:'dist',showPace:true,showHr:true,showElev:true};
+  rng(seed){let a=seed>>>0;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+  build(){
+    const r=this.rng(7);
+    // ~200 samples every 10 s, 6.2 km, avg 5:24/km
+    const n=205,dt=10;const dist=[],vel=[],hr=[],alt=[],time=[];
+    let d=0,a=42;
+    const grade=[];
+    for(let i=0;i<n;i++){
+      const t=i/n;
+      const hill=Math.sin(t*Math.PI*3.2)*1.4+Math.sin(t*Math.PI*7.3+1.2)*0.5;
+      grade.push(hill);
+    }
+    let effortHist=[];
+    for(let i=0;i<n;i++){
+      const t=i/n;
+      let paceSec=324; // 5:24 base
+      if(t<0.04)paceSec=360-t*900; // rolling start
+      paceSec+=grade[i]*9;               // hills
+      paceSec+=(r()-0.5)*18;             // noise
+      paceSec+=t>0.6?(t-0.6)*70:0;       // second-half fade → last 2 km ~18 s/km slower
+      paceSec-=(t>0.3&&t<0.48)?8:0;      // best patch mid-run before the fade
+      paceSec=Math.max(280,Math.min(400,paceSec));
+      const v=1000/paceSec;
+      vel.push(v);d+=v*dt;dist.push(d);time.push(i*dt);
+      a+=grade[i]*0.55+(r()-0.5)*0.3;alt.push(a);
+      const effort=v*(1+grade[i]*0.06);
+      effortHist.push(effort);
+      const lag=Math.max(0,i-2); // ~25 s lag
+      const eff=effortHist.slice(Math.max(0,lag-3),lag+1);
+      const em=eff.reduce((s,x)=>s+x,0)/eff.length;
+      const target=118+(em-2.9)*95+t*9; // drift up over run
+      const prev=hr.length?hr[hr.length-1]:118;
+      hr.push(prev+(target-prev)*0.25+(r()-0.5)*1.6);
+    }
+    this._s={n,dist,vel,hr,alt,time};
+    // splits
+    const splits=[];let k=1,prevT=0,prevD=0;
+    for(let i=0;i<n;i++){if(dist[i]>=k*1000||i===n-1){
+      const m=dist[i]-prevD,seg=time[i]-prevT;
+      if(m>150)splits.push(seg/(m/1000)); // pace normalized per km; skip tiny tail
+      prevT=time[i];prevD=dist[i];k++;}}
+    this._splits=splits;
+    return true;
+  }
+  paths(){
+    const {n,dist,vel,hr,alt,time}=this._s;
+    const xm=this.state.xMode;
+    const X0=44,X1=1136,Y0=20,Y1=284;
+    const xr=xm==='dist'?dist:time;
+    const xmax=xr[n-1];
+    const X=i=>X0+(xr[i]/xmax)*(X1-X0);
+    // pace: inverted, domain 4:30(270)–6:40(400), faster up
+    const pY=v=>{const p=1000/v;return Y0+((p-270)/(400-270))*(Y1-Y0)};
+    const hY=v=>Y0+(1-(v-100)/(185-100))*(Y1-Y0);
+    const aLo=Math.min(...alt),aHi=Math.max(...alt);
+    const aY=v=>Y1-((v-aLo)/((aHi-aLo)||1))*70;
+    const P=f=>Array.from({length:n},(_,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+f(i).toFixed(1)).join('');
+    const pacePath=P(i=>pY(vel[i])),hrPath=P(i=>hY(hr[i]));
+    const elevArea='M'+X0+' '+Y1+Array.from({length:n},(_,i)=>'L'+X(i).toFixed(1)+' '+aY(alt[i]).toFixed(1)).join('')+'L'+X1+' '+Y1+'Z';
+    const fmt=s=>Math.floor(s/60)+':'+String(Math.round(s%60)).padStart(2,'0');
+    const gridY=[290,320,350,380].map(p=>({y:(Y0+((p-270)/130)*(Y1-Y0)).toFixed(1),ty:(Y0+((p-270)/130)*(Y1-Y0)+3).toFixed(1),pace:fmt(p),hr:String(Math.round(185-((p-270)/130)*85))}));
+    const gridX=[];const steps=6;
+    for(let s=1;s<=steps;s++){const frac=s/steps;
+      gridX.push({x:(X0+frac*(X1-X0)).toFixed(0),label:xm==='dist'?(xmax*frac/1000).toFixed(1)+' km':fmt(xmax*frac)});}
+    return {pacePath,hrPath,elevArea,gridY,gridX,X,pY,hY,fmt};
+  }
+  renderVals(){
+    if(!this._s)this.build();
+    const g=this.paths();
+    const {n,dist,vel,hr,alt,time}=this._s;
+    const xm=this.state.xMode,hi=this.state.hi,hovering=hi>=0;
+    const fmt=g.fmt;
+    const onMove=e=>{
+      const svg=e.currentTarget,rect=svg.getBoundingClientRect();
+      const fx=(e.clientX-rect.left)/rect.width*1180;
+      const xr=xm==='dist'?dist:time,xmax=xr[n-1];
+      const frac=Math.max(0,Math.min(1,(fx-44)/(1136-44)));
+      const target=frac*xmax;
+      let lo=0,hiI=n-1;while(hiI-lo>1){const m=(lo+hiI)>>1;if(xr[m]<target)lo=m;else hiI=m}
+      this.setState({hi:lo});
+    };
+    const PLAN=330; // 5:30/km planned
+    const pyOf=p=>20+((p-270)/(400-270))*(284-20);
+    const planVals={planY:pyOf(PLAN).toFixed(1),planYTop:pyOf(PLAN-10).toFixed(1),
+      planYH:(pyOf(PLAN+10)-pyOf(PLAN-10)).toFixed(1),planLabelY:(pyOf(PLAN-10)-4).toFixed(1),
+      coachView:typeof location!=='undefined'&&/coach=1/.test(location.search)};
+    let tip={};
+    if(hovering){
+      const x=g.X(hi);
+      const dp=Math.round(1000/vel[hi]-PLAN);
+      tip={tipDelta:'vs plan '+(dp>0?'+':'')+dp+' s/km',
+        tipDeltaColor:Math.abs(dp)<=10?'var(--color-positive)':'var(--color-caution)',
+        tipX:x.toFixed(1),tipPaceY:g.pY(vel[hi]).toFixed(1),tipHrY:g.hY(hr[hi]).toFixed(1),
+        tipLeft:(x/1180*100).toFixed(1)+'%',tipShift:x>900?'translateX(-110%)':'translateX(12px)',
+        tipHead:(dist[hi]/1000).toFixed(2)+' km · '+fmt(time[hi]),
+        tipPace:'Pace '+fmt(1000/vel[hi])+' /km',tipHr:'HR '+Math.round(hr[hi])+' bpm',
+        tipElev:'Elev '+Math.round(alt[hi])+' m'};
+    }
+    const sp=this._splits;
+    const spMin=Math.min(...sp),spMax=Math.max(...sp);
+    const splits=sp.map((s,i)=>{
+      const fastest=s===spMin,slowest=s===spMax;
+      return {km:String(i+1),w:((1/s)/(1/spMin)*100).toFixed(1),
+        bg:fastest?'var(--color-accent)':(slowest?'var(--color-caution)':'var(--color-line-strong)'),
+        txt:fastest?'var(--color-accent)':(slowest?'var(--color-caution)':'var(--color-muted)'),
+        pace:fmt(s)};});
+    const summary=[{v:'6.21',unit:'km',name:'Distance'},{v:'33:31',unit:'',name:'Moving time'},{v:'5:24',unit:'/km',name:'Avg pace'},{v:'148',unit:'bpm',name:'Avg heart rate'},{v:'64',unit:'m',name:'Elevation gain'}];
+    const state=this.props.paceState??'ontarget';
+    const pva={ontarget:{pvaLabel:'On target',pvaColor:'var(--color-positive)',pvaBg:'var(--color-elevated)',pvaNote:'Pace, heart rate and duration all landed inside the planned window.'},
+      toofast:{pvaLabel:'Too fast',pvaColor:'var(--color-caution)',pvaBg:'var(--color-elevated)',pvaNote:'You ran 18 s/km faster than planned on an easy day. That costs recovery — tomorrow\u2019s session assumes you kept this easy.'},
+      tooslow:{pvaLabel:'Below target',pvaColor:'var(--color-caution)',pvaBg:'var(--color-elevated)',pvaNote:'Pace came in 20 s/km slower than planned. If you felt heavy, that\u2019s worth logging — fatigue may be higher than the model estimates.'}}[state];
+    const copy={brand:'ARI',back:'Back to dashboard',navHome:'Home',navActivities:'Activities',navPlan:'Plan',navSettings:'Settings',
+      runTitle:'Wednesday Easy Run',runDate:'Aug 12, 2026 · 6:42 AM',runType:'Easy Run',
+      pvaTitle:'Planned vs actual',pvaPlanned:'Planned · Easy run, 6 km @ 5:30/km',pvaActual:'Actual · 6.2 km @ 5:24/km',
+      chartTitle:'Pace · Heart rate · Elevation',chartSub:'Pace axis is inverted — faster is up. Shaded band = planned pace window (5:30 \u00b1 10 s).',
+      planLine:'PLAN 5:30 /km',
+      coachViewTag:'Coach view',coachViewMsg:'You are viewing Samuel Cohen\u2019s run \u2014 planned vs actual highlighted below.',coachBack:'Back to roster',
+      legPace:'Pace',legHr:'Heart rate',legElev:'Elevation',xDist:'Distance',xTime:'Time',
+      paceAxis:'min/km ↑ faster',hrAxis:'bpm',
+      splitsTitle:'Splits',
+      splitsNote:'Your last 2 km were 18 s/km slower — that\u2019s the cardiac drift showing up.',
+      aiTag:'AI Coach',
+      aiNote:'Solid easy run. Heart rate stayed in zone 2 for 86% of the session, and the fade over the final 2 km matches your current 2.4% cardiac drift — nothing unusual for a warm morning. No change to the plan.',
+      btnReason:'Show reasoning'};
+    const sel='var(--color-accent)',selInk='var(--color-accent-ink)';
+    const onB='var(--color-line-strong)',offB='transparent';
+    const series={
+      showPace:this.state.showPace,showHr:this.state.showHr,showElev:this.state.showElev,
+      togglePace:()=>this.setState({showPace:!this.state.showPace}),
+      toggleHr:()=>this.setState({showHr:!this.state.showHr}),
+      toggleElev:()=>this.setState({showElev:!this.state.showElev}),
+      paceBorder:this.state.showPace?onB:offB,paceOp:this.state.showPace?'1':'0.38',
+      hrBorder:this.state.showHr?onB:offB,hrOp:this.state.showHr?'1':'0.38',
+      elevBorder:this.state.showElev?onB:offB,elevOp:this.state.showElev?'1':'0.38',
+      paceVis:this.state.showPace?'1':'0',hrVis:this.state.showHr?'1':'0',
+      hrVis85:this.state.showHr?'0.85':'0',elevVis:this.state.showElev?'1':'0',
+      paceRow:this.state.showPace?'block':'none',hrRow:this.state.showHr?'block':'none',elevRow:this.state.showElev?'block':'none'};
+    return Object.assign({copy,summary,splits,hovering,onMove},series,planVals,{
+      onLeave:()=>this.setState({hi:-1}),
+      setDist:()=>this.setState({xMode:'dist',hi:-1}),
+      setTime:()=>this.setState({xMode:'time',hi:-1}),
+      distBg:xm==='dist'?sel:'transparent',distColor:xm==='dist'?selInk:'var(--color-muted)',
+      timeBg:xm==='time'?sel:'transparent',timeColor:xm==='time'?selInk:'var(--color-muted)'},
+      pva,g,tip);
+  }
+}
+</script>
+</body>
+</html>

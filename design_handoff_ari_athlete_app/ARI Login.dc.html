@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --color-canvas: #0a0c10; --color-surface: #12151b; --color-elevated: #1b1f27;
+  --color-ink: #e9edf3; --color-muted: #a4aebe; --color-faint: #8792a3;
+  --color-line: #242a34; --color-line-strong: #364050;
+  --color-accent: #4e8ef7; --color-accent-ink: #061225; --color-accent-soft: #14243d;
+  --color-positive: #7fc887; --color-caution: #e0a33c; --color-negative: #f0705c;
+  --color-ctl: #4e8ef7; --color-atl: #d8dee8; --color-tsb: #a9a094;
+  --color-gold: #d8b45f; --color-gold-soft: #2a2210;
+  --radius-card: 14px; --radius-control: 8px; --radius-pill: 999px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--color-canvas);color:var(--color-ink);font-family:'IBM Plex Sans',sans-serif;font-size:14px;line-height:1.45}
+a{color:var(--color-ink);text-decoration:none}
+a:hover{color:var(--color-accent)}
+.card{background:var(--color-surface);border:1px solid var(--color-line);border-radius:var(--radius-card)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font:500 13px 'IBM Plex Sans',sans-serif;padding:10px 16px;border-radius:var(--radius-control);border:1px solid transparent;cursor:pointer;white-space:nowrap}
+.btn-primary{background:var(--color-accent);color:var(--color-accent-ink)}
+.btn-primary:hover{filter:brightness(1.08)}
+.btn-secondary{background:transparent;color:var(--color-ink);border-color:var(--color-line-strong)}
+.btn-secondary:hover{border-color:var(--color-faint)}
+.tag{display:inline-flex;align-items:center;font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:var(--radius-pill)}
+.num{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+.field{width:100%;background:var(--color-elevated);border:1px solid var(--color-line-strong);border-radius:var(--radius-control);color:var(--color-ink);font:400 13px 'IBM Plex Sans',sans-serif;padding:10px 12px;outline:none}
+.field:focus{border-color:var(--color-accent)}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
+.c3{grid-column:span 3}
+@media (max-width:700px){.grid>.c3{grid-column:span 6}.topnav{display:none !important}.hero-grid{grid-template-columns:1fr !important}header{flex-wrap:wrap;gap:12px !important}}
+</style>
+</helmet>
+<div data-screen-label="Sign in / Onboarding">
+
+  <sc-if value="{{ isAuth }}" hint-placeholder-val="{{ true }}">
+    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px">
+      <div style="width:min(420px,94vw)">
+        <div style="display:flex;align-items:center;justify-content:center;gap:9px;margin-block-end:18px">
+          <span style="width:12px;height:12px;background:var(--color-accent);border-radius:3px;display:inline-block"></span>
+          <span class="num" style="font-weight:500;font-size:20px;letter-spacing:.14em">{{ copy.brand }}</span>
+        </div>
+        <p style="margin:0 0 18px;text-align:center;font-size:12.5px;color:var(--color-muted)">{{ copy.tagline }}</p>
+        <div class="card" style="padding:22px 24px">
+          <div style="display:flex;border:1px solid var(--color-line-strong);border-radius:var(--radius-control);overflow:hidden;margin-block-end:16px">
+            <button type="button" onClick="{{ setLogin }}" style="flex:1;font:500 12.5px 'IBM Plex Sans',sans-serif;padding:9px 0;border:none;cursor:pointer;background:{{ loginBg }};color:{{ loginColor }}">{{ copy.login }}</button>
+            <button type="button" onClick="{{ setSignup }}" style="flex:1;font:500 12.5px 'IBM Plex Sans',sans-serif;padding:9px 0;border:none;cursor:pointer;background:{{ signupBg }};color:{{ signupColor }}">{{ copy.signup }}</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <sc-if value="{{ isSignup }}" hint-placeholder-val="{{ true }}">
+              <div>
+                <label for="a-user" style="display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted);margin-block-end:6px">{{ copy.fUser }}</label>
+                <input id="a-user" class="field" value="{{ username }}" onChange="{{ setUser }}" placeholder="samuel_c">
+              </div>
+            </sc-if>
+            <div>
+              <label for="a-email" style="display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted);margin-block-end:6px">{{ copy.fEmail }}</label>
+              <input id="a-email" class="field" type="email" value="{{ email }}" onChange="{{ setEmail }}" placeholder="you@run.com">
+            </div>
+            <div>
+              <label for="a-pass" style="display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted);margin-block-end:6px">{{ copy.fPass }}</label>
+              <input id="a-pass" class="field" type="password" value="{{ pass }}" onChange="{{ setPass }}" placeholder="••••••••">
+            </div>
+            <sc-if value="{{ isSignup }}" hint-placeholder-val="{{ true }}">
+              <div>
+                <span style="display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted);margin-block-end:6px">{{ copy.fRole }}</span>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                  <button type="button" onClick="{{ pickAthlete }}" style="font-family:inherit;cursor:pointer;padding:12px;border-radius:var(--radius-control);background:{{ athBg }};border:1px solid {{ athEdge }};text-align:start">
+                    <p style="margin:0;font-size:13px;font-weight:500;color:var(--color-ink)">{{ copy.roleAth }}</p>
+                    <p style="margin:2px 0 0;font-size:11px;color:var(--color-muted)">{{ copy.roleAthSub }}</p>
+                  </button>
+                  <button type="button" onClick="{{ pickCoach }}" style="font-family:inherit;cursor:pointer;padding:12px;border-radius:var(--radius-control);background:{{ coBg }};border:1px solid {{ coEdge }};text-align:start">
+                    <p style="margin:0;font-size:13px;font-weight:500;color:var(--color-ink)">{{ copy.roleCoach }}</p>
+                    <p style="margin:2px 0 0;font-size:11px;color:var(--color-muted)">{{ copy.roleCoachSub }}</p>
+                  </button>
+                </div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ hasErr }}" hint-placeholder-val="{{ false }}">
+              <p class="num" style="margin:0;font-size:11.5px;color:var(--color-negative)">{{ err }}</p>
+            </sc-if>
+            <button class="btn btn-primary" type="button" onClick="{{ submit }}" style="width:100%;margin-block-start:4px">{{ submitLabel }}</button>
+          </div>
+        </div>
+        <p class="num" style="margin:14px 0 0;text-align:center;font-size:10.5px;color:var(--color-faint)">{{ copy.demoNote }}</p>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+    <div style="max-width:1280px;margin-inline:auto;padding:16px 24px 40px;display:flex;flex-direction:column;gap:12px">
+      <header style="display:flex;align-items:center;gap:24px;padding-block:6px 10px">
+        <div style="display:flex;align-items:center;gap:9px">
+          <span style="width:10px;height:10px;background:var(--color-accent);border-radius:2px;display:inline-block"></span>
+          <span class="num" style="font-weight:500;font-size:16px;letter-spacing:.12em">{{ copy.brand }}</span>
+        </div>
+        <nav class="topnav" style="display:flex;gap:20px;font-size:13px;color:var(--color-faint)">
+          <span style="color:var(--color-ink)">{{ copy.navHome }}</span>
+          <span>{{ copy.navActivities }}</span><span>{{ copy.navPlan }}</span><span>{{ copy.navSettings }}</span>
+        </nav>
+        <div style="flex:1"></div>
+        <div style="text-align:end">
+          <h1 style="margin:0;font-size:15px;font-weight:600">{{ greetName }}</h1>
+          <p style="margin:0;font-size:11.5px;color:var(--color-muted)">{{ copy.emptyContext }}</p>
+        </div>
+      </header>
+
+      <section class="card hero-grid" style="display:grid;grid-template-columns:260px 1fr;gap:20px;padding:20px 24px;align-items:center">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+          <div style="width:116px;height:116px;border-radius:50%;border:2px dashed var(--color-line-strong);display:flex;align-items:center;justify-content:center">
+            <span class="num" style="font-size:30px;color:var(--color-faint)">--</span>
+          </div>
+          <p class="num" style="margin:0;font-size:11px;color:var(--color-faint)">{{ copy.emptyReadiness }}</p>
+        </div>
+        <div style="border-inline-start:1px solid var(--color-line);padding-inline-start:28px;display:flex;flex-direction:column;gap:12px;align-self:stretch;justify-content:center">
+          <div><span class="tag" style="background:var(--color-accent-soft);color:var(--color-accent)">{{ copy.aiTag }}</span></div>
+          <p style="margin:0;font-size:16px;line-height:1.55;max-width:640px;text-wrap:pretty">{{ copy.emptyNarrative }}</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-block-start:4px">
+            <button class="btn btn-primary" type="button" onClick="{{ buildPlan }}">{{ copy.ctaBuild }}</button>
+            <button class="btn btn-secondary" type="button" onClick="{{ openCode }}">{{ copy.ctaCode }}</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid">
+        <sc-for list="{{ emptyTiles }}" as="m" hint-placeholder-count="4">
+          <div class="card c3" style="padding:16px 18px">
+            <span class="num" style="font-size:30px;font-weight:500;color:var(--color-faint)">--</span>
+            <p style="margin:6px 0 2px;font-size:12px;color:var(--color-muted)">{{ m.name }}</p>
+            <p class="num" style="margin:0;font-size:11px;color:var(--color-faint)">{{ copy.noData }}</p>
+          </div>
+        </sc-for>
+      </section>
+
+      <section class="card" style="padding:40px 22px;display:flex;flex-direction:column;align-items:center;gap:8px">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--color-faint)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"></path><path d="m7 15 4-6 4 3 4-7"></path></svg>
+        <p style="margin:0;font-size:13px;color:var(--color-muted)">{{ copy.emptyChartTitle }}</p>
+        <p style="margin:0;font-size:11.5px;color:var(--color-faint)">{{ copy.emptyChartSub }}</p>
+      </section>
+
+      <sc-if value="{{ planBuilt }}" hint-placeholder-val="{{ false }}">
+        <section class="card" style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 20px;border-color:var(--color-positive)">
+          <p style="margin:0;font-size:13px"><span class="num" style="color:var(--color-positive);font-weight:500">{{ copy.builtMsg }}</span><span style="color:var(--color-muted)"> {{ copy.builtSub }}</span></p>
+          <a href="ARI Dashboard.dc.html" class="btn btn-primary">{{ copy.builtGo }}</a>
+        </section>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isCoachDone }}" hint-placeholder-val="{{ false }}">
+    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px">
+      <div class="card" style="width:min(420px,94vw);padding:26px;text-align:center">
+        <span class="tag" style="background:var(--color-accent-soft);color:var(--color-accent)">{{ copy.coachTag }}</span>
+        <h2 style="margin:12px 0 4px;font-size:17px;font-weight:600">{{ copy.coachWelcome }}</h2>
+        <p style="margin:0 0 18px;font-size:12.5px;color:var(--color-muted)">{{ copy.coachSub }}</p>
+        <a href="ARI Coach.dc.html" class="btn btn-primary" style="width:100%">{{ copy.coachGo }}</a>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ planOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;z-index:60" onClick="{{ closePlan }}">
+      <div class="card" style="width:min(440px,92vw);padding:24px 26px" onClick="{{ stop }}">
+        <h3 style="margin:0;font-size:15px;font-weight:600">{{ copy.planTitle }}</h3>
+        <p style="margin:4px 0 0;font-size:12px;color:var(--color-muted)">{{ copy.planSub }}</p>
+        <div style="display:flex;flex-direction:column;gap:14px;margin-block-start:16px">
+          <div>
+            <span style="display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted);margin-block-end:6px">{{ copy.pRace }}</span>
+            <div style="display:flex;border:1px solid var(--color-line-strong);border-radius:var(--radius-control);overflow:hidden">
+              <sc-for list="{{ pRaceOpts }}" as="r" hint-placeholder-count="4">
+                <button type="button" onClick="{{ r.pick }}" style="flex:1;font:500 12px 'IBM Plex Sans',sans-serif;padding:9px 0;border:none;cursor:pointer;background:{{ r.bg }};color:{{ r.color }}">{{ r.name }}</button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div>
+              <label for="p-date" style="display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted);margin-block-end:6px">{{ copy.pDate }}</label>
+              <input id="p-date" class="field num" type="date" value="{{ pDate }}" onChange="{{ setPDate }}">
+            </div>
+            <div>
+              <label for="p-target" style="display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted);margin-block-end:6px">{{ copy.pTarget }}</label>
+              <input id="p-target" class="field num" value="{{ pTarget }}" onChange="{{ setPTarget }}" placeholder="3:45:00">
+            </div>
+          </div>
+          <div>
+            <span style="display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted);margin-block-end:6px">{{ copy.pDays }}</span>
+            <div style="display:flex;border:1px solid var(--color-line-strong);border-radius:var(--radius-control);overflow:hidden">
+              <sc-for list="{{ pDayOpts }}" as="d" hint-placeholder-count="4">
+                <button type="button" onClick="{{ d.pick }}" class="num" style="flex:1;font-size:12px;padding:9px 0;border:none;cursor:pointer;background:{{ d.bg }};color:{{ d.color }}">{{ d.name }}</button>
+              </sc-for>
+            </div>
+          </div>
+          <sc-if value="{{ planGen }}" hint-placeholder-val="{{ false }}">
+            <p class="num" style="margin:0;font-size:11.5px;color:var(--color-caution)">{{ copy.planGenMsg }}</p>
+          </sc-if>
+          <div style="display:flex;gap:10px;justify-content:flex-end;margin-block-start:2px">
+            <button class="btn btn-secondary" type="button" onClick="{{ closePlan }}">{{ copy.cancel }}</button>
+            <button class="btn btn-primary" type="button" onClick="{{ genPlan }}">{{ copy.planGo }}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ codeOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;z-index:60" onClick="{{ closeCode }}">
+      <div class="card" style="width:min(400px,92vw);padding:24px 26px" onClick="{{ stop }}">
+        <h3 style="margin:0;font-size:15px;font-weight:600">{{ copy.codeTitle }}</h3>
+        <p style="margin:4px 0 0;font-size:12px;color:var(--color-muted)">{{ copy.codeSub }}</p>
+        <div style="display:flex;align-items:center;gap:16px;margin-block-start:16px">
+          <svg width="96" height="96" viewBox="0 0 96 96" style="flex:none;background:var(--color-ink);border-radius:8px">
+            <path d="{{ qrPath }}" fill="var(--color-canvas)"></path>
+          </svg>
+          <div style="flex:1">
+            <p style="margin:0 0 6px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted)">{{ copy.codeField }}</p>
+            <input class="field num" value="{{ code }}" onChange="{{ setCode }}" placeholder="ARI-XXXX">
+          </div>
+        </div>
+        <sc-if value="{{ syncing }}" hint-placeholder-val="{{ false }}">
+          <p class="num" style="margin:14px 0 0;font-size:11.5px;color:var(--color-caution)">{{ copy.syncing }}</p>
+        </sc-if>
+        <sc-if value="{{ synced }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-block-start:14px;padding:12px 14px;border:1px solid var(--color-positive);border-radius:var(--radius-control)">
+            <p class="num" style="margin:0;font-size:12px;color:var(--color-positive)">{{ copy.syncedMsg }}</p>
+            <p style="margin:4px 0 0;font-size:11.5px;color:var(--color-muted)">{{ copy.syncedSub }}</p>
+          </div>
+        </sc-if>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-block-start:18px">
+          <button class="btn btn-secondary" type="button" onClick="{{ closeCode }}">{{ copy.cancel }}</button>
+          <sc-if value="{{ synced }}" hint-placeholder-val="{{ false }}">
+            <a href="ARI Dashboard.dc.html" class="btn btn-primary">{{ copy.builtGo }}</a>
+          </sc-if>
+          <sc-if value="{{ notSynced }}" hint-placeholder-val="{{ true }}">
+            <button class="btn btn-primary" type="button" onClick="{{ joinPlan }}">{{ copy.join }}</button>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:800}}">
+class Component extends DCLogic {
+  state={view:'auth',mode:'signup',role:'athlete',username:'',email:'',pass:'',err:'',
+    codeOpen:false,code:'',sync:'idle',planBuilt:false,
+    planOpen:false,pRace:'Marathon',pDate:'2026-10-11',pTarget:'3:45:00',pDays:'5 days',gen:'idle'};
+  qr(){
+    if(this._qr)return this._qr;
+    let a=99,rnd=()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+    let d='';const c=8;
+    const eye=(x,y)=>{d+='M'+x+' '+y+'h'+(c*3)+'v'+(c*3)+'h-'+(c*3)+'z';};
+    eye(8,8);eye(8,64);eye(64,8);
+    for(let i=0;i<11;i++)for(let j=0;j<11;j++){
+      const x=8+i*c,y=8+j*c;
+      if((i<4&&j<4)||(i<4&&j>6)||(i>6&&j<4))continue;
+      if(rnd()>0.5)d+='M'+x+' '+y+'h'+(c-2)+'v'+(c-2)+'h-'+(c-2)+'z';
+    }
+    return this._qr=d;
+  }
+  renderVals(){
+    const s=this.state;
+    const submit=()=>{
+      if(s.mode==='signup'&&!s.username.trim())return this.setState({err:'Username is required.'});
+      if(!s.email.trim()||!s.email.includes('@'))return this.setState({err:'Enter a valid email.'});
+      if(s.pass.length<6)return this.setState({err:'Password must be at least 6 characters.'});
+      this.setState({err:'',view:(s.mode==='signup'&&s.role==='coach')?'coach':'empty'});
+    };
+    const copy={brand:'ARI',tagline:'Artificial Run Intelligence \u2014 a data-driven coach for distance runners.',
+      login:'Log in',signup:'Sign up',fUser:'Username',fEmail:'Email',fPass:'Password',fRole:'I am joining as',
+      roleAth:'Athlete',roleAthSub:'Train with an adaptive plan',
+      roleCoach:'Coach',roleCoachSub:'Manage a roster of athletes',
+      demoNote:'Demo \u00b7 any details work \u00b7 nothing is stored',
+      navHome:'Home',navActivities:'Activities',navPlan:'Plan',navSettings:'Settings',
+      emptyContext:'No goal race yet',aiTag:'AI Coach',
+      emptyReadiness:'Readiness \u00b7 needs 7 days of data',
+      emptyNarrative:'Welcome! I don\u2019t know anything about your running yet. Connect Strava or add your first run, then build a plan \u2014 or join a coach\u2019s plan with a code.',
+      ctaBuild:'Build my training plan',ctaCode:'I have a coach code',
+      noData:'No data yet',
+      emptyChartTitle:'Fitness \u00b7 Fatigue \u00b7 Form will appear here',
+      emptyChartSub:'The chart starts drawing after your first synced run.',
+      builtMsg:'Plan created \u2014 12 weeks to your marathon.',builtSub:'Preview the dashboard with demo data:',builtGo:'Open dashboard',
+      coachTag:'Coach account',coachWelcome:'Welcome, Coach',coachSub:'Your roster is empty \u2014 invite athletes or open the coach dashboard.',
+      coachGo:'Open coach dashboard',
+      planTitle:'Build my training plan',
+      planSub:'ARI generates an adaptive plan from your goal \u2014 it recalibrates after every run.',
+      pRace:'Goal race',pDate:'Race date',pTarget:'Target time',pDays:'Training days per week',
+      planGo:'Generate plan',planGenMsg:'Building your plan \u2014 analyzing goal, timeline and level\u2026',
+      codeTitle:'Join a coach\u2019s plan',codeSub:'Scan the QR your coach sent, or type the code.',
+      codeField:'Plan code',cancel:'Cancel',join:'Join plan',
+      syncing:'Verifying code \u00b7 syncing plan\u2026',
+      syncedMsg:'Connected to Coach Dana \u00b7 Marathon plan \u00b7 12 weeks',
+      syncedSub:'The plan was downloaded and your coach can now see your training data.'};
+    return {copy,
+      isAuth:s.view==='auth',isEmpty:s.view==='empty',isCoachDone:s.view==='coach',
+      isSignup:s.mode==='signup',
+      loginBg:s.mode==='login'?'var(--color-accent)':'transparent',loginColor:s.mode==='login'?'var(--color-accent-ink)':'var(--color-muted)',
+      signupBg:s.mode==='signup'?'var(--color-accent)':'transparent',signupColor:s.mode==='signup'?'var(--color-accent-ink)':'var(--color-muted)',
+      setLogin:()=>this.setState({mode:'login',err:''}),setSignup:()=>this.setState({mode:'signup',err:''}),
+      username:s.username,email:s.email,pass:s.pass,
+      setUser:e=>this.setState({username:e.target.value}),
+      setEmail:e=>this.setState({email:e.target.value}),
+      setPass:e=>this.setState({pass:e.target.value}),
+      pickAthlete:()=>this.setState({role:'athlete'}),pickCoach:()=>this.setState({role:'coach'}),
+      athBg:s.role==='athlete'?'var(--color-elevated)':'transparent',athEdge:s.role==='athlete'?'var(--color-accent)':'var(--color-line-strong)',
+      coBg:s.role==='coach'?'var(--color-elevated)':'transparent',coEdge:s.role==='coach'?'var(--color-accent)':'var(--color-line-strong)',
+      hasErr:!!s.err,err:s.err,submit,
+      submitLabel:s.mode==='login'?'Log in':'Create account',
+      greetName:'Welcome'+(s.username?', '+s.username:''),
+      emptyTiles:[{name:'Cardiac Drift'},{name:'Weekly Volume'},{name:'ACWR \u00b7 Load Ratio'},{name:'Form (TSB)'}],
+      planBuilt:s.planBuilt,
+      buildPlan:()=>this.setState({planOpen:true,gen:'idle'}),
+      planOpen:s.planOpen,closePlan:()=>this.setState({planOpen:false,gen:'idle'}),
+      planGen:s.gen==='run',
+      pDate:s.pDate,setPDate:e=>this.setState({pDate:e.target.value}),
+      pTarget:s.pTarget,setPTarget:e=>this.setState({pTarget:e.target.value}),
+      pRaceOpts:['5K','10K','Half','Marathon'].map(n=>({name:n,
+        pick:()=>this.setState({pRace:n,pTarget:{'5K':'22:00','10K':'47:00','Half':'1:45:00','Marathon':'3:45:00'}[n]}),
+        bg:s.pRace===n?'var(--color-accent)':'transparent',
+        color:s.pRace===n?'var(--color-accent-ink)':'var(--color-muted)'})),
+      pDayOpts:['3 days','4 days','5 days','6 days'].map(n=>({name:n,
+        pick:()=>this.setState({pDays:n}),
+        bg:s.pDays===n?'var(--color-accent)':'transparent',
+        color:s.pDays===n?'var(--color-accent-ink)':'var(--color-muted)'})),
+      genPlan:()=>{if(s.gen==='run')return;this.setState({gen:'run'});
+        clearTimeout(this._gt);this._gt=setTimeout(()=>this.setState({planOpen:false,gen:'idle',planBuilt:true}),1300)},
+      codeOpen:s.codeOpen,code:s.code,
+      openCode:()=>this.setState({codeOpen:true,sync:'idle'}),
+      closeCode:()=>this.setState({codeOpen:false,sync:'idle'}),
+      stop:e=>e.stopPropagation(),
+      setCode:e=>this.setState({code:e.target.value}),
+      joinPlan:()=>{if(!(s.code||'').trim())return;this.setState({sync:'sync'});
+        clearTimeout(this._t);this._t=setTimeout(()=>this.setState({sync:'done'}),1100)},
+      syncing:s.sync==='sync',synced:s.sync==='done',notSynced:s.sync!=='done',
+      qrPath:this.qr()};
+  }
+}
+</script>
+</body>
+</html>
