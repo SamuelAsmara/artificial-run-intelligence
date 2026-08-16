@@ -1,24 +1,255 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ------------------------------------------------------------------
+   ARI — design tokens
+   Source of truth: design_handoff_ari_athlete_app/README.md
+   Every colour/radius in the product resolves through this block.
+   To reskin the app, edit here — never in a component.
+   ------------------------------------------------------------------ */
+
+@theme {
+  /* surfaces */
+  --color-canvas: #0a0c10;
+  --color-surface: #12151b;
+  --color-elevated: #1b1f27;
+
+  /* text */
+  --color-ink: #e9edf3;
+  --color-muted: #a4aebe;
+  --color-faint: #8792a3;
+
+  /* lines */
+  --color-line: #242a34;
+  --color-line-strong: #364050;
+
+  /* accent — exactly one */
+  --color-accent: #4e8ef7;
+  --color-accent-ink: #061225;
+  --color-accent-soft: #14243d;
+
+  /* semantic */
+  --color-positive: #7fc887;
+  --color-caution: #e0a33c;
+  --color-negative: #f0705c;
+
+  /* charts */
+  --color-ctl: #4e8ef7;
+  --color-atl: #d8dee8;
+  --color-tsb: #a9a094;
+
+  /* prestige (personal records) */
+  --color-gold: #d8b45f;
+  --color-gold-soft: #2a2210;
+
+  /* brand (settings / connectivity) */
+  --color-strava: #fc4c02;
+
+  /* typography */
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* radii */
+  --radius-card: 14px;
+  --radius-control: 8px;
+  --radius-pill: 999px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-}
+@layer base {
+  html {
+    background-color: var(--color-canvas);
+    color-scheme: dark;
+  }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  a {
+    color: var(--color-ink);
+    text-decoration: none;
+  }
+
+  a:hover {
+    color: var(--color-accent);
+  }
+
+  ::selection {
+    background-color: var(--color-accent);
+    color: var(--color-accent-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ------------------------------------------------------------------
+   Core primitives — the four classes the handoff defines.
+   React components in components/ui wrap these 1:1.
+   ------------------------------------------------------------------ */
+
+@layer components {
+  .card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font: 500 13px var(--font-sans);
+    padding: 9px 16px;
+    border-radius: var(--radius-control);
+    border: 1px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: filter 0.12s, border-color 0.12s, background-color 0.12s;
+  }
+
+  .btn:disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  .btn-primary {
+    background: var(--color-accent);
+    color: var(--color-accent-ink);
+  }
+
+  .btn-primary:hover {
+    filter: brightness(1.08);
+  }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--color-ink);
+    border-color: var(--color-line-strong);
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--color-faint);
+  }
+
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    font: 500 10px var(--font-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: var(--radius-pill);
+  }
+
+  /* every digit in the product carries this */
+  .num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---- layout grid, verbatim from the handoff ---- */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 12px;
+  }
+
+  .c3 { grid-column: span 3; }
+  .c5 { grid-column: span 5; }
+  .c7 { grid-column: span 7; }
+  .c12 { grid-column: span 12; }
+
+  .grid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .set-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    align-items: start;
+  }
+
+  .roster {
+    display: grid;
+    grid-template-columns: minmax(160px, 1.4fr) .8fr .9fr 1.1fr .7fr .7fr .8fr .9fr;
+    gap: 10px;
+    align-items: center;
+  }
+
+  /* form control (Login, Settings, Coach) */
+  .field {
+    width: 100%;
+    background: var(--color-elevated);
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-control);
+    color: var(--color-ink);
+    font: 400 13px var(--font-sans);
+    padding: 10px 12px;
+    outline: none;
+  }
+
+  .field:focus {
+    border-color: var(--color-accent);
+  }
+
+  /* hover/focus states the prototype expresses as style-hover / style-focus */
+  .dc-hover-bg:hover {
+    background: var(--color-elevated);
+  }
+
+  .dc-hover-border:hover {
+    border-color: var(--color-line-strong);
+  }
+
+  .dc-focus-accent:focus {
+    border-color: var(--color-accent);
+  }
+}
+
+/* ---- responsive breakpoints, verbatim from the handoff ---- */
+
+@media (max-width: 980px) {
+  .rail-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .rail-grid > * {
+    grid-column: 1 !important;
+    grid-row: auto !important;
+  }
+}
+
+@media (max-width: 860px) {
+  .set-grid { grid-template-columns: 1fr; }
+  .roster {
+    grid-template-columns: minmax(140px, 1.4fr) .7fr .7fr .9fr !important;
+  }
+  .roster .hide-m { display: none !important; }
+  .msg-grid { grid-template-columns: 1fr !important; }
+}
+
+@media (max-width: 700px) {
+  .grid > * { grid-column: span 12; }
+  .grid > .c3 { grid-column: span 6; }
+  .hero-grid { grid-template-columns: 1fr !important; }
+  .topnav { display: none !important; }
+  .week-grid { grid-template-columns: 1fr 1fr !important; }
+  .pb-grid { grid-template-columns: 1fr 1fr !important; row-gap: 16px; }
+  .grid2 { grid-template-columns: 1fr !important; }
+  .stat-grid { grid-template-columns: 1fr 1fr !important; row-gap: 14px; }
+  .actrow { grid-template-columns: 56px 1fr auto !important; }
+  .wk-days { grid-template-columns: 1fr 1fr !important; }
+  .wk-row { grid-template-columns: 72px 1fr auto !important; }
+  .sumrow { flex-wrap: wrap; gap: 18px !important; }
+  .hide-m { display: none !important; }
+  header { flex-wrap: wrap; gap: 12px !important; }
 }
