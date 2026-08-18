@@ -37,6 +37,11 @@
     "**/*.mts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "_archive",
+    "_incoming",
+    "_to_delete",
+    "design_handoff_ari_athlete_app",
+    ".next"
   ]
 }

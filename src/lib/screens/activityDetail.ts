@@ -18,8 +18,10 @@ function rng(seed: number) {
   };
 }
 
-export const fmt = (s: number) =>
-  Math.floor(s / 60) + ":" + String(Math.round(s % 60)).padStart(2, "0");
+import { formatMinSec } from "@/lib/format/pace";
+
+/** Seconds -> "m:ss". Re-exported so the view keeps its short local name. */
+export const fmt = formatMinSec;
 
 export interface Streams {
   n: number; dist: number[]; vel: number[]; hr: number[];

@@ -91,7 +91,10 @@ def attr_value(name, v):
             return "{" + str(int(v)) + "}"
         except (TypeError, ValueError):
             pass
-    return json.dumps(v)
+    # ensure_ascii=False matters: a JSX attribute string is a *raw* string, not a
+    # JS string literal — no escape processing happens. json.dumps would turn "•"
+    # into the six characters •, which then render literally on the page.
+    return json.dumps(v, ensure_ascii=False)
 
 
 def text_to_jsx(t):

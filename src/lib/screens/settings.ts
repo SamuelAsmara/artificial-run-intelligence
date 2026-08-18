@@ -1,3 +1,4 @@
+import { formatMinSec } from "@/lib/format/pace";
 /**
  * Settings screen copy and helpers — ported from
  * design_handoff_ari_athlete_app/ARI Settings.dc.html.
@@ -24,7 +25,7 @@ export function requiredPace(goalRace: string, target: string): string {
     ? parts[0] * 3600 + parts[1] * 60 + parts[2]
     : parts[0] * 60 + (parts[1] || 0);
   const sk = sec / km;
-  return Math.floor(sk / 60) + ":" + String(Math.round(sk % 60)).padStart(2, "0") + " /km";
+  return formatMinSec(sk) + " /km";
 }
 
 export const PROVIDERS = [

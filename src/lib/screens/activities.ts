@@ -15,15 +15,10 @@ function rng(seed: number) {
   };
 }
 
-export const fmtPace = (s: number) =>
-  Math.floor(s / 60) + ":" + String(Math.round(s % 60)).padStart(2, "0");
+import { formatMinSec, formatDuration } from "@/lib/format/pace";
 
-const fmtTime = (s: number) => {
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const ss = Math.round(s % 60);
-  return (h ? h + ":" : "") + String(m).padStart(h ? 2 : 1, "0") + ":" + String(ss).padStart(2, "0");
-};
+export const fmtPace = formatMinSec;
+const fmtTime = formatDuration;
 
 export interface Act {
   type: string; name: string; date: string; km: string; time: string;
