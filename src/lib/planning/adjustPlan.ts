@@ -30,11 +30,16 @@ const MISSED_WORKOUTS_THRESHOLD_PER_WEEK = 1; // "יותר מפעם אחת" = 2+
 export function decideAdjustments(
   upcomingWeekWorkouts: WorkoutForAdjustment[],
   dailyLoads: DailyLoad[],
-  cumulativeHighDriftRate: number // 0-1: שיעור אימונים עם drift משמעותי לאחרונה
+  cumulativeHighDriftRate: number, // 0-1: שיעור אימונים עם drift משמעותי לאחרונה
+  /**
+   * התאריך שממנו סופרים אחורה. חובה להזריק אותו בטסטים — בלי זה הפונקציה
+   * תלויה בשעון המערכת, והטסטים נשברים מעצמם כשעובר הזמן.
+   */
+  asOf: Date = new Date(),
 ): AdjustmentDecision[] {
   const decisions: AdjustmentDecision[] = [];
 
-  const acwrResult = calculateACWR(dailyLoads);
+  const acwrResult = calculateACWR(dailyLoads, asOf);
   const highAcwr = acwrResult.acwr !== null && acwrResult.acwr > ACWR_INJURY_RISK_THRESHOLD;
 
   const missedThisWeek = upcomingWeekWorkouts.filter((w) => w.status === "missed").length;

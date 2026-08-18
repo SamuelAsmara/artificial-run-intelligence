@@ -48,7 +48,8 @@ export interface Pmc {
   pmcEnds: { y: string; text: string; color: string }[];
 }
 
-export function buildPmc(): Pmc {
+/** The demo series. Replaced by real readiness_snapshots once they exist. */
+function demoSeries(): { C: number[]; A: number[]; T: number[] } {
   const r = rng(42);
   const wk = [0, 78, 55, 88, 0, 118, 52];
   const load: number[] = [];
@@ -67,12 +68,18 @@ export function buildPmc(): Pmc {
     atl += (load[d] - atl) / 7;
     C.push(ctl); A.push(atl);
   }
+  return { C, A, T };
+}
+
+export function buildPmc(series?: { C: number[]; A: number[]; T: number[] }): Pmc {
+  const { C, A, T } = series && series.C.length > 1 ? series : demoSeries();
+  const n = C.length;
 
   const allV = [...C, ...A, ...T];
   const x0 = 30, x1 = 1150, yT = 8, yB = 196;
   const mn = Math.floor(Math.min(...allV) / 10) * 10 - 4;
   const mx = Math.ceil(Math.max(...allV) / 10) * 10 + 4;
-  const X = (i: number) => x0 + (i / 83) * (x1 - x0);
+  const X = (i: number) => x0 + (i / (n - 1)) * (x1 - x0);
   const Y = (v: number) => yT + (1 - (v - mn) / (mx - mn)) * (yB - yT);
 
   const sm = (arr: number[]) => {
@@ -89,15 +96,15 @@ export function buildPmc(): Pmc {
     return d;
   };
 
-  const ctlArea = sm(C) + "L" + X(83).toFixed(1) + " " + yB + "L" + X(0).toFixed(1) + " " + yB + "Z";
+  const ctlArea = sm(C) + "L" + X(n - 1).toFixed(1) + " " + yB + "L" + X(0).toFixed(1) + " " + yB + "Z";
   const tsbArea = "M" + X(0).toFixed(1) + " " + Y(0).toFixed(1) +
     T.map((v, i) => "L" + X(i).toFixed(1) + " " + Y(v).toFixed(1)).join("") +
-    "L" + X(83).toFixed(1) + " " + Y(0).toFixed(1) + "Z";
+    "L" + X(n - 1).toFixed(1) + " " + Y(0).toFixed(1) + "Z";
 
   const ends = [
-    { v: C[83], text: String(Math.round(C[83])), color: "var(--color-ctl)" },
-    { v: A[83], text: String(Math.round(A[83])), color: "var(--color-atl)" },
-    { v: T[83], text: (T[83] >= 0 ? "+" : "") + Math.round(T[83]), color: "var(--color-tsb)" },
+    { v: C[n - 1], text: String(Math.round(C[n - 1])), color: "var(--color-ctl)" },
+    { v: A[n - 1], text: String(Math.round(A[n - 1])), color: "var(--color-atl)" },
+    { v: T[n - 1], text: (T[n - 1] >= 0 ? "+" : "") + Math.round(T[n - 1]), color: "var(--color-tsb)" },
   ].map((e) => ({ ...e, y: Y(e.v) + 3 })).sort((a, b) => a.y - b.y);
   for (let i = 1; i < ends.length; i++) {
     if (ends[i].y - ends[i - 1].y < 13) ends[i].y = ends[i - 1].y + 13;
@@ -111,8 +118,9 @@ export function buildPmc(): Pmc {
     });
   }
 
-  const pmcWeeks = Array.from({ length: 12 }, (_, w) => ({
-    x: X(w * 7).toFixed(0), label: "W" + (w + 1),
+  const weekCount = Math.max(1, Math.round(n / 7));
+  const pmcWeeks = Array.from({ length: weekCount }, (_, w) => ({
+    x: X(Math.min(n - 1, w * 7)).toFixed(0), label: "W" + (w + 1),
   }));
 
   return {

@@ -19,6 +19,13 @@ type Row<T> = T;
 type Ins<T> = T;
 type Upd<T> = Partial<T>;
 
+/** Data sources the athlete connects themselves (no OAuth flow available). */
+/** Where an activity came from. See migration 0004_activity_sources. */
+export type ActivitySource = "strava" | "intervals_icu" | "manual";
+
+export type ProviderId = "intervals_icu";
+export type ProviderStatus = "connected" | "error" | "revoked";
+
 export interface Database {
   public: {
     Tables: {
@@ -77,9 +84,9 @@ export interface Database {
         Relationships: [];
       };
       activities: {
-        Row: { id: string; user_id: string; strava_activity_id: number; type: string | null; distance_m: number | null; duration_s: number | null; avg_hr: number | null; avg_pace: string | null; started_at: string | null };
-        Insert: { id?: string; user_id: string; strava_activity_id: number; type?: string | null; distance_m?: number | null; duration_s?: number | null; avg_hr?: number | null; avg_pace?: string | null; started_at?: string | null };
-        Update: Upd<{ id: string; user_id: string; strava_activity_id: number; type: string | null; distance_m: number | null; duration_s: number | null; avg_hr: number | null; avg_pace: string | null; started_at: string | null }>;
+        Row: { id: string; user_id: string; source: ActivitySource; external_id: string; strava_activity_id: number | null; type: string | null; distance_m: number | null; duration_s: number | null; avg_hr: number | null; avg_pace: string | null; started_at: string | null; pace_shape: (number | null)[] | null; best_efforts: Record<string, number> | null; cardiac_drift_pct: number | null; streams_fetched_at: string | null };
+        Insert: { id?: string; user_id: string; source?: ActivitySource; external_id: string; strava_activity_id?: number | null; type?: string | null; distance_m?: number | null; duration_s?: number | null; avg_hr?: number | null; avg_pace?: string | null; started_at?: string | null; pace_shape?: (number | null)[] | null; best_efforts?: Record<string, number> | null; cardiac_drift_pct?: number | null; streams_fetched_at?: string | null };
+        Update: Upd<{ id: string; user_id: string; source: ActivitySource; external_id: string; strava_activity_id: number | null; type: string | null; distance_m: number | null; duration_s: number | null; avg_hr: number | null; avg_pace: string | null; started_at: string | null; pace_shape: (number | null)[] | null; best_efforts: Record<string, number> | null; cardiac_drift_pct: number | null; streams_fetched_at: string | null }>;
         Relationships: [];
       };
       readiness_snapshots: {
@@ -92,6 +99,12 @@ export interface Database {
         Row: { id: string; plan_id: string; workout_id: string | null; changed_at: string; reason_code: string | null; reason_text: string | null; before: unknown; after: unknown };
         Insert: { id?: string; plan_id: string; workout_id?: string | null; changed_at?: string; reason_code?: string | null; reason_text?: string | null; before?: unknown; after?: unknown };
         Update: Upd<{ id: string; plan_id: string; workout_id: string | null; changed_at: string; reason_code: string | null; reason_text: string | null; before: unknown; after: unknown }>;
+        Relationships: [];
+      };
+      provider_connections: {
+        Row: { id: string; user_id: string; provider: ProviderId; external_id: string; api_key: string; api_key_hint: string | null; status: ProviderStatus; last_error: string | null; last_synced_at: string | null; connected_at: string; updated_at: string };
+        Insert: { id?: string; user_id: string; provider: ProviderId; external_id: string; api_key: string; api_key_hint?: string | null; status?: ProviderStatus; last_error?: string | null; last_synced_at?: string | null; connected_at?: string; updated_at?: string };
+        Update: Upd<{ id: string; user_id: string; provider: ProviderId; external_id: string; api_key: string; api_key_hint: string | null; status: ProviderStatus; last_error: string | null; last_synced_at: string | null; connected_at: string; updated_at: string }>;
         Relationships: [];
       };
       recovery_signals: {
