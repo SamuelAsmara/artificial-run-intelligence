@@ -20,8 +20,8 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { icuConfigForCurrentUser } from "@/lib/providers/credentials";
-import { deriveFromStreams, fetchStreams } from "@/lib/wellness/icuStreams";
-import { recomputeReadiness } from "@/actions/readiness";
+import { importFromIcu, type IcuImportResult } from "@/lib/providers/syncIcu";
+import { recomputeForUser } from "@/lib/readiness/recompute";
 import {
   apiKeyHint,
   fetchActivities,
@@ -46,6 +46,15 @@ export interface ProviderConnectionView {
   lastError: string | null;
   lastSyncedAt: string | null;
   connectedAt: string;
+  /**
+   * The date of the most recent activity we hold.
+   *
+   * Distinct from `lastSyncedAt`, and the distinction matters: one says when we
+   * last *asked*, the other says when the source last had something new. An
+   * athlete whose watch has not uploaded sees a recent sync and an old run, and
+   * without both numbers they will reasonably conclude our app is broken.
+   */
+  lastActivityAt?: string | null;
   /** true when the credentials come from .env rather than from this athlete */
   fromEnvironment?: boolean;
 }
@@ -74,9 +83,20 @@ export async function getIntervalsIcuConnection(): Promise<ProviderConnectionVie
     .eq("provider", "intervals_icu")
     .maybeSingle();
 
+  const { data: latest } = await supabase
+    .from("activities")
+    .select("started_at")
+    .eq("user_id", user.id)
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const lastActivityAt = latest?.started_at ?? null;
+
   if (data) {
     return {
       provider: "intervals_icu",
+      lastActivityAt,
       externalId: data.external_id,
       apiKeyHint: data.api_key_hint,
       status: data.status,
@@ -92,6 +112,7 @@ export async function getIntervalsIcuConnection(): Promise<ProviderConnectionVie
   if (!env) return null;
   return {
     provider: "intervals_icu",
+    lastActivityAt,
     externalId: env.athleteId,
     apiKeyHint: apiKeyHint(env.apiKey),
     status: "connected",
@@ -99,205 +120,6 @@ export async function getIntervalsIcuConnection(): Promise<ProviderConnectionVie
     lastSyncedAt: null,
     connectedAt: new Date(0).toISOString(),
     fromEnvironment: true,
-  };
-}
-
-/* ------------------------------------------------------------------ */
-/* Importing                                                           */
-/* ------------------------------------------------------------------ */
-
-const BACKFILL_DAYS = 400;
-
-/**
- * How many activity streams to process in a single sync.
- *
- * Each one is a separate request to intervals.icu, so a first backfill of a
- * year's running is hundreds of round trips — far more than belongs inside one
- * server action. Instead each sync takes a batch of whatever is still
- * unprocessed and reports what is left, so the athlete can finish it by syncing
- * again. Slower, but it never times out half-way and leaves the data in a state
- * nobody can reason about.
- */
-const STREAM_BATCH = 25;
-
-/** Requests in flight at once. Politeness toward a free API run by one person. */
-const STREAM_CONCURRENCY = 4;
-
-export interface IcuImportResult {
-  nights: number;
-  runs: number;
-  /** activity streams processed this run */
-  detailed: number;
-  /** streams still waiting — sync again to continue */
-  remaining: number;
-  /** set when part of the import failed but the connection itself is fine */
-  warning?: string;
-}
-
-/**
- * Pulls per-second data for activities that do not have it yet, derives the
- * pace shape, the best efforts and the cardiac drift, and stores those. The raw
- * stream is discarded — see src/lib/wellness/icuStreams.ts for why.
- */
-async function processStreams(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string,
-  cfg: IcuConfig,
-): Promise<{ detailed: number; remaining: number }> {
-  const { data: pending } = await supabase
-    .from("activities")
-    .select("id, external_id")
-    .eq("user_id", userId)
-    .eq("source", "intervals_icu")
-    .is("streams_fetched_at", null)
-    .order("started_at", { ascending: false })
-    .limit(STREAM_BATCH);
-
-  if (!pending || pending.length === 0) return { detailed: 0, remaining: 0 };
-
-  let detailed = 0;
-  const queue = [...pending];
-
-  const worker = async () => {
-    for (;;) {
-      const row = queue.shift();
-      if (!row) return;
-
-      let update: {
-        streams_fetched_at: string;
-        pace_shape?: (number | null)[];
-        best_efforts?: Record<string, number>;
-        cardiac_drift_pct?: number | null;
-      } = {
-        // Stamped even when there is no stream, so an activity without one is
-        // not retried on every future sync.
-        streams_fetched_at: new Date().toISOString(),
-      };
-
-      try {
-        const streams = await fetchStreams(cfg, row.external_id);
-        if (streams) {
-          const derived = deriveFromStreams(streams);
-          update = {
-            ...update,
-            pace_shape: derived.paceShape,
-            best_efforts: derived.bestEfforts,
-            cardiac_drift_pct: derived.cardiacDriftPct,
-          };
-          detailed++;
-        }
-      } catch {
-        /* one unreadable activity must not stop the batch */
-      }
-
-      await supabase.from("activities").update(update).eq("id", row.id);
-    }
-  };
-
-  await Promise.all(Array.from({ length: STREAM_CONCURRENCY }, worker));
-
-  const { count } = await supabase
-    .from("activities")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", userId)
-    .eq("source", "intervals_icu")
-    .is("streams_fetched_at", null);
-
-  return { detailed, remaining: count ?? 0 };
-}
-
-/**
- * Pulls everything intervals.icu holds for this athlete and stores it.
- *
- * Wellness and activities are fetched together but stored independently: a
- * failure on one must not lose the other. Both upserts are idempotent — the
- * unique keys on (user_id, date) and (user_id, source, external_id) mean this
- * can run as often as we like without duplicating anything.
- */
-async function importFromIcu(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string,
-  cfg: IcuConfig,
-): Promise<IcuImportResult> {
-  const oldest = iso(new Date(Date.now() - BACKFILL_DAYS * 86_400_000));
-  const newest = iso(new Date());
-
-  const [wellnessResult, activityResult] = await Promise.allSettled([
-    fetchWellness(cfg, oldest, newest),
-    fetchActivities(cfg, oldest, newest),
-  ]);
-
-  const problems: string[] = [];
-  let nights = 0;
-  let runs = 0;
-
-  if (wellnessResult.status === "fulfilled") {
-    const signals: RecoverySignal[] = toRecoverySignals(wellnessResult.value);
-    if (signals.length > 0) {
-      const { error } = await supabase.from("recovery_signals").upsert(
-        signals.map((r) => ({
-          user_id: userId,
-          date: r.date,
-          sleep_hours: r.sleepHours,
-          resting_hr: r.restingHr,
-          hrv: r.hrv,
-          source: r.source,
-        })),
-        { onConflict: "user_id,date" },
-      );
-      if (error) problems.push(`recovery data: ${error.message}`);
-      else nights = signals.length;
-    }
-  } else {
-    problems.push("could not read recovery data");
-  }
-
-  if (activityResult.status === "fulfilled") {
-    const imports = toActivityImports(activityResult.value);
-    if (imports.length > 0) {
-      // Chunked because a year of running is several hundred rows and a single
-      // oversized statement is the kind of thing that works locally and times
-      // out in production.
-      const CHUNK = 200;
-      for (let i = 0; i < imports.length; i += CHUNK) {
-        const { error } = await supabase.from("activities").upsert(
-          imports.slice(i, i + CHUNK).map((a) => ({ ...a, user_id: userId })),
-          { onConflict: "user_id,source,external_id" },
-        );
-        if (error) {
-          problems.push(`runs: ${error.message}`);
-          break;
-        }
-        runs += Math.min(CHUNK, imports.length - i);
-      }
-    }
-  } else {
-    problems.push("could not read activities");
-  }
-
-  // Per-second data for a batch of activities. This is what fills the pace
-  // sparklines, the personal records and the cardiac-drift figure.
-  let streamProgress = { detailed: 0, remaining: 0 };
-  try {
-    streamProgress = await processStreams(supabase, userId, cfg);
-  } catch {
-    problems.push("could not read activity detail");
-  }
-
-  // Importing runs is only half the job: the dashboard reads
-  // `readiness_snapshots`, which nothing writes until the engine runs. Syncing
-  // and then seeing an unchanged dashboard is the failure this prevents.
-  if (runs > 0 || nights > 0 || streamProgress.detailed > 0) {
-    const recomputed = await recomputeReadiness(120);
-    if (recomputed.error) problems.push(`readiness: ${recomputed.error}`);
-  }
-
-  return {
-    nights,
-    runs,
-    detailed: streamProgress.detailed,
-    remaining: streamProgress.remaining,
-    warning: problems.length ? problems.join("; ") : undefined,
   };
 }
 
@@ -367,6 +189,7 @@ export async function connectIntervalsIcu(
   let imported: IcuImportResult = { nights: 0, runs: 0, detailed: 0, remaining: 0 };
   try {
     imported = await importFromIcu(supabase, user.id, { athleteId, apiKey });
+    await recomputeForUser(supabase, user.id, 120);
     if (imported.nights > 0 || imported.runs > 0) {
       await supabase
         .from("provider_connections")
@@ -428,6 +251,9 @@ export async function syncIntervalsIcu(): Promise<Result<IcuImportResult>> {
 
   try {
     const imported = await importFromIcu(supabase, user.id, cfg);
+    // Same call the nightly job makes, so a manual press and a scheduled run
+    // cannot produce different results.
+    await recomputeForUser(supabase, user.id, 120);
 
     await supabase
       .from("provider_connections")

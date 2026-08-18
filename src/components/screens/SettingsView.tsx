@@ -1,151 +1,787 @@
 "use client";
 
 /**
- * Settings — a 1:1 port of
- * design_handoff_ari_athlete_app/ARI Settings.dc.html.
- * Markup converted mechanically; do not restyle by hand.
+ * Settings — a port of the second Claude Design handoff
+ * (`new design for settinges/ARI Settings.dc.html`).
  *
- * NOTE: the Strava connect flow is still simulated. Replacing it with the real
- * OAuth round-trip is a separate task.
+ * Three stacked cards, in this order:
+ *
+ *   1. **Profile.** Reads as a summary — photo, name, bio and four facts — and
+ *      flips to a full editor when asked. The first handoff opened one field at
+ *      a time; this one opens the whole card, which is better here because the
+ *      fields are interdependent: changing the goal race changes the target
+ *      time, which changes the required pace.
+ *   2. **Connections.** A row of provider logos acting as tabs over a single
+ *      detail panel.
+ *   3. **Account & security.** Email and password, expanding in place.
+ *
+ * ## The one thing this adds to the handoff
+ *
+ * Selecting Garmin, Suunto or Strava shows the intervals.icu panel, because
+ * that is where their data actually arrives from. The handoff does this
+ * silently; here the panel names the provider you clicked, so the athlete is
+ * told "your Garmin reaches us through intervals.icu" rather than being shown a
+ * card for a service they did not select and left to work it out.
+ *
+ * ## What never reaches this component
+ *
+ * The intervals.icu API key. `getIntervalsIcuConnection` selects an explicit
+ * column list that omits it and returns only the last four characters. This
+ * file renders `apiKeyHint` and has no way to ask for more.
  */
 
-import * as React from "react";
-import { useRef, useState } from "react";
-import { ImageSlot } from "@/components/ui/ImageSlot";
+import { useMemo, useState, useTransition } from "react";
+import { AvatarEditor } from "@/components/settings/AvatarEditor";
+import { AccountSecurity } from "@/components/settings/AccountSecurity";
+import { saveAthleteProfile, type AthleteProfileView } from "@/actions/profile";
 import {
-  PROVIDERS, RACE_DEFAULT_TARGET, requiredPace, SET_COPY,
+  connectIntervalsIcu,
+  disconnectIntervalsIcu,
+  syncIntervalsIcu,
+  type ProviderConnectionView,
+} from "@/actions/providers";
+import { providerById } from "@/lib/providers/registry";
+import {
+  LEVEL_OPTIONS,
+  PROVIDER_TILES,
+  RACE_OPTIONS,
+  SET_COPY,
+  raceLabel,
+  reachesUsViaIntervals,
+  requiredPace,
 } from "@/lib/screens/settings";
-import { IntervalsIcuCard } from "@/components/settings/IntervalsIcuCard";
-import type { ProviderConnectionView } from "@/actions/providers";
-import { PROVIDERS as PROVIDER_REGISTRY } from "@/lib/providers/registry";
+import type { RaceType } from "@/types/database.types";
+
+const copy = SET_COPY;
+const DASH = "—";
+
+/* ------------------------------------------------------------------ */
 
 export function SettingsView({
   icuConnection = null,
+  profile = null,
 }: {
-  /** intervals.icu connection for the signed-in athlete; never contains the key */
   icuConnection?: ProviderConnectionView | null;
+  profile?: AthleteProfileView | null;
 } = {}) {
-  const copy = SET_COPY;
-  // The two connectable sources have their own cards above; everything else is
-  // rendered from the registry, which carries each provider's real status and
-  // the reason it is not available yet. See src/lib/providers/registry.ts.
-  const providers = PROVIDER_REGISTRY.filter(
-    (p) => p.id !== "intervals_icu" && p.id !== "strava",
-  );
-
-  const [name, _setName] = useState("Samuel Cohen");
-  const [email, _setEmail] = useState("samuel@run.com");
-  const [bio, _setBio] = useState(
-    "Marathoner in progress — chasing 3:45 in October. Early-morning runner, coffee after, never before.",
-  );
-  const [age, _setAge] = useState<string | number>(34);
-  const [height, _setHeight] = useState<string | number>(178);
-  const [weight, _setWeight] = useState<string | number>(72);
-  const [level, setLevel] = useState("Intermediate");
-  const [goalRace, setGoalRace] = useState("Marathon");
-  const [target, _setTarget] = useState("3:45:00");
-  const [saved, setSaved] = useState(false);
-
-  const [emailSaved, setEmailSaved] = useState(false);
-  const [pass0, _setPass0] = useState("");
-  const [pass1, _setPass1] = useState("");
-  const [passErr, setPassErr] = useState("");
-  const [passSaved, setPassSaved] = useState(false);
-
-  const [strava, setStrava] = useState<"off" | "connecting" | "on">("off");
-  const [authOpen, setAuthOpen] = useState(false);
-  const [lastSyncV, setLastSyncV] = useState("");
-  const [autoSync, setAutoSync] = useState(true);
-  const [syncing, setSyncing] = useState(false);
-
-  const targets = useRef<Record<string, string>>({ Marathon: "3:45:00" });
-  const t1 = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const t2 = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const levels = ["Beginner", "Intermediate", "Advanced"].map((n) => ({
-    name: n,
-    pick: () => { setLevel(n); setSaved(false); },
-    bg: level === n ? "var(--color-accent)" : "transparent",
-    color: level === n ? "var(--color-accent-ink)" : "var(--color-muted)",
-  }));
-
-  const on = strava === "on", off = strava === "off", connecting = strava === "connecting";
-
-  const setName = (e: React.ChangeEvent<HTMLInputElement>) => { _setName(e.target.value); setSaved(false); };
-  const setEmail = (e: React.ChangeEvent<HTMLInputElement>) => { _setEmail(e.target.value); setEmailSaved(false); };
-  const saveEmail = () => setEmailSaved(email.includes("@"));
-  const setPass0 = (e: React.ChangeEvent<HTMLInputElement>) => { _setPass0(e.target.value); setPassSaved(false); setPassErr(""); };
-  const setPass1 = (e: React.ChangeEvent<HTMLInputElement>) => { _setPass1(e.target.value); setPassSaved(false); setPassErr(""); };
-  const passErrShow = !!passErr;
-  const savePass = () => {
-    if (!pass0) return setPassErr("Enter your current password.");
-    if (pass1.length < 6) return setPassErr("New password must be at least 6 characters.");
-    setPassSaved(true); setPassErr(""); _setPass0(""); _setPass1("");
-  };
-  const setBio = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    _setBio(e.target.value.slice(0, 160)); setSaved(false);
-  };
-  const bioCount = bio.length + " / 160";
-
-  const raceOpts = ["5K", "10K", "Half", "Marathon"].map((n) => ({
-    name: n,
-    pick: () => {
-      targets.current[goalRace] = target;
-      setGoalRace(n);
-      _setTarget(targets.current[n] || RACE_DEFAULT_TARGET[n]);
-      setSaved(false);
-    },
-    bg: goalRace === n ? "var(--color-accent)" : "transparent",
-    color: goalRace === n ? "var(--color-accent-ink)" : "var(--color-muted)",
-  }));
-  const setTarget = (e: React.ChangeEvent<HTMLInputElement>) => { _setTarget(e.target.value); setSaved(false); };
-  const goalPace = requiredPace(goalRace, target);
-
-  const setHeight = (e: React.ChangeEvent<HTMLInputElement>) => { _setHeight(e.target.value); setSaved(false); };
-  const setAge = (e: React.ChangeEvent<HTMLInputElement>) => { _setAge(e.target.value); setSaved(false); };
-  const setWeight = (e: React.ChangeEvent<HTMLInputElement>) => { _setWeight(e.target.value); setSaved(false); };
-  const save = () => setSaved(true);
-
-  const stravaOff = off, stravaOn = on, stravaConnecting = connecting;
-  const stravaBorder = on ? "var(--color-positive)" : "var(--color-line-strong)";
-  const stravaSub = off
-    ? "Sync runs, streams and gear from Strava"
-    : connecting
-      ? "Exchanging tokens…"
-      : syncing
-        ? "Syncing activities…"
-        : "Athlete ID 48291077 · " + (autoSync ? "auto-sync on" : "auto-sync off");
-  const stravaSubColor = on ? "var(--color-positive)" : "var(--color-faint)";
-  const stravaAthlete = "Samuel C. · #48291077";
-  const lastSync = syncing ? "Syncing…" : lastSyncV;
-  const syncColor = syncing ? "var(--color-caution)" : "var(--color-ink)";
-
-  const stravaConnect = () => setAuthOpen(true);
-  const authCancel = () => setAuthOpen(false);
-  const stop = (e: React.MouseEvent) => e.stopPropagation();
-  const authorize = () => {
-    setAuthOpen(false);
-    setStrava("connecting");
-    if (t1.current) clearTimeout(t1.current);
-    t1.current = setTimeout(() => {
-      setStrava("on");
-      setLastSyncV("Just now · 18 activities");
-    }, 1100);
-  };
-  const syncNow = () => {
-    setSyncing(true);
-    if (t2.current) clearTimeout(t2.current);
-    t2.current = setTimeout(() => {
-      setSyncing(false);
-      setLastSyncV("Just now · up to date");
-    }, 900);
-  };
-  const stravaDisconnect = () => { setStrava("off"); setLastSyncV(""); };
-  const toggleAuto = () => setAutoSync(!autoSync);
-  const autoBg = autoSync ? "var(--color-accent)" : "var(--color-line-strong)";
-  const autoKnob = autoSync ? "19px" : "3px";
-
   return (
-<div style={{ maxWidth: "1080px", marginInline: "auto", padding: "16px 24px 40px", display: "flex", flexDirection: "column", gap: "12px" }}><header style={{ display: "flex", alignItems: "center", gap: "24px", paddingBlock: "6px 10px" }}><div style={{ display: "flex", alignItems: "center", gap: "9px" }}><span style={{ width: "10px", height: "10px", background: "var(--color-accent)", borderRadius: "2px", display: "inline-block" }}></span><span className="num" style={{ fontWeight: "500", fontSize: "16px", letterSpacing: ".12em" }}>{copy.brand}</span></div><nav className="topnav" style={{ display: "flex", gap: "20px", fontSize: "13px", color: "var(--color-muted)" }}><a href="/dashboard" style={{ color: "var(--color-muted)" }}>{copy.navHome}</a><a href="/activities" style={{ color: "var(--color-muted)" }}>{copy.navActivities}</a><a href="/plan" style={{ color: "var(--color-muted)" }}>{copy.navPlan}</a><a href="#" style={{ color: "var(--color-ink)" }}>{copy.navSettings}</a></nav><div style={{ flex: "1" }}></div><h1 style={{ margin: "0", fontSize: "15px", fontWeight: "600" }}>{copy.title}</h1></header><div className="set-grid"><section className="card" style={{ padding: "20px 22px" }}><h2 style={{ margin: "0", fontSize: "14px", fontWeight: "600" }}>{copy.profileTitle}</h2><p style={{ margin: "2px 0 0", fontSize: "11.5px", color: "var(--color-faint)" }}>{copy.profileSub}</p><div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBlockStart: "16px" }}><div style={{ display: "flex", alignItems: "center", gap: "16px" }}><ImageSlot style={{ width: "72px", height: "72px", flex: "none" }} label="Photo" /><div><p style={{ margin: "0", fontSize: "12.5px", fontWeight: "500" }}>{copy.fPhoto}</p><p style={{ margin: "2px 0 0", fontSize: "11px", color: "var(--color-faint)" }}>{copy.fPhotoSub}</p></div></div><div><label htmlFor="f-name" style={{ display: "block", fontSize: "11px", letterSpacing: ".06em", textTransform: "uppercase", color: "var(--color-muted)", marginBlockEnd: "6px" }}>{copy.fName}</label><input className="field" id="f-name" value={name} onChange={setName} /></div><div><label htmlFor="f-bio" style={{ display: "block", fontSize: "11px", letterSpacing: ".06em", textTransform: "uppercase", color: "var(--color-muted)", marginBlockEnd: "6px" }}>{copy.fBio}</label><textarea className="field" id="f-bio" rows={3} style={{ resize: "vertical", minHeight: "64px", fontFamily: "'IBM Plex Sans',sans-serif" }} value={bio} onChange={setBio} placeholder={copy.fBioPh}></textarea><p className="num" style={{ margin: "4px 0 0", fontSize: "10px", color: "var(--color-faint)", textAlign: "end" }}>{bioCount}</p></div><div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px" }}><div><label htmlFor="f-age" style={{ display: "block", fontSize: "11px", letterSpacing: ".06em", textTransform: "uppercase", color: "var(--color-muted)", marginBlockEnd: "6px" }}>{copy.fAge}</label><input className="field num" id="f-age" type="number" value={age} onChange={setAge} /></div><div><label htmlFor="f-height" style={{ display: "block", fontSize: "11px", letterSpacing: ".06em", textTransform: "uppercase", color: "var(--color-muted)", marginBlockEnd: "6px" }}>{copy.fHeight}</label><input className="field num" id="f-height" type="number" value={height} onChange={setHeight} /></div><div><label htmlFor="f-weight" style={{ display: "block", fontSize: "11px", letterSpacing: ".06em", textTransform: "uppercase", color: "var(--color-muted)", marginBlockEnd: "6px" }}>{copy.fWeight}</label><input className="field num" id="f-weight" type="number" value={weight} onChange={setWeight} /></div></div><div><span style={{ display: "block", fontSize: "11px", letterSpacing: ".06em", textTransform: "uppercase", color: "var(--color-muted)", marginBlockEnd: "6px" }}>{copy.fLevel}</span><div style={{ display: "flex", border: "1px solid var(--color-line-strong)", borderRadius: "var(--radius-control)", overflow: "hidden" }}>{levels.map((l, _i1) => (<React.Fragment key={_i1}><button type="button" onClick={l.pick} style={{ flex: "1", font: "500 12px 'IBM Plex Sans',sans-serif", padding: "9px 0", border: "none", cursor: "pointer", background: l.bg, color: l.color }}>{l.name}</button></React.Fragment>))}</div></div><div><span style={{ display: "block", fontSize: "11px", letterSpacing: ".06em", textTransform: "uppercase", color: "var(--color-muted)", marginBlockEnd: "6px" }}>{copy.fGoalRace}</span><div style={{ display: "flex", border: "1px solid var(--color-line-strong)", borderRadius: "var(--radius-control)", overflow: "hidden" }}>{raceOpts.map((r, _i2) => (<React.Fragment key={_i2}><button type="button" onClick={r.pick} style={{ flex: "1", font: "500 12px 'IBM Plex Sans',sans-serif", padding: "9px 0", border: "none", cursor: "pointer", background: r.bg, color: r.color }}>{r.name}</button></React.Fragment>))}</div></div><div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}><div><label htmlFor="f-target" style={{ display: "block", fontSize: "11px", letterSpacing: ".06em", textTransform: "uppercase", color: "var(--color-muted)", marginBlockEnd: "6px" }}>{copy.fTarget}</label><input className="field num" id="f-target" value={target} onChange={setTarget} placeholder="3:45:00" /></div><div><span style={{ display: "block", fontSize: "11px", letterSpacing: ".06em", textTransform: "uppercase", color: "var(--color-muted)", marginBlockEnd: "6px" }}>{copy.fPace}</span><p className="num" style={{ margin: "0", padding: "9px 12px", border: "1px solid var(--color-line)", borderRadius: "var(--radius-control)", fontSize: "13px", color: "var(--color-accent)" }}>{goalPace}</p></div></div><div style={{ display: "flex", alignItems: "center", gap: "12px", marginBlockStart: "2px" }}><button className="btn btn-primary" type="button" onClick={save}>{copy.save}</button>{(saved) ? (<><span className="num" style={{ fontSize: "11px", color: "var(--color-positive)" }}>{copy.savedMsg}</span></>) : null}</div></div></section><section className="card" style={{ padding: "20px 22px" }}><h2 style={{ margin: "0", fontSize: "14px", fontWeight: "600" }}>{copy.connTitle}</h2><p style={{ margin: "2px 0 0", fontSize: "11.5px", color: "var(--color-faint)" }}>{copy.connSub}</p><div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBlockStart: "14px" }}><IntervalsIcuCard connection={icuConnection} /><div style={{ display: "flex", flexDirection: "column", border: `1px solid ${stravaBorder}`, borderRadius: "var(--radius-control)", background: "var(--color-elevated)" }}><div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px 14px" }}><span className="num" style={{ width: "34px", height: "34px", borderRadius: "8px", background: "var(--color-strava)", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "15px", fontWeight: "500" }}>S</span><div style={{ flex: "1" }}><p style={{ margin: "0", fontSize: "13px", fontWeight: "500" }}>{copy.strava}</p><p className="num" style={{ margin: "1px 0 0", fontSize: "10.5px", color: stravaSubColor }}>{stravaSub}</p></div>{(stravaOff) ? (<><button className="btn" type="button" onClick={stravaConnect} style={{ background: "var(--color-strava)", color: "#fff", padding: "7px 14px" }}>{copy.connect}</button></>) : null}{(stravaConnecting) ? (<><span className="num" style={{ fontSize: "11px", color: "var(--color-muted)" }}>{copy.connecting}</span></>) : null}{(stravaOn) ? (<><span className="tag" style={{ background: "var(--color-surface)", color: "var(--color-positive)" }}>{copy.connected}</span></>) : null}</div>{(stravaOn) ? (<><div style={{ borderBlockStart: "1px solid var(--color-line)", padding: "12px 14px", display: "flex", flexDirection: "column", gap: "10px" }}><div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><span style={{ fontSize: "12px", color: "var(--color-muted)" }}>{copy.stAccount}</span><span className="num" style={{ fontSize: "12px" }}>{stravaAthlete}</span></div><div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><span style={{ fontSize: "12px", color: "var(--color-muted)" }}>{copy.stLastSync}</span><span className="num" style={{ fontSize: "12px", color: syncColor }}>{lastSync}</span></div><div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><span style={{ fontSize: "12px", color: "var(--color-muted)" }}>{copy.stAuto}</span><button type="button" onClick={toggleAuto} aria-label="Toggle auto-sync" style={{ width: "38px", height: "21px", borderRadius: "var(--radius-pill)", border: "none", cursor: "pointer", position: "relative", background: autoBg }}><span style={{ position: "absolute", top: "2.5px", insetInlineStart: autoKnob, width: "16px", height: "16px", borderRadius: "50%", background: "var(--color-ink)", transition: "inset-inline-start .15s" }}></span></button></div><div style={{ display: "flex", gap: "8px", marginBlockStart: "2px" }}><button className="btn btn-secondary" type="button" onClick={syncNow} style={{ padding: "7px 13px", fontSize: "12px" }}>{copy.syncNow}</button><button className="btn" type="button" onClick={stravaDisconnect} style={{ padding: "7px 13px", fontSize: "12px", color: "var(--color-negative)", borderColor: "transparent", background: "transparent" }}>{copy.disconnect}</button></div></div></>) : null}</div>{providers.map((p) => (<React.Fragment key={p.id}><div style={{ display: "flex", alignItems: "flex-start", gap: "12px", padding: "12px 14px", border: "1px solid var(--color-line)", borderRadius: "var(--radius-control)" }}><span className="num" style={{ width: "34px", height: "34px", flex: "none", borderRadius: "8px", background: p.markColor, color: "var(--color-ink)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "14px", fontWeight: "500" }}>{p.mark}</span><div style={{ flex: "1", minWidth: "0" }}><div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}><p style={{ margin: "0", fontSize: "13px", fontWeight: "500", color: "var(--color-muted)" }}>{p.name}</p><span className="tag" style={{ background: "var(--color-elevated)", color: "var(--color-faint)" }}>{p.status === "gated" ? "NEEDS APPROVAL" : "PLANNED"}</span></div><p className="num" style={{ margin: "2px 0 0", fontSize: "10.5px", color: "var(--color-faint)" }}>{p.summary}</p>{p.blockedReason ? (<p style={{ margin: "6px 0 0", fontSize: "11px", lineHeight: "1.5", color: "var(--color-faint)", textWrap: "pretty" }}>{p.blockedReason}</p>) : null}</div></div></React.Fragment>))}</div></section></div><section className="card" style={{ padding: "20px 22px" }}><h2 style={{ margin: "0", fontSize: "14px", fontWeight: "600" }}>{copy.secTitle}</h2><p style={{ margin: "2px 0 0", fontSize: "11.5px", color: "var(--color-faint)" }}>{copy.secSub}</p><div className="set-grid" style={{ marginBlockStart: "16px" }}><div style={{ display: "flex", flexDirection: "column", gap: "12px" }}><div><label htmlFor="s-email" style={{ display: "block", fontSize: "11px", letterSpacing: ".06em", textTransform: "uppercase", color: "var(--color-muted)", marginBlockEnd: "6px" }}>{copy.curEmail}</label><input className="field" id="s-email" type="email" value={email} onChange={setEmail} /></div><div style={{ display: "flex", alignItems: "center", gap: "12px" }}><button className="btn btn-secondary" type="button" onClick={saveEmail}>{copy.updEmail}</button>{(emailSaved) ? (<><span className="num" style={{ fontSize: "11px", color: "var(--color-positive)" }}>{copy.emailMsg}</span></>) : null}</div></div><div style={{ display: "flex", flexDirection: "column", gap: "12px" }}><div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}><div><label htmlFor="s-pass0" style={{ display: "block", fontSize: "11px", letterSpacing: ".06em", textTransform: "uppercase", color: "var(--color-muted)", marginBlockEnd: "6px" }}>{copy.curPass}</label><input className="field" id="s-pass0" type="password" value={pass0} onChange={setPass0} placeholder="••••••••" /></div><div><label htmlFor="s-pass1" style={{ display: "block", fontSize: "11px", letterSpacing: ".06em", textTransform: "uppercase", color: "var(--color-muted)", marginBlockEnd: "6px" }}>{copy.newPass}</label><input className="field" id="s-pass1" type="password" value={pass1} onChange={setPass1} placeholder="min. 6 characters" /></div></div>{(passErrShow) ? (<><p className="num" style={{ margin: "0", fontSize: "11px", color: "var(--color-negative)" }}>{passErr}</p></>) : null}<div style={{ display: "flex", alignItems: "center", gap: "12px" }}><button className="btn btn-secondary" type="button" onClick={savePass}>{copy.updPass}</button>{(passSaved) ? (<><span className="num" style={{ fontSize: "11px", color: "var(--color-positive)" }}>{copy.passMsg}</span></>) : null}</div></div></div></section>{(authOpen) ? (<><div style={{ position: "fixed", inset: "0", background: "rgba(0,0,0,.62)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: "60" }} onClick={authCancel}><div className="card" style={{ width: "min(420px,92vw)", padding: "24px 26px", boxShadow: "0 20px 60px rgba(0,0,0,.6)" }} onClick={stop}><div style={{ display: "flex", alignItems: "center", gap: "12px" }}><span className="num" style={{ width: "40px", height: "40px", borderRadius: "10px", background: "var(--color-strava)", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "18px", fontWeight: "500" }}>S</span><div><h3 style={{ margin: "0", fontSize: "15px", fontWeight: "600" }}>{copy.authTitle}</h3><p className="num" style={{ margin: "2px 0 0", fontSize: "11px", color: "var(--color-faint)" }}>{copy.authSub}</p></div></div><p style={{ margin: "16px 0 8px", fontSize: "12.5px", color: "var(--color-muted)" }}>{copy.authScopes}</p><ul style={{ margin: "0", paddingInlineStart: "18px", display: "flex", flexDirection: "column", gap: "5px", fontSize: "12.5px", color: "var(--color-ink)" }}><li>{copy.scope1}</li><li>{copy.scope2}</li><li>{copy.scope3}</li></ul><p style={{ margin: "14px 0 0", fontSize: "11px", color: "var(--color-faint)" }}>{copy.authNote}</p><div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginBlockStart: "18px" }}><button className="btn btn-secondary" type="button" onClick={authCancel}>{copy.cancel}</button><button className="btn" type="button" onClick={authorize} style={{ background: "var(--color-strava)", color: "#fff" }}>{copy.authorize}</button></div></div></div></>) : null}</div>
+    <div style={{
+      maxWidth: "1080px", marginInline: "auto", padding: "16px 24px 40px",
+      display: "flex", flexDirection: "column", gap: "12px",
+    }}>
+      <header style={{ display: "flex", alignItems: "center", gap: "24px", paddingBlock: "6px 10px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
+          <span style={{
+            width: "10px", height: "10px", background: "var(--color-accent)",
+            borderRadius: "2px", display: "inline-block",
+          }} />
+          <span className="num" style={{ fontWeight: 500, fontSize: "16px", letterSpacing: ".12em" }}>
+            {copy.brand}
+          </span>
+        </div>
+        <nav className="topnav" style={{ display: "flex", gap: "20px", fontSize: "13px", color: "var(--color-muted)" }}>
+          <a href="/dashboard" style={{ color: "var(--color-muted)" }}>{copy.navHome}</a>
+          <a href="/activities" style={{ color: "var(--color-muted)" }}>{copy.navActivities}</a>
+          <a href="/plan" style={{ color: "var(--color-muted)" }}>{copy.navPlan}</a>
+          <a href="/settings" style={{ color: "var(--color-ink)" }}>{copy.navSettings}</a>
+        </nav>
+        <div style={{ flex: 1 }} />
+        <h1 style={{ margin: 0, fontSize: "15px", fontWeight: 600 }}>{copy.title}</h1>
+      </header>
+
+      <ProfileCard profile={profile} />
+      <ConnectionsCard connection={icuConnection} />
+
+      <section className="card" style={{ padding: "20px 24px" }}>
+        <h2 style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>{copy.secTitle}</h2>
+        <p style={{ margin: "2px 0 0", fontSize: "11.5px", color: "var(--color-faint)" }}>{copy.secSub}</p>
+        <AccountSecurity email={profile?.email ?? ""} />
+      </section>
+    </div>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* 1. Profile                                                          */
+/* ------------------------------------------------------------------ */
+
+interface Draft {
+  fullName: string;
+  bio: string;
+  age: string;
+  heightCm: string;
+  weightKg: string;
+  runningLevel: string;
+  raceType: RaceType | null;
+  raceDate: string;
+  targetTime: string;
+  avatarUrl: string | null;
+  avatarPosition: string;
+}
+
+const BIO_MAX = 160;
+
+const draftFrom = (p: AthleteProfileView | null): Draft => ({
+  fullName: p?.fullName ?? "",
+  bio: p?.bio ?? "",
+  age: p?.age != null ? String(p.age) : "",
+  heightCm: p?.heightCm != null ? String(p.heightCm) : "",
+  weightKg: p?.weightKg != null ? String(p.weightKg) : "",
+  runningLevel: p?.runningLevel ?? "",
+  raceType: p?.raceType ?? null,
+  raceDate: p?.raceDate ?? "",
+  targetTime: p?.targetTime ?? "",
+  avatarUrl: p?.avatarUrl ?? null,
+  avatarPosition: p?.avatarPosition ?? "50% 30%",
+});
+
+function ProfileCard({ profile }: { profile: AthleteProfileView | null }) {
+  const [editing, setEditing] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+  const [draft, setDraft] = useState<Draft>(() => draftFrom(profile));
+  const [pending, startTransition] = useTransition();
+
+  const set = <K extends keyof Draft>(key: K, value: Draft[K]) =>
+    setDraft((d) => ({ ...d, [key]: value }));
+
+  const startEdit = () => {
+    setDraft(draftFrom(profile));
+    setError("");
+    setSaved(false);
+    setEditing(true);
+  };
+
+  const cancel = () => {
+    setEditing(false);
+    setError("");
+  };
+
+  const save = () => {
+    setError("");
+    startTransition(async () => {
+      const result = await saveAthleteProfile({
+        fullName: draft.fullName,
+        bio: draft.bio,
+        age: draft.age,
+        // Not in this handoff's form; preserved so saving does not clear it.
+        sex: profile?.sex ?? "",
+        heightCm: draft.heightCm,
+        weightKg: draft.weightKg,
+        runningLevel: draft.runningLevel,
+        avatarUrl: draft.avatarUrl,
+        avatarPosition: draft.avatarPosition,
+        raceType: draft.raceType ?? "",
+        raceDate: draft.raceDate,
+        targetTime: draft.targetTime,
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setEditing(false);
+      setSaved(true);
+    });
+  };
+
+  return (
+    <section className="card" style={{ padding: "20px 24px" }}>
+      {editing
+        ? <ProfileEditor
+            draft={draft} set={set} save={save} cancel={cancel}
+            pending={pending} error={error}
+          />
+        : <ProfileSummary profile={profile} saved={saved} onEdit={startEdit} />}
+    </section>
+  );
+}
+
+function ProfileSummary({
+  profile, saved, onEdit,
+}: {
+  profile: AthleteProfileView | null;
+  saved: boolean;
+  onEdit: () => void;
+}) {
+  const facts = [
+    { label: copy.fLevel, value: titleCase(profile?.runningLevel) },
+    { label: copy.fGoalRace, value: raceLabel(profile?.raceType ?? null) },
+    { label: copy.fTarget, value: profile?.targetTime ?? DASH, mono: true },
+  ];
+  const pace = requiredPace(profile?.raceType ?? null, profile?.targetTime ?? null);
+
+  return (
+    <>
+      <div className="profile-view" style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+        <Avatar src={profile?.avatarUrl ?? null} position={profile?.avatarPosition ?? "50% 30%"} size={76} />
+
+        <div style={{ flex: 1, minWidth: "220px" }}>
+          <h2 style={{ margin: 0, fontSize: "17px", fontWeight: 600 }}>
+            {profile?.fullName || profile?.email || DASH}
+          </h2>
+          <p style={{
+            margin: "3px 0 0", fontSize: "12.5px", color: "var(--color-muted)",
+            maxWidth: "520px", textWrap: "pretty",
+          }}>
+            {profile?.bio || copy.noBio}
+          </p>
+        </div>
+
+        <div className="fact-row">
+          {facts.map((f) => (
+            <div key={f.label}>
+              <span className="lbl" style={{ marginBlockEnd: "2px" }}>{f.label}</span>
+              <p className={f.mono ? "num" : undefined} style={{ margin: 0, fontSize: "13.5px", fontWeight: 500 }}>
+                {f.value}
+              </p>
+            </div>
+          ))}
+          <div>
+            <span className="lbl" style={{ marginBlockEnd: "2px" }}>{copy.fPace}</span>
+            <p className="num" style={{
+              margin: 0, fontSize: "13.5px", fontWeight: 500, color: "var(--color-accent)",
+            }}>
+              {pace}
+            </p>
+          </div>
+        </div>
+
+        <button className="btn btn-secondary" type="button" onClick={onEdit} style={{ alignSelf: "flex-start" }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+          </svg>
+          {copy.edit}
+        </button>
+      </div>
+
+      {saved ? (
+        <p className="num" style={{ margin: "10px 0 0", fontSize: "11px", color: "var(--color-positive)" }}>
+          {copy.savedMsg}
+        </p>
+      ) : null}
+    </>
+  );
+}
+
+function ProfileEditor({
+  draft, set, save, cancel, pending, error,
+}: {
+  draft: Draft;
+  set: <K extends keyof Draft>(key: K, value: Draft[K]) => void;
+  save: () => void;
+  cancel: () => void;
+  pending: boolean;
+  error: string;
+}) {
+  const pace = requiredPace(draft.raceType, draft.targetTime);
+
+  return (
+    <>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+        <h2 style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>{copy.profileTitle}</h2>
+        <p style={{ margin: 0, fontSize: "11.5px", color: "var(--color-faint)" }}>{copy.profileSub}</p>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBlockStart: "16px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <AvatarEditor
+            src={draft.avatarUrl}
+            position={draft.avatarPosition}
+            onChange={(next) => {
+              set("avatarUrl", next.src);
+              set("avatarPosition", next.position);
+            }}
+          />
+          <div>
+            <p style={{ margin: 0, fontSize: "12.5px", fontWeight: 500 }}>{copy.fPhoto}</p>
+            <p style={{ margin: "2px 0 0", fontSize: "11px", color: "var(--color-faint)" }}>
+              {copy.fPhotoSub}
+            </p>
+          </div>
+        </div>
+
+        <div className="set-grid">
+          <div>
+            <label htmlFor="f-name" className="lbl">{copy.fName}</label>
+            <input id="f-name" className="field" value={draft.fullName}
+              onChange={(e) => set("fullName", e.target.value)} />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px" }}>
+            <div>
+              <label htmlFor="f-age" className="lbl">{copy.fAge}</label>
+              <input id="f-age" className="field num" type="number" value={draft.age}
+                onChange={(e) => set("age", e.target.value)} />
+            </div>
+            <div>
+              <label htmlFor="f-height" className="lbl">{copy.fHeight}</label>
+              <input id="f-height" className="field num" type="number" value={draft.heightCm}
+                onChange={(e) => set("heightCm", e.target.value)} />
+            </div>
+            <div>
+              <label htmlFor="f-weight" className="lbl">{copy.fWeight}</label>
+              <input id="f-weight" className="field num" type="number" value={draft.weightKg}
+                onChange={(e) => set("weightKg", e.target.value)} />
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor="f-bio" className="lbl">{copy.fBio}</label>
+          <textarea id="f-bio" className="field" rows={2}
+            style={{ resize: "vertical", minHeight: "52px", fontFamily: "var(--font-sans)" }}
+            value={draft.bio}
+            onChange={(e) => set("bio", e.target.value.slice(0, BIO_MAX))}
+            placeholder={copy.fBioPh} />
+          <p className="num" style={{
+            margin: "4px 0 0", fontSize: "10px", color: "var(--color-faint)", textAlign: "end",
+          }}>
+            {draft.bio.length} / {BIO_MAX}
+          </p>
+        </div>
+
+        <div className="set-grid">
+          <div>
+            <span className="lbl">{copy.fLevel}</span>
+            <Segmented
+              options={LEVEL_OPTIONS.map((l) => ({ key: l.value, label: l.label }))}
+              selected={draft.runningLevel}
+              onPick={(key) => set("runningLevel", key)}
+            />
+          </div>
+          <div>
+            <span className="lbl">{copy.fGoalRace}</span>
+            <Segmented
+              options={RACE_OPTIONS.map((r) => ({ key: r.value, label: r.label }))}
+              selected={draft.raceType ?? ""}
+              onPick={(key) => {
+                const option = RACE_OPTIONS.find((r) => r.value === key);
+                set("raceType", key as RaceType);
+                // A target time carried over from another distance is always
+                // wrong, so offer that distance's default instead of keeping it.
+                if (option && !draft.targetTime) set("targetTime", option.defaultTarget);
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="set-grid">
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+            <div>
+              <label htmlFor="f-target" className="lbl">{copy.fTarget}</label>
+              <input id="f-target" className="field num" value={draft.targetTime}
+                onChange={(e) => set("targetTime", e.target.value)} placeholder="3:45:00" />
+            </div>
+            <div>
+              <label htmlFor="f-racedate" className="lbl">{copy.fRaceDate}</label>
+              <input id="f-racedate" className="field num" type="date" value={draft.raceDate}
+                onChange={(e) => set("raceDate", e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <span className="lbl">{copy.fPace}</span>
+            <p className="num" style={{
+              margin: 0, padding: "9px 12px", border: "1px solid var(--color-line)",
+              borderRadius: "var(--radius-control)", fontSize: "13px", color: "var(--color-accent)",
+            }}>
+              {pace}
+            </p>
+          </div>
+        </div>
+
+        {error ? (
+          <p className="num" style={{ margin: 0, fontSize: "11px", color: "var(--color-negative)" }}>
+            {error}
+          </p>
+        ) : null}
+
+        <div style={{ display: "flex", gap: "10px", marginBlockStart: "2px" }}>
+          <button className="btn btn-primary" type="button" onClick={save} disabled={pending}>
+            {pending ? copy.saving : copy.save}
+          </button>
+          <button className="btn btn-secondary" type="button" onClick={cancel} disabled={pending}>
+            {copy.cancel}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* 2. Connections                                                      */
+/* ------------------------------------------------------------------ */
+
+function ConnectionsCard({ connection }: { connection: ProviderConnectionView | null }) {
+  const [selected, setSelected] = useState("intervals_icu");
+
+  // A dot means "your data reaches us from here". intervals.icu earns one when
+  // it is connected; Garmin, Suunto and Strava inherit it, because when the
+  // aggregator is live so are they.
+  const icuLive = connection?.status === "connected";
+  const connected = useMemo(
+    () => new Set(icuLive ? ["intervals_icu", "garmin", "suunto", "strava"] : []),
+    [icuLive],
+  );
+
+  return (
+    <section className="card" style={{ padding: "20px 24px" }}>
+      <h2 style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>{copy.connTitle}</h2>
+      <p style={{ margin: "2px 0 0", fontSize: "11.5px", color: "var(--color-faint)" }}>{copy.connSub}</p>
+
+      <div className="conn-row" style={{ marginBlockStart: "12px" }}>
+        {PROVIDER_TILES.map((tile) => {
+          const isSelected = selected === tile.id;
+          const isConnected = connected.has(tile.id);
+          const lit = isSelected || isConnected;
+          return (
+            <button
+              key={tile.id}
+              type="button"
+              onClick={() => setSelected(tile.id)}
+              aria-pressed={isSelected}
+              style={{
+                flex: 1, minWidth: "88px", display: "flex", flexDirection: "column",
+                alignItems: "center", justifyContent: "flex-end", gap: "8px",
+                padding: "10px 8px 8px", cursor: "pointer", background: "none", border: "none",
+                borderBlockEnd: `2px solid ${isSelected ? "var(--color-accent)" : "var(--color-line)"}`,
+                fontFamily: "inherit",
+              }}
+            >
+              <span style={{
+                width: "64px", height: "36px", borderRadius: "9px", background: tile.chipBg,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                opacity: lit ? 1 : 0.55,
+              }}>
+                <TileMark tile={tile} />
+              </span>
+              <span style={{
+                display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "10.5px",
+                letterSpacing: ".02em", whiteSpace: "nowrap",
+                color: lit ? "var(--color-ink)" : "var(--color-muted)",
+              }}>
+                {tile.name}
+                <span style={{
+                  width: "6px", height: "6px", borderRadius: "50%",
+                  background: isConnected ? "var(--color-positive)" : "var(--color-line-strong)",
+                }} />
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{ marginBlockStart: "10px" }}>
+        {reachesUsViaIntervals(selected)
+          ? <IntervalsPanel connection={connection} selected={selected} />
+          : <PlannedPanel selected={selected} />}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * The provider mark.
+ *
+ * Brand logos are loaded from their own sources, which means an ad blocker or
+ * an offline demo can leave the chip blank. Falling back to the letter keeps
+ * the row legible in the one situation where you cannot fix it — a live demo.
+ */
+function TileMark({ tile }: { tile: (typeof PROVIDER_TILES)[number] }) {
+  const [failed, setFailed] = useState(false);
+
+  if (!tile.logo || failed) {
+    return (
+      <span className="num" style={{
+        fontStyle: "italic", fontWeight: 500, fontSize: "18px",
+        color: tile.markColor, lineHeight: 1,
+      }}>
+        {tile.mark}
+      </span>
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- remote brand marks, no loader
+    <img
+      src={tile.logo}
+      alt={tile.name}
+      onError={() => setFailed(true)}
+      style={{ height: `${tile.logoHeight}px`, width: "auto", maxWidth: "48px", display: "block" }}
+    />
+  );
+}
+
+function IntervalsPanel({
+  connection, selected,
+}: {
+  connection: ProviderConnectionView | null;
+  selected: string;
+}) {
+  const [pending, startTransition] = useTransition();
+  const [note, setNote] = useState("");
+  const live = connection?.status === "connected";
+
+  const sync = () => {
+    setNote("");
+    startTransition(async () => {
+      const result = await syncIntervalsIcu();
+      setNote(
+        result.ok
+          ? `Synced — ${result.data.runs} runs and ${result.data.nights} nights.`
+          : result.error,
+      );
+    });
+  };
+
+  const disconnect = () => {
+    setNote("");
+    startTransition(async () => {
+      const result = await disconnectIntervalsIcu();
+      if (!result.ok) setNote(result.error);
+    });
+  };
+
+  // Named so the redirection is stated. Clicking Garmin and being shown an
+  // intervals.icu card is correct, but only once someone says why.
+  const via = selected !== "intervals_icu" ? providerById(selected)?.name : null;
+
+  const facts: { label: string; value: string; tone?: string }[] = [
+    { label: copy.icuAccount, value: connection?.externalId ?? DASH },
+    { label: copy.icuKey, value: connection?.apiKeyHint ? `••••${connection.apiKeyHint}` : DASH },
+    { label: copy.icuChecked, value: dateTime(connection?.lastSyncedAt) },
+    { label: copy.icuRecent, value: dateOnly(connection?.lastActivityAt) },
+  ];
+
+  return (
+    <div style={{
+      border: `1px solid ${live ? "var(--color-positive)" : "var(--color-line)"}`,
+      borderRadius: "var(--radius-control)",
+      background: "var(--color-elevated)",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px 14px" }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ margin: 0, fontSize: "13px", fontWeight: 500 }}>{copy.icuName}</p>
+          <p style={{ margin: "1px 0 0", fontSize: "10.5px", color: "var(--color-muted)" }}>
+            {via ? `${via} reaches ARI through intervals.icu` : copy.icuDesc}
+          </p>
+        </div>
+        <span className="tag" style={{
+          background: "var(--color-surface)",
+          color: live ? "var(--color-positive)" : "var(--color-faint)",
+        }}>
+          {live ? copy.connected : copy.notConnected}
+        </span>
+      </div>
+
+      {connection ? (
+        <>
+          <div className="icu-grid" style={{
+            borderBlockStart: "1px solid var(--color-line)", padding: "12px 14px",
+            display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 32px",
+          }}>
+            {facts.map((f) => (
+              <div key={f.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ fontSize: "12px", color: "var(--color-muted)" }}>{f.label}</span>
+                <span className="num" style={{ fontSize: "12px" }}>{f.value}</span>
+              </div>
+            ))}
+          </div>
+
+          <div style={{
+            borderBlockStart: "1px solid var(--color-line)", padding: "10px 14px",
+            display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap",
+          }}>
+            <button className="btn btn-secondary" type="button" onClick={sync} disabled={pending}
+              style={{ padding: "7px 13px", fontSize: "12px" }}>
+              {pending ? copy.syncing : copy.syncNow}
+            </button>
+            <button className="btn" type="button" onClick={disconnect} disabled={pending}
+              style={{
+                padding: "7px 13px", fontSize: "12px", color: "var(--color-negative)",
+                borderColor: "transparent", background: "transparent",
+              }}>
+              {copy.disconnect}
+            </button>
+            {note ? (
+              <span className="num" style={{ fontSize: "11px", color: "var(--color-muted)" }}>{note}</span>
+            ) : null}
+          </div>
+        </>
+      ) : (
+        <ConnectForm />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Connecting for the first time, or again after a disconnect.
+ *
+ * intervals.icu has no OAuth flow for personal accounts, so the athlete copies
+ * two values out of their own settings page. The key is posted to a server
+ * action and verified against intervals.icu before it is stored, so a typo
+ * surfaces here rather than as a stale readiness score a week later — and it
+ * never comes back to this component afterwards.
+ */
+function ConnectForm() {
+  const [athleteId, setAthleteId] = useState("");
+  const [apiKey, setApiKey] = useState("");
+  const [error, setError] = useState("");
+  const [pending, startTransition] = useTransition();
+
+  const submit = () => {
+    setError("");
+    startTransition(async () => {
+      const result = await connectIntervalsIcu(athleteId, apiKey);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setAthleteId("");
+      setApiKey("");
+    });
+  };
+
+  return (
+    <div style={{
+      borderBlockStart: "1px solid var(--color-line)", padding: "12px 14px",
+      display: "flex", flexDirection: "column", gap: "10px",
+    }}>
+      <div className="set-grid">
+        <div>
+          <label htmlFor="icu-athlete" className="lbl">Athlete ID</label>
+          <input id="icu-athlete" className="field num" value={athleteId}
+            onChange={(e) => setAthleteId(e.target.value)} placeholder="i123456" autoComplete="off" />
+        </div>
+        <div>
+          <label htmlFor="icu-key" className="lbl">API key</label>
+          <input id="icu-key" className="field num" type="password" value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)} placeholder="paste the whole key"
+            autoComplete="off" />
+        </div>
+      </div>
+      <p style={{ margin: 0, fontSize: "11px", color: "var(--color-faint)", textWrap: "pretty" }}>
+        Both are on your{" "}
+        <a href="https://intervals.icu/settings" target="_blank" rel="noreferrer"
+          style={{ color: "var(--color-accent)" }}>
+          intervals.icu settings page
+        </a>
+        , under Developer. The key is stored for your account only and is never sent to your browser
+        again.
+      </p>
+      {error ? (
+        <p className="num" style={{ margin: 0, fontSize: "11px", color: "var(--color-negative)" }}>
+          {error}
+        </p>
+      ) : null}
+      <div>
+        <button className="btn btn-primary" type="button" onClick={submit}
+          disabled={pending || !athleteId.trim() || apiKey.trim().length < 8}
+          style={{ padding: "7px 14px", fontSize: "12px" }}>
+          {pending ? "Checking…" : "Connect"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PlannedPanel({ selected }: { selected: string }) {
+  const provider = providerById(selected);
+  if (!provider) return null;
+
+  return (
+    <div style={{ border: "1px solid var(--color-line)", borderRadius: "var(--radius-control)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px 14px" }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ margin: 0, fontSize: "13px", fontWeight: 500 }}>{provider.name}</p>
+          <p style={{ margin: "1px 0 0", fontSize: "10.5px", color: "var(--color-faint)" }}>
+            {provider.summary}
+          </p>
+        </div>
+        <span className="tag" style={{ background: "var(--color-elevated)", color: "var(--color-faint)" }}>
+          {copy.comingSoon}
+        </span>
+      </div>
+      {provider.blockedReason ? (
+        <div style={{
+          borderBlockStart: "1px solid var(--color-line)", padding: "12px 14px",
+          display: "flex", flexDirection: "column", gap: "8px",
+        }}>
+          <p style={{ margin: 0, fontSize: "12px", color: "var(--color-muted)", textWrap: "pretty" }}>
+            {provider.blockedReason}
+          </p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Small shared pieces                                                 */
+/* ------------------------------------------------------------------ */
+
+function Segmented({
+  options, selected, onPick,
+}: {
+  options: { key: string; label: string }[];
+  selected: string;
+  onPick: (key: string) => void;
+}) {
+  return (
+    <div style={{
+      display: "flex", border: "1px solid var(--color-line-strong)",
+      borderRadius: "var(--radius-control)", overflow: "hidden",
+    }}>
+      {options.map((o) => {
+        const on = selected === o.key;
+        return (
+          <button
+            key={o.key}
+            type="button"
+            onClick={() => onPick(o.key)}
+            aria-pressed={on}
+            style={{
+              flex: 1, font: "500 12px var(--font-sans)", padding: "9px 0", border: "none",
+              cursor: "pointer",
+              background: on ? "var(--color-accent)" : "transparent",
+              color: on ? "var(--color-accent-ink)" : "var(--color-muted)",
+            }}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** The read-only circle. Same framing rule as the editor, so they agree. */
+function Avatar({ src, position, size }: { src: string | null; position: string; size: number }) {
+  return (
+    <div style={{
+      width: `${size}px`, height: `${size}px`, flex: "none", borderRadius: "50%",
+      overflow: "hidden", background: "var(--color-elevated)",
+      border: "1px solid var(--color-line-strong)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+    }}>
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element -- a data: URL, nothing to optimise
+        <img src={src} alt="" style={{
+          width: "100%", height: "100%", objectFit: "cover", objectPosition: position,
+        }} />
+      ) : (
+        <span style={{ fontSize: "10px", color: "var(--color-faint)" }}>Photo</span>
+      )}
+    </div>
+  );
+}
+
+const titleCase = (s: string | null | undefined) =>
+  s ? s.charAt(0).toUpperCase() + s.slice(1) : DASH;
+
+const dateOnly = (iso: string | null | undefined) =>
+  iso ? new Date(iso).toLocaleDateString() : DASH;
+
+const dateTime = (iso: string | null | undefined) =>
+  iso ? new Date(iso).toLocaleString() : copy.never;

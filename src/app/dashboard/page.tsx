@@ -8,6 +8,9 @@ import { createClient } from "@/lib/supabase/server";
 import { formatPace } from "@/lib/format/pace";
 import { paceShapeColor, paceShapeToPath } from "@/lib/dashboard/sparkline";
 import { personalRecords } from "@/lib/dashboard/personalRecords";
+import {
+  calendarDots, raceCountdown, runStreak, weeklyVolume, weeklyVolumeSummary,
+} from "@/lib/dashboard/rail";
 
 export const metadata = { title: "Dashboard · ARI" };
 
@@ -46,11 +49,12 @@ export default async function DashboardPage({
 
   const latest = series[series.length - 1];
 
-  const [narrative, recentActivities, plan, derived] = await Promise.all([
+  const [narrative, recentActivities, plan, derived, rail] = await Promise.all([
     getDashboardNarrative(),
     recentActivityRows(),
     getDashboardPlan(),
     streamDerived(),
+    railData(),
   ]);
 
   const data: DashboardData = {
@@ -66,6 +70,7 @@ export default async function DashboardPage({
     plan: plan ?? undefined,
     personalRecords: derived.prs,
     cardiacDriftPct: derived.cardiacDrift,
+    rail,
   };
 
   return (
@@ -124,6 +129,85 @@ async function streamDerived() {
   };
 }
 
+/**
+ * The right-hand rail: weekly volume, the calendar, the streak and the race
+ * countdown. Every appearance decision comes from `presentation.ts`, so real
+ * data inherits the design rather than inventing one.
+ */
+async function railData() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return undefined;
+
+  const from = new Date(Date.now() - 120 * 86_400_000).toISOString();
+
+  const [{ data: runRows }, { data: race }] = await Promise.all([
+    supabase
+      .from("activities")
+      .select("started_at, distance_m")
+      .eq("user_id", user.id)
+      .gte("started_at", from),
+    supabase
+      .from("goal_races")
+      .select("race_type, race_date")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .order("race_date", { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  const runs = (runRows ?? [])
+    .filter((r) => r.started_at)
+    .map((r) => ({
+      date: (r.started_at as string).slice(0, 10),
+      distanceM: r.distance_m ?? 0,
+    }));
+
+  if (runs.length === 0) return undefined;
+
+  // Planned sessions drive the calendar's "planned" and "missed" dots.
+  const { data: plan } = await supabase
+    .from("training_plans")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let planned: { date: string; isRest: boolean }[] = [];
+  let planStart: string | null = null;
+  let totalWeeks = 0;
+
+  if (plan) {
+    const { data: rows } = await supabase
+      .from("plan_workouts")
+      .select("day_date, workout_type, week_number")
+      .eq("plan_id", plan.id)
+      .order("day_date", { ascending: true });
+
+    planned = (rows ?? []).map((r) => ({
+      date: r.day_date,
+      isRest: r.workout_type === "rest",
+    }));
+    planStart = rows?.[0]?.day_date ?? null;
+    totalWeeks = rows?.length ? Math.max(...rows.map((r) => r.week_number)) : 0;
+  }
+
+  return {
+    volumes: weeklyVolume(runs),
+    volumeSummary: weeklyVolumeSummary(runs),
+    calendarDots: calendarDots(planned, runs),
+    streak: runStreak(runs),
+    race: race
+      ? raceCountdown(race.race_type, race.race_date, planStart, totalWeeks)
+      : null,
+  };
+}
+
 /** The rail's recent-runs list, from real activities. */
 async function recentActivityRows() {
   const supabase = await createClient();
@@ -134,7 +218,7 @@ async function recentActivityRows() {
 
   const { data } = await supabase
     .from("activities")
-    .select("started_at, distance_m, duration_s, pace_shape")
+    .select("id, started_at, distance_m, duration_s, pace_shape")
     .eq("user_id", user.id)
     .order("started_at", { ascending: false })
     .limit(9);
@@ -146,6 +230,7 @@ async function recentActivityRows() {
     const km = (a.distance_m ?? 0) / 1000;
     const pace = km > 0 ? (a.duration_s ?? 0) / km : 0;
     return {
+      id: a.id,
       date: `${MO[d.getMonth()]} ${String(d.getDate()).padStart(2, "0")}`,
       km: km.toFixed(1),
       pace: formatPace(pace),

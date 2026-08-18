@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --color-canvas: #0a0c10; --color-surface: #12151b; --color-elevated: #1b1f27;
+  --color-ink: #e9edf3; --color-muted: #a4aebe; --color-faint: #8792a3;
+  --color-line: #242a34; --color-line-strong: #364050;
+  --color-accent: #4e8ef7; --color-accent-ink: #061225; --color-accent-soft: #14243d;
+  --color-positive: #7fc887; --color-caution: #e0a33c; --color-negative: #f0705c;
+  --color-ctl: #4e8ef7; --color-atl: #d8dee8; --color-tsb: #a9a094;
+  --color-gold: #d8b45f; --color-gold-soft: #2a2210;
+  --radius-card: 14px; --radius-control: 8px; --radius-pill: 999px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--color-canvas);color:var(--color-ink);font-family:'IBM Plex Sans',sans-serif;font-size:14px;line-height:1.45}
+a{color:var(--color-ink);text-decoration:none}
+a:hover{color:var(--color-accent)}
+.card{background:var(--color-surface);border:1px solid var(--color-line);border-radius:var(--radius-card)}
+.btn{display:inline-flex;align-items:center;gap:8px;font:500 13px 'IBM Plex Sans',sans-serif;padding:9px 16px;border-radius:var(--radius-control);border:1px solid transparent;cursor:pointer;white-space:nowrap}
+.btn-primary{background:var(--color-accent);color:var(--color-accent-ink)}
+.btn-secondary{background:transparent;color:var(--color-ink);border-color:var(--color-line-strong)}
+.btn-secondary:hover{border-color:var(--color-faint)}
+.tag{display:inline-flex;align-items:center;font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:var(--radius-pill)}
+.num{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+@media (max-width:700px){.topnav{display:none !important}.wk-days{grid-template-columns:1fr 1fr !important}.wk-row{grid-template-columns:72px 1fr auto !important}.wk-row .hide-m{display:none !important}.stat-grid{grid-template-columns:1fr 1fr !important;row-gap:14px}header{flex-wrap:wrap;gap:12px !important}}
+</style>
+</helmet>
+<div style="max-width:1280px;margin-inline:auto;padding:16px 24px 40px;display:flex;flex-direction:column;gap:12px" data-screen-label="Training plan">
+  <header style="display:flex;align-items:center;gap:24px;padding-block:6px 10px">
+    <div style="display:flex;align-items:center;gap:9px">
+      <span style="width:10px;height:10px;background:var(--color-accent);border-radius:2px;display:inline-block"></span>
+      <span class="num" style="font-weight:500;font-size:16px;letter-spacing:.12em">{{ copy.brand }}</span>
+    </div>
+    <nav class="topnav" style="display:flex;gap:20px;font-size:13px;color:var(--color-muted)">
+      <a href="ARI Dashboard.dc.html" style="color:var(--color-muted)">{{ copy.navHome }}</a>
+      <a href="ARI Activities.dc.html" style="color:var(--color-muted)">{{ copy.navActivities }}</a>
+      <a href="#" style="color:var(--color-ink)">{{ copy.navPlan }}</a>
+      <a href="ARI Settings.dc.html" style="color:var(--color-muted)">{{ copy.navSettings }}</a>
+    </nav>
+    <div style="flex:1"></div>
+    <div style="text-align:end">
+      <h1 style="margin:0;font-size:15px;font-weight:600">{{ copy.title }}</h1>
+      <p style="margin:0;font-size:11.5px;color:var(--color-muted)">{{ copy.subtitle }}</p>
+    </div>
+  </header>
+
+  <section class="card" class="stat-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:16px 22px">
+    <sc-for list="{{ planStats }}" as="s" hint-placeholder-count="4">
+      <div style="border-inline-start:1px solid {{ s.divider }};padding-inline-start:16px">
+        <p class="num" style="margin:0;font-size:20px;font-weight:500">{{ s.v }}</p>
+        <p style="margin:2px 0 0;font-size:11px;color:var(--color-muted)">{{ s.name }}</p>
+      </div>
+    </sc-for>
+  </section>
+
+  <sc-for list="{{ months }}" as="mo" hint-placeholder-count="3">
+    <section>
+      <h2 class="num" style="margin:10px 0 8px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-faint)">{{ mo.name }}</h2>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <sc-for list="{{ mo.weeks }}" as="w" hint-placeholder-count="4">
+          <div class="card" style="overflow:hidden;border-color:{{ w.border }}">
+            <button type="button" onClick="{{ w.toggle }}" class="wk-row" style="width:100%;display:grid;grid-template-columns:96px 1fr auto auto auto;align-items:center;gap:16px;padding:13px 18px;background:transparent;border:none;cursor:pointer;font-family:inherit;color:var(--color-ink);text-align:start">
+              <span class="num" style="font-size:13px;font-weight:500;color:{{ w.numColor }}">{{ w.label }}</span>
+              <span class="num hide-m" style="font-size:11.5px;color:var(--color-faint)">{{ w.range }}</span>
+              <span class="tag hide-m" style="background:var(--color-elevated);color:{{ w.phaseColor }}">{{ w.phase }}</span>
+              <span class="num" style="font-size:12px;color:var(--color-muted);min-width:56px;text-align:end">{{ w.km }} km</span>
+              <span class="num" style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:{{ w.statusColor }};min-width:64px;text-align:end">{{ w.status }}</span>
+            </button>
+            <sc-if value="{{ w.open }}" hint-placeholder-val="{{ false }}">
+              <div style="border-block-start:1px solid var(--color-line);padding:14px 18px 16px">
+                <div class="wk-days" style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px">
+                  <sc-for list="{{ w.days }}" as="d" hint-placeholder-count="7">
+                    <button type="button" onClick="{{ d.select }}" style="text-align:start;font-family:inherit;cursor:pointer;display:flex;flex-direction:column;gap:6px;padding:10px 11px;border-radius:var(--radius-control);background:{{ d.bg }};border:1px solid {{ d.edge }};min-height:92px" style-hover="border-color:var(--color-line-strong)">
+                      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px;width:100%">
+                        <span class="num" style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:{{ d.dayColor }};white-space:nowrap">{{ d.day }}</span>
+                        <span class="num" style="font-size:8.5px;letter-spacing:.04em;text-transform:uppercase;color:{{ d.statusColor }};white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis">{{ d.status }}</span>
+                      </div>
+                      <div style="flex:1">
+                        <p style="margin:0;font-size:12px;font-weight:500;color:{{ d.nameColor }}">{{ d.name }}</p>
+                        <p class="num" style="margin:2px 0 0;font-size:10.5px;color:var(--color-faint)">{{ d.dist }}</p>
+                      </div>
+                    </button>
+                  </sc-for>
+                </div>
+                <sc-if value="{{ w.hasSel }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-block-start:12px;border-block-start:1px solid var(--color-line);padding-block-start:14px">
+                    <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px">
+                      <div>
+                        <h3 style="margin:0;font-size:13px;font-weight:600">{{ w.selTitle }}</h3>
+                        <p class="num" style="margin:2px 0 0;font-size:11.5px;color:var(--color-muted)">{{ w.selMeta }}</p>
+                      </div>
+                      <span class="tag" style="background:var(--color-elevated);color:{{ w.selStatusColor }}">{{ w.selStatus }}</span>
+                    </div>
+                    <sc-if value="{{ w.selHasBar }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;align-items:flex-end;gap:2px;height:48px;margin-block-start:12px">
+                        <sc-for list="{{ w.selSegments }}" as="s" hint-placeholder-count="3">
+                          <div title="{{ s.title }}" style="width:{{ s.w }}%;height:{{ s.h }}px;background:{{ s.bg }};border-radius:3px 3px 0 0"></div>
+                        </sc-for>
+                      </div>
+                      <div style="display:flex;justify-content:space-between;margin-block-start:5px" class="num">
+                        <span style="font-size:10px;color:var(--color-faint)">{{ w.selSegStart }}</span>
+                        <span style="font-size:10px;color:var(--color-muted)">{{ w.selSegMid }}</span>
+                        <span style="font-size:10px;color:var(--color-faint)">{{ w.selSegEnd }}</span>
+                      </div>
+                    </sc-if>
+                    <p style="margin:10px 0 0;font-size:12px;color:var(--color-muted);text-wrap:pretty">{{ w.selPurpose }}</p>
+                    <sc-if value="{{ w.selAdjusted }}" hint-placeholder-val="{{ false }}">
+                      <p style="margin:6px 0 0;font-size:12px;color:var(--color-caution)">{{ w.selReason }}</p>
+                    </sc-if>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+  </sc-for>
+
+  <section class="card" style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:13px 20px;border-color:var(--color-accent-soft)">
+    <div style="display:flex;align-items:center;gap:12px">
+      <span class="tag" style="background:var(--color-accent-soft);color:var(--color-accent)">{{ copy.raceTag }}</span>
+      <p class="num" style="margin:0;font-size:13px">{{ copy.raceLine }}</p>
+    </div>
+    <span class="num" style="font-size:12px;color:var(--color-muted)">{{ copy.raceTarget }}</span>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state={openWeek:3,selDay:-1};
+  weeks(){
+    if(this._w)return this._w;
+    const names={easy:'Easy Run',tempo:'Tempo Run',int:'Intervals',long:'Long Run',rest:'Rest'};
+    const paces={easy:'5:30',tempo:'4:45',int:'4:15',long:'5:40'};
+    const base=[['easy',5],['tempo',7],['int',9.6],['easy',6],['easy',8],['rest',0],['long',26]];
+    const mult=[0.82,0.88,0.61,1.0,1.05,1.1,0.66,1.15,1.2,0.7,0.95,0.55];
+    const phases=['Base','Base','Recovery','Build','Build','Build','Recovery','Peak','Peak','Recovery','Sharpen','Taper'];
+    const dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const start=new Date(2026,6,19);
+    const W=[];
+    for(let w=0;w<12;w++){
+      const days=base.map((b,d)=>{
+        const dt=new Date(start.getTime()+(w*7+d)*86400000);
+        const dist=b[0]==='rest'?0:Math.round(b[1]*mult[w]*10)/10;
+        let status='',done=false,missed=false;
+        if(w<3){done=true;status='Done';if(w===1&&d===1){done=false;missed=true;status='Missed'}}
+        else if(w===3){if(d===0){done=true;status='Done'}else if(d===1){missed=true;status='Missed'}else if(d===2)status='Today';else if(d===3)status='Adjusted'}
+        if(b[0]==='rest'&&!done)status=status==='Today'?status:'';
+        return {type:b[0],name:names[b[0]],dist,pace:paces[b[0]]||'',day:dn[d],dateNum:dt.getDate(),mon:mo[dt.getMonth()],monIdx:dt.getMonth(),status,done,missed,today:w===3&&d===2};
+      });
+      const km=days.reduce((s,d)=>s+d.dist,0);
+      const s=days[0],e=days[6];
+      W.push({days,km:Math.round(km),phase:phases[w],monIdx:s.monIdx,monName:mo[s.monIdx],
+        label:'Week '+(w+1),range:s.mon+' '+s.dateNum+' \u2013 '+(e.mon===s.mon?'':e.mon+' ')+e.dateNum});
+    }
+    return this._w=W;
+  }
+  segsFor(type){
+    if(type==='easy')return [{m:1,h:20,t:'Steady easy pace'}];
+    if(type==='long')return [{m:1,h:28,t:'Steady long-run pace'}];
+    if(type==='tempo')return [{m:10,h:14,t:'Warm-up 10 min'},{m:20,h:40,t:'Tempo 20 min'},{m:10,h:14,t:'Cool-down 10 min'}];
+    if(type==='int'){const s=[{m:10,h:14,t:'Warm-up 10 min'}];for(let i=0;i<6;i++){s.push({m:3.4,h:44,t:'800 m rep @ 4:15'});if(i<5)s.push({m:1.5,h:9,t:'90 s jog'})}s.push({m:10,h:14,t:'Cool-down 10 min'});return s}
+    return [];
+  }
+  purpose(type){
+    return {easy:'Aerobic maintenance \u2014 conversational pace, heart rate zone 2. These runs build the engine without adding stress.',
+      tempo:'Threshold development \u2014 20 minutes at comfortably-hard effort to raise the pace you can sustain.',
+      int:'VO2max intervals \u2014 6 \u00d7 800 m at 5K effort with 90 s jog recovery. Quality over quantity.',
+      long:'Long endurance run \u2014 steady zone 2, practice fueling every 40 minutes. The cornerstone of marathon training.',
+      rest:'Full rest. Recovery is where adaptation happens \u2014 no cross-training needed.'}[type];
+  }
+  renderVals(){
+    const W=this.weeks();
+    const ow=this.state.openWeek,sd=this.state.selDay;
+    const P='var(--color-positive)',N='var(--color-negative)',F='var(--color-faint)',M='var(--color-muted)',AC='var(--color-accent)',CA='var(--color-caution)',I='var(--color-ink)',LN='var(--color-line)';
+    const phC={Base:M,Build:AC,Recovery:P,Peak:CA,Sharpen:AC,Taper:P};
+    const groups=[];
+    W.forEach((wk,w)=>{
+      const open=ow===w;
+      const wkStatus=w<3?'Done':(w===3?'Current':'');
+      const days=wk.days.map((d,i)=>({
+        day:d.day+' '+d.dateNum,name:d.name,
+        dist:d.type==='rest'?'\u2014':d.dist+' km',
+        status:d.status==='Adjusted'?'ADJ':d.status,
+        statusColor:d.status==='Done'?P:(d.status==='Missed'?N:(d.status==='Today'?AC:(d.status==='Adjusted'?CA:F))),
+        nameColor:(d.missed||d.type==='rest')?F:I,
+        dayColor:d.today?AC:F,
+        bg:(d.today||(open&&sd===i))?'var(--color-elevated)':'transparent',
+        edge:d.today?AC:(d.status==='Adjusted'?CA:(open&&sd===i?'var(--color-faint)':LN)),
+        select:()=>this.setState({selDay:(this.state.openWeek===w&&this.state.selDay===i)?-1:i,openWeek:w})
+      }));
+      const sel=(open&&sd>=0)?wk.days[sd]:null;
+      const segs=sel?this.segsFor(sel.type):[];
+      const tot=segs.reduce((s,x)=>s+x.m,0)||1;
+      const barBg=sel?(sel.missed?'var(--color-line-strong)':(sel.done?AC:CA)):'transparent';
+      const dur=sel&&sel.dist?Math.round(sel.dist*(sel.type==='int'?4.9:(sel.type==='tempo'?4.9:5.6))):0;
+      groups.push({w,open,days,km:wk.km,label:wk.label,range:wk.range,phase:wk.phase,monName:wk.monName,monIdx:wk.monIdx,
+        phaseColor:phC[wk.phase]||M,
+        border:w===3?'var(--color-accent-soft)':'var(--color-line)',
+        numColor:w===3?AC:I,
+        status:wkStatus,statusColor:wkStatus==='Done'?P:(wkStatus==='Current'?AC:F),
+        toggle:()=>this.setState({openWeek:this.state.openWeek===w?-1:w,selDay:-1}),
+        hasSel:!!sel,
+        selTitle:sel?sel.name+' \u00b7 '+sel.day+' '+sel.mon+' '+sel.dateNum:'',
+        selMeta:sel?(sel.type==='rest'?'Recovery day':sel.dist+' km @ '+sel.pace+'/km \u00b7 ~'+dur+' min'):'',
+        selStatus:sel?(sel.status||'Planned'):'',
+        selStatusColor:sel?(sel.status==='Done'?P:(sel.status==='Missed'?N:(sel.status==='Today'?AC:(sel.status==='Adjusted'?CA:M)))):M,
+        selHasBar:!!sel&&sel.type!=='rest',
+        selSegments:segs.map(s=>({w:(s.m/tot*100).toFixed(2),h:s.h,bg:barBg,title:s.t})),
+        selSegStart:sel&&sel.type==='int'?'Warm-up 10 min \u00b7 5:45':(sel&&sel.type==='tempo'?'Warm-up 10 min':''),
+        selSegMid:sel&&sel.type==='int'?'6 \u00d7 800 m @ 4:15 \u00b7 90 s jog':(sel&&sel.type==='tempo'?'20 min @ 4:45/km':(sel&&sel.dist?sel.dist+' km @ '+sel.pace+'/km':'')),
+        selSegEnd:sel&&(sel.type==='int'||sel.type==='tempo')?'Cool-down 10 min':'',
+        selPurpose:sel?this.purpose(sel.type):'',
+        selAdjusted:!!sel&&sel.status==='Adjusted',
+        selReason:'Downgraded from intervals \u2014 acute load climbed 12% this week; protecting Saturday\u2019s long run.'});
+    });
+    const months=[];
+    groups.forEach(g=>{
+      let m=months[months.length-1];
+      if(!m||m.idx!==g.monIdx){m={idx:g.monIdx,name:({6:'July',7:'August',8:'September',9:'October'})[g.monIdx]+' 2026',weeks:[]};months.push(m)}
+      m.weeks.push(g);
+    });
+    const totalKm=W.reduce((s,w)=>s+w.km,0);
+    const planStats=[
+      {v:'12 weeks',name:'Plan length \u00b7 4 completed',divider:'transparent'},
+      {v:totalKm+' km',name:'Total planned volume',divider:'var(--color-line)'},
+      {v:'74 km',name:'Peak week (W9)',divider:'var(--color-line)'},
+      {v:'61 days',name:'To race day',divider:'var(--color-line)'}];
+    const copy={brand:'ARI',navHome:'Home',navActivities:'Activities',navPlan:'Plan',navSettings:'Settings',
+      title:'Marathon Plan',subtitle:'Oct 11, 2026 \u00b7 Target 3:45:00',
+      raceTag:'Race day',raceLine:'Sun Oct 11, 2026 \u00b7 Marathon \u00b7 42.2 km',raceTarget:'Target 3:45:00 \u00b7 5:20/km'};
+    return {copy,months,planStats};
+  }
+}
+</script>
+</body>
+</html>

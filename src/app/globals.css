@@ -178,6 +178,32 @@
     align-items: start;
   }
 
+  /* ---- Settings, second handoff ---- */
+
+  /* field caption; used everywhere a label sits above a control */
+  .lbl {
+    display: block;
+    font-size: 11px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+    margin-block-end: 6px;
+  }
+
+  /* the four read-only facts beside the profile summary */
+  .fact-row {
+    display: flex;
+    gap: 36px;
+    flex-wrap: wrap;
+  }
+
+  /* the row of provider logos that acts as a tab bar */
+  .conn-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
   .roster {
     display: grid;
     grid-template-columns: minmax(160px, 1.4fr) .8fr .9fr 1.1fr .7fr .7fr .8fr .9fr;
@@ -230,6 +256,10 @@
 
 @media (max-width: 860px) {
   .set-grid { grid-template-columns: 1fr; }
+  .profile-view { flex-wrap: wrap; }
+  .fact-row { gap: 20px; }
+  .conn-row { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; }
+  .icu-grid { grid-template-columns: 1fr !important; }
   .roster {
     grid-template-columns: minmax(140px, 1.4fr) .7fr .7fr .9fr !important;
   }

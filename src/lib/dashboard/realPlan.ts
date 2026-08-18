@@ -22,6 +22,7 @@
 import type { WorkoutType as DbWorkoutType } from "@/types/database.types";
 import type { Day, Week } from "./model";
 import { describeSession, paceLabel } from "@/lib/planning/paces";
+import { isoWeekNumber } from "./rail";
 
 /** The dashboard's own workout vocabulary, which is not the database's. */
 type ViewWorkoutType = "easy" | "tempo" | "int" | "long" | "rest";
@@ -151,9 +152,16 @@ export function buildRealPlan(
 
     const first = days[0];
     const last = days[days.length - 1];
+
+    // Named by the calendar week, with the plan week alongside. A coach and an
+    // athlete can both say "week 34" and mean the same seven days; "week 2"
+    // only means something if you already know which plan started when.
+    const monday = dayRows[0] ? new Date(dayRows[0].day_date + "T00:00:00") : null;
+    const isoWeek = monday ? isoWeekNumber(monday) : index + 1;
+
     return {
       days,
-      label: `Week ${index + 1} of ${totalWeeks}`,
+      label: `Week ${isoWeek} · ${index + 1} of ${totalWeeks}`,
       range: first && last
         ? `${first.mon} ${first.dateNum} – ${last.mon === first.mon ? "" : last.mon + " "}${last.dateNum}`
         : "",

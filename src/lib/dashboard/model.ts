@@ -287,16 +287,33 @@ function calDots() {
   return c;
 }
 
-export function calendar(cm: number) {
-  const dots = calDots();
+/**
+ * @param cm         month index
+ * @param realDots   dot colours from the athlete's own plan and runs; when
+ *                   omitted the reference dataset's dots are used instead
+ * @param realToday  today's date, so the highlight follows the calendar rather
+ *                   than the fixed date the prototype was drawn on
+ * @param raceDate   the athlete's goal race, highlighted the same way
+ */
+export function calendar(
+  cm: number,
+  realDots?: Record<number, string>,
+  realToday?: Date,
+  raceDate?: Date | null,
+) {
+  const dots = realDots ?? calDots();
   const startDow = new Date(2026, cm, 1).getDay();
   const dim = new Date(2026, cm + 1, 0).getDate();
   const cells: { n: string; color: string; bg: string; dot: string }[] = [];
   for (let i = 0; i < startDow; i++)
     cells.push({ n: "", color: "transparent", bg: "transparent", dot: "transparent" });
   for (let n = 1; n <= dim; n++) {
-    const today = cm === 7 && n === 11;
-    const race = cm === 9 && n === 11;
+    const today = realToday
+      ? realToday.getMonth() === cm && realToday.getDate() === n
+      : cm === 7 && n === 11;
+    const race = raceDate !== undefined
+      ? !!raceDate && raceDate.getMonth() === cm && raceDate.getDate() === n
+      : cm === 9 && n === 11;
     cells.push({
       n: String(n),
       color: today ? "var(--color-accent-ink)" : race ? "var(--color-accent)" : "var(--color-muted)",

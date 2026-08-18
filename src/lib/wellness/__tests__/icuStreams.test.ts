@@ -19,6 +19,9 @@ function run(
   const distance: number[] = [];
   const velocity: (number | null)[] = [];
   const heartrate: (number | null)[] = [];
+  // A gentle rise and fall, so elevation is present without being the subject
+  // of any assertion here.
+  const altitude: (number | null)[] = [];
   let d = 0;
   for (let t = 0; t < secs; t++) {
     const v = typeof mps === "function" ? mps(t) : mps;
@@ -28,8 +31,9 @@ function run(
     d += v;
     velocity.push(v);
     heartrate.push(hr === undefined ? null : typeof hr === "function" ? hr(t) : hr);
+    altitude.push(40 + Math.sin((t / secs) * Math.PI) * 12);
   }
-  return { time, distance, velocity, heartrate };
+  return { time, distance, velocity, heartrate, altitude };
 }
 
 describe("bestEfforts", () => {
@@ -104,7 +108,7 @@ describe("paceShape", () => {
   });
 
   it("survives a run with no speed data", () => {
-    const s: ActivityStreams = { time: [0, 1], distance: [0, 3], heartrate: [], velocity: [] };
+    const s: ActivityStreams = { time: [0, 1], distance: [0, 3], heartrate: [], velocity: [], altitude: [] };
     expect(paceShape(s)).toEqual([]);
   });
 });

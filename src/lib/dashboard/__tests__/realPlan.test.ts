@@ -31,7 +31,9 @@ describe("buildRealPlan", () => {
     const p = buildRealPlan(rows(), [], 3.5, TODAY);
     expect(p.weeks).toHaveLength(2);
     expect(p.weeks[0].days).toHaveLength(7);
-    expect(p.weeks[0].label).toBe("Week 1 of 2");
+    // Named by the calendar week first: Monday 10 Aug 2026 is ISO week 33.
+    expect(p.weeks[0].label).toBe("Week 33 · 1 of 2");
+    expect(p.weeks[1].label).toBe("Week 34 · 2 of 2");
   });
 
   it("marks a session done when a run was recorded that day", () => {

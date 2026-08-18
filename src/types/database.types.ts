@@ -21,6 +21,10 @@ type Upd<T> = Partial<T>;
 
 /** Data sources the athlete connects themselves (no OAuth flow available). */
 /** Where an activity came from. See migration 0004_activity_sources. */
+/** Physiological fields added in migration 0002_profile_physiology. */
+export type Sex = "male" | "female";
+export type RunningLevel = "beginner" | "intermediate" | "advanced";
+
 export type ActivitySource = "strava" | "intervals_icu" | "manual";
 
 export type ProviderId = "intervals_icu";
@@ -30,9 +34,9 @@ export interface Database {
   public: {
     Tables: {
       profiles: {
-        Row: { id: string; email: string; role: Role; created_at: string };
-        Insert: { id: string; email: string; role?: Role; created_at?: string };
-        Update: Upd<{ id: string; email: string; role: Role; created_at: string }>;
+        Row: { id: string; email: string; role: Role; created_at: string; full_name: string | null; age: number | null; sex: Sex | null; height_cm: number | null; weight_kg: number | null; running_level: RunningLevel | null; bio: string | null; hr_max: number | null; lthr: number | null; threshold_speed_mps: number | null; thresholds_measured: boolean; thresholds_updated_at: string | null; avatar_url: string | null; avatar_position: string };
+        Insert: { id: string; email: string; role?: Role; created_at?: string; full_name?: string | null; age?: number | null; sex?: Sex | null; height_cm?: number | null; weight_kg?: number | null; running_level?: RunningLevel | null; bio?: string | null; hr_max?: number | null; lthr?: number | null; threshold_speed_mps?: number | null; thresholds_measured?: boolean; thresholds_updated_at?: string | null; avatar_url?: string | null; avatar_position?: string };
+        Update: Upd<{ id: string; email: string; role: Role; created_at: string; full_name: string | null; age: number | null; sex: Sex | null; height_cm: number | null; weight_kg: number | null; running_level: RunningLevel | null; bio: string | null; hr_max: number | null; lthr: number | null; threshold_speed_mps: number | null; thresholds_measured: boolean; thresholds_updated_at: string | null; avatar_url: string | null; avatar_position: string }>;
         Relationships: [];
       };
       coach_athletes: {

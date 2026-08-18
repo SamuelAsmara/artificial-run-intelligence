@@ -28,7 +28,7 @@ const BASE = "https://intervals.icu/api/v1";
 const authHeader = (apiKey: string) => "Basic " + btoa(`API_KEY:${apiKey}`);
 
 /** The stream types we ask for. Anything else is wasted bandwidth. */
-const STREAM_TYPES = "time,distance,heartrate,velocity_smooth";
+const STREAM_TYPES = "time,distance,heartrate,velocity_smooth,altitude";
 
 interface RawStream {
   type?: string;
@@ -44,6 +44,8 @@ export interface ActivityStreams {
   heartrate: (number | null)[];
   /** metres per second */
   velocity: (number | null)[];
+  /** metres above sea level */
+  altitude: (number | null)[];
 }
 
 export async function fetchStreams(
@@ -87,6 +89,7 @@ export async function fetchStreams(
     distance,
     heartrate: pick("heartrate"),
     velocity: pick("velocity_smooth"),
+    altitude: pick("altitude"),
   };
 }
 

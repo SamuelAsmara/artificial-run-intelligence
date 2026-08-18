@@ -2,14 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { buildSnapshots, type ActivityRow } from "@/lib/readiness/pipeline";
-import {
-  fetchWellness, toRecoverySignals, type RecoverySignal,
-} from "@/lib/wellness/intervalsIcu";
-import { icuConfigForCurrentUser } from "@/lib/providers/credentials";
-import {
-  hrvVsBaselinePct, latestSleepHours,
-} from "@/lib/wellness/intervalsIcu";
+import { recomputeForUser } from "@/lib/readiness/recompute";
+import { hrvVsBaselinePct, latestSleepHours, type RecoverySignal } from "@/lib/wellness/intervalsIcu";
 import { computeReadiness } from "@/lib/planning/readiness";
 import { buildNarrative, type Narrative } from "@/lib/narrative/buildNarrative";
 
@@ -36,104 +30,13 @@ export async function recomputeReadiness(
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not signed in." };
 
-  const { data: activities, error: actErr } = await supabase
-    .from("activities")
-    .select("started_at, distance_m, duration_s, avg_hr")
-    .eq("user_id", user.id)
-    .order("started_at", { ascending: true });
-
-  if (actErr) return { error: `Could not read activities: ${actErr.message}` };
-  if (!activities || activities.length === 0) {
-    return { error: "No activities yet — connect Strava and sync first." };
-  }
-
-  /* --- recovery, if a wellness source is configured --- */
-  let recovery: RecoverySignal[] = [];
-  // The athlete's own connection first, falling back to the server environment
-  // so a developer setup keeps working. See src/actions/providers.ts.
-  const icu = await icuConfigForCurrentUser();
-  if (icu) {
-    try {
-      const rows = await fetchWellness(
-        icu,
-        iso(new Date(Date.now() - 400 * 86400000)),
-        iso(new Date()),
-      );
-      recovery = toRecoverySignals(rows);
-
-      // cache it so the score can be recomputed without hitting the API again
-      if (recovery.length > 0) {
-        await supabase.from("recovery_signals").upsert(
-          recovery.map((r) => ({
-            user_id: user.id,
-            date: r.date,
-            sleep_hours: r.sleepHours,
-            resting_hr: r.restingHr,
-            hrv: r.hrv,
-            source: r.source,
-          })),
-          { onConflict: "user_id,date" },
-        );
-      }
-    } catch {
-      // A wellness outage must not stop the load model from updating; the
-      // score simply falls back to its load-only weighting for this run.
-      recovery = [];
-    }
-  }
-
-  if (recovery.length === 0) {
-    const { data: cached } = await supabase
-      .from("recovery_signals")
-      .select("date, sleep_hours, resting_hr, hrv, source")
-      .eq("user_id", user.id);
-    recovery = (cached ?? []).map((r) => ({
-      date: r.date,
-      sleepHours: r.sleep_hours,
-      restingHr: r.resting_hr,
-      hrv: r.hrv,
-      source: r.source as "webhook" | "derived",
-    }));
-  }
-
-  /* --- run the engine --- */
-  const recentRestingHrs = recovery
-    .filter((r) => r.restingHr != null)
-    .slice(-30)
-    .map((r) => r.restingHr as number);
-  const restingHr = recentRestingHrs.length
-    ? Math.round(recentRestingHrs.reduce((s, v) => s + v, 0) / recentRestingHrs.length)
-    : undefined;
-
-  const result = buildSnapshots(
-    activities as ActivityRow[],
-    recovery,
-    // TODO: read age and sex from `profiles` once migration 0002 is applied.
-    { age: 34, sex: "male", restingHr },
-    new Date(),
-    days,
-  );
-
-  if (result.snapshots.length === 0) {
-    return { error: "Not enough history to compute readiness yet." };
-  }
-
-  const { error: upsertErr } = await supabase.from("readiness_snapshots").upsert(
-    result.snapshots.map((s) => ({ ...s, user_id: user.id })),
-    { onConflict: "user_id,date" },
-  );
-  if (upsertErr) return { error: `Could not store snapshots: ${upsertErr.message}` };
+  // The work itself lives in a lib so the nightly cron can run it for an
+  // athlete who is not the one signed in. This is the session wrapper.
+  const result = await recomputeForUser(supabase, user.id, days);
+  if (!result.ok) return { error: result.error };
 
   revalidatePath("/dashboard");
-
-  return {
-    data: {
-      days: result.snapshots.length,
-      runs: result.totalRuns,
-      hrScored: result.hrScoredRuns,
-      withRecovery: recovery.length > 0,
-    },
-  };
+  return { data: result.data };
 }
 
 /** The most recent snapshot, for the dashboard. */

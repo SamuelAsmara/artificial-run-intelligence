@@ -21,6 +21,8 @@ export const fmtPace = formatMinSec;
 const fmtTime = formatDuration;
 
 export interface Act {
+  /** the row's own activity id; absent on the reference rows */
+  id?: string;
   type: string; name: string; date: string; km: string; time: string;
   pace: string; paceSec: number; hr: string; kmN: number;
   spark: string; sparkColor: string;
