@@ -37,10 +37,16 @@ export async function syncMyActivities(): Promise<ActionResult<{ synced: number 
     let synced = 0;
     for (const a of acts) {
       const { error } = await supabase.from("activities").upsert({
-        user_id: user.id, strava_activity_id: a.id, type: a.type,
+        user_id: user.id,
+        // Since migration 0004 the deduplication key is (source, external_id),
+        // so Strava is now one source among several rather than the only one.
+        source: "strava",
+        external_id: String(a.id),
+        strava_activity_id: a.id,
+        type: a.type,
         distance_m: a.distance, duration_s: a.moving_time,
         avg_hr: a.average_heartrate ?? null, avg_pace: null, started_at: a.start_date,
-      }, { onConflict: "user_id,strava_activity_id" });
+      }, { onConflict: "user_id,source,external_id" });
       if (!error) synced++;
     }
 

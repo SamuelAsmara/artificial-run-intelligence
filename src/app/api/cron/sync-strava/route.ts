@@ -52,6 +52,8 @@ export async function POST(request: NextRequest) {
         await supabase.from("activities").upsert(
           {
             user_id: conn.user_id,
+            source: "strava",
+            external_id: String(activity.id),
             strava_activity_id: activity.id,
             type: activity.type,
             distance_m: activity.distance,
@@ -60,7 +62,7 @@ export async function POST(request: NextRequest) {
             avg_pace: null,
             started_at: activity.start_date,
           },
-          { onConflict: "user_id,strava_activity_id" }
+          { onConflict: "user_id,source,external_id" }
         );
       }
 
