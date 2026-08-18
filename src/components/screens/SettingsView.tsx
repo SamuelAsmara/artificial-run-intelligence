@@ -1,8 +1,9 @@
 "use client";
 
 /**
- * Settings — a port of the second Claude Design handoff
- * (`new design for settinges/ARI Settings.dc.html`).
+ * Settings — a port of design_handoff_ari_athlete_app/ARI Settings.dc.html (v2).
+ *
+ * The handoff this replaces is kept at _archive/design_handoffs_v1/.
  *
  * Three stacked cards, in this order:
  *

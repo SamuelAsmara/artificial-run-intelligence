@@ -16,7 +16,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { icuConfigForCurrentUser } from "@/lib/providers/credentials";
 import { fetchStreams } from "@/lib/wellness/icuStreams";
+import { resampleForChart } from "@/lib/activity/resample";
 import { formatDuration, formatPace } from "@/lib/format/pace";
+import { comparePlanned, type Comparison } from "@/lib/activity/plannedVsActual";
 
 export interface ActivityListItem {
   id: string;
@@ -103,6 +105,14 @@ export interface ActivityDetail {
   streams: DetailStreams | null;
   /** why the chart is missing, when it is */
   streamsNote: string | null;
+  /**
+   * How this run compared with the session planned for that day.
+   *
+   * null when nothing was planned, which is the common case for an athlete
+   * without an active plan. The page hides the block entirely rather than
+   * showing a target that was never set.
+   */
+  comparison: Comparison | null;
 }
 
 export async function getActivityDetail(id: string): Promise<ActivityDetail | null> {
@@ -137,7 +147,7 @@ export async function getActivityDetail(id: string): Promise<ActivityDetail | nu
     } else {
       try {
         const raw = await fetchStreams(cfg, row.external_id);
-        streams = raw ? toDetailStreams(raw) : null;
+        streams = raw ? resampleForChart(raw) : null;
         if (!streams) {
           streamsNote = "This run has no second-by-second record — it may have been entered by hand.";
         }
@@ -148,6 +158,13 @@ export async function getActivityDetail(id: string): Promise<ActivityDetail | nu
   } else {
     streamsNote = "Second-by-second detail is only available for runs from intervals.icu.";
   }
+
+  const comparison = await comparePlannedFor(
+    supabase,
+    user.id,
+    (row.started_at as string).slice(0, 10),
+    { distanceM: row.distance_m ?? 0, durationS: seconds },
+  );
 
   return {
     id: row.id,
@@ -163,56 +180,51 @@ export async function getActivityDetail(id: string): Promise<ActivityDetail | nu
     bestEfforts: row.best_efforts,
     streams,
     streamsNote,
+    comparison,
   };
 }
 
 /**
- * Maps a fetched stream into the arrays the chart expects.
+ * The planned session for one date, compared against what was run.
  *
- * Gaps are carried forward rather than zeroed: a dropped GPS sample is missing
- * information, and drawing it as zero speed puts a cliff in the chart that the
- * athlete never ran.
+ * Reads `plan_workouts` for the athlete's active plan. A missing plan, a
+ * missing day, or a day with no target all end in the same place: no block on
+ * the page. That is deliberate — the alternative is the prototype's fixed copy,
+ * which claimed a 6 km easy run beside every activity regardless of what was
+ * actually planned or actually run.
  */
-function toDetailStreams(raw: {
-  time: number[];
-  distance: number[];
-  heartrate: (number | null)[];
-  velocity: (number | null)[];
-  altitude: (number | null)[];
-}): DetailStreams | null {
-  const n = Math.min(raw.time.length, raw.distance.length);
-  if (n < 10) return null;
+async function comparePlannedFor(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  date: string,
+  actual: { distanceM: number; durationS: number },
+): Promise<Comparison | null> {
+  const { data: plan } = await supabase
+    .from("training_plans")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-  /**
-   * Carries the last usable value across a gap.
-   *
-   * `min` is what counts as usable. For speed it is set just under a walk:
-   * pace is the inverse of speed, so a sample at 0.1 m/s becomes a pace of
-   * nearly three hours per kilometre and the chart draws a spike to the floor.
-   * A red light is missing data about running, not evidence of running slowly.
-   */
-  const carry = (values: (number | null)[], min: number) => {
-    const out: number[] = [];
-    let last = 0;
-    for (let i = 0; i < n; i++) {
-      const v = values[i];
-      if (typeof v === "number" && Number.isFinite(v) && v >= min) last = v;
-      out.push(last);
-    }
-    // If the run opened with a stop, backfill from the first usable value so
-    // the line starts where the athlete did.
-    const firstGood = out.find((v) => v > 0) ?? 0;
-    for (let i = 0; i < n && out[i] === 0; i++) out[i] = firstGood;
-    return out;
-  };
+  if (!plan) return null;
 
-  return {
-    n,
-    dist: raw.distance.slice(0, n),
-    time: raw.time.slice(0, n),
-    // 1.5 m/s is a brisk walk — below it, nobody is running.
-    vel: carry(raw.velocity, 1.5),
-    hr: carry(raw.heartrate, 60),
-    alt: carry(raw.altitude, Number.NEGATIVE_INFINITY),
-  };
+  const { data: workout } = await supabase
+    .from("plan_workouts")
+    .select("workout_type, planned_distance, planned_pace")
+    .eq("plan_id", plan.id)
+    .eq("day_date", date)
+    .maybeSingle();
+
+  if (!workout) return null;
+
+  return comparePlanned(
+    {
+      workoutType: workout.workout_type,
+      plannedDistanceM: workout.planned_distance,
+      plannedPace: workout.planned_pace,
+    },
+    actual,
+  );
 }

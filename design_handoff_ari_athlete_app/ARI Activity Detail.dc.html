@@ -11,35 +11,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="./image-slot.js"></script>
 <style>
 :root{
-  /* surfaces */
-  --color-canvas: #0a0c10;
-  --color-surface: #12151b;
-  --color-elevated: #1b1f27;
-  /* text */
-  --color-ink: #e9edf3;
-  --color-muted: #a4aebe;
-  --color-faint: #8792a3;
-  /* lines */
-  --color-line: #242a34;
-  --color-line-strong: #364050;
-  /* accent — exactly one */
-  --color-accent: #4e8ef7;
-  --color-accent-ink: #061225;
-  --color-accent-soft: #14243d;
-  /* semantic */
-  --color-positive: #7fc887;
-  --color-caution: #e0a33c;
-  --color-negative: #f0705c;
-  /* charts */
-  --color-ctl: #4e8ef7;
-  --color-atl: #d8dee8;
-  --color-tsb: #a9a094;
-  /* radii */
-  --radius-card: 14px;
-  --radius-control: 8px;
-  --radius-pill: 999px;
+  --color-canvas: #0a0c10; --color-surface: #12151b; --color-elevated: #1b1f27;
+  --color-ink: #e9edf3; --color-muted: #a4aebe; --color-faint: #8792a3;
+  --color-line: #242a34; --color-line-strong: #364050;
+  --color-accent: #4e8ef7; --color-accent-ink: #061225; --color-accent-soft: #14243d;
+  --color-positive: #7fc887; --color-caution: #e0a33c; --color-negative: #f0705c;
+  --color-ctl: #4e8ef7; --color-atl: #d8dee8; --color-tsb: #a9a094;
+  --color-pace: #6fcf87; --color-hr: #e0566b; --color-cad: #5a9bf5; --color-pow: #e3b84e;
+  --radius-card: 14px; --radius-control: 8px; --radius-pill: 999px;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--color-canvas);color:var(--color-ink);font-family:'IBM Plex Sans',sans-serif;font-size:14px;line-height:1.45}
@@ -52,12 +34,13 @@ a:hover{color:var(--color-accent)}
 .btn-secondary:hover{border-color:var(--color-faint)}
 .tag{display:inline-flex;align-items:center;font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:var(--radius-pill)}
 .num{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
-.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
-.c5{grid-column:span 5}.c7{grid-column:span 7}.c12{grid-column:span 12}
-@media (max-width:700px){.grid>*{grid-column:span 12}.sumrow{flex-wrap:wrap;gap:18px !important}.topnav{display:none !important}header{flex-wrap:wrap;gap:12px !important}}
+.sum-row{display:grid;grid-template-columns:repeat(8,1fr);gap:12px}
+#activity-athlete::part(empty){display:none}
+#activity-athlete[data-filled] + span{display:none !important}
+@media (max-width:860px){.topnav{display:none !important}.head-grid{grid-template-columns:1fr !important}}
 </style>
 </helmet>
-<div style="max-width:1280px;margin-inline:auto;padding:18px 24px 48px;display:flex;flex-direction:column;gap:14px" data-screen-label="Activity detail">
+<div style="max-width:1280px;margin-inline:auto;padding:16px 24px 40px;display:flex;flex-direction:column;gap:12px" data-screen-label="Activity detail">
 
   <sc-if value="{{ coachView }}" hint-placeholder-val="{{ false }}">
     <div style="display:flex;align-items:center;gap:14px;padding:10px 16px;border:1px solid var(--color-accent-soft);background:var(--color-accent-soft);border-radius:var(--radius-control)">
@@ -66,6 +49,7 @@ a:hover{color:var(--color-accent)}
       <a href="ARI Coach.dc.html" class="btn btn-secondary" style="padding:6px 12px;font-size:12px">{{ copy.coachBack }}</a>
     </div>
   </sc-if>
+
   <header style="display:flex;align-items:center;gap:24px;padding-block:6px 10px">
     <div style="display:flex;align-items:center;gap:9px">
       <span style="width:10px;height:10px;background:var(--color-accent);border-radius:2px;display:inline-block"></span>
@@ -82,264 +66,402 @@ a:hover{color:var(--color-accent)}
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>{{ copy.back }}</a>
   </header>
 
-  <section class="card" style="padding:22px 26px">
-    <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px">
-      <div>
-        <h1 style="margin:0;font-size:19px;font-weight:600">{{ copy.runTitle }}</h1>
-        <p class="num" style="margin:3px 0 0;font-size:12px;color:var(--color-faint)">{{ copy.runDate }}</p>
-      </div>
-      <span class="tag" style="background:var(--color-elevated);color:var(--color-muted)">{{ copy.runType }}</span>
-    </div>
-    <div class="sumrow" style="display:flex;gap:40px;margin-block-start:18px">
-      <sc-for list="{{ summary }}" as="s" hint-placeholder-count="5">
-        <div>
-          <p class="num" style="margin:0;font-size:24px;font-weight:500">{{ s.v }}<span style="font-size:12px;color:var(--color-faint)"> {{ s.unit }}</span></p>
-          <p style="margin:2px 0 0;font-size:11px;color:var(--color-muted)">{{ s.name }}</p>
-        </div>
-      </sc-for>
-    </div>
-  </section>
-
-  <section class="card" style="padding:20px 26px;display:grid;grid-template-columns:auto 1fr auto;gap:24px;align-items:center">
-    <div>
-      <p style="margin:0;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-faint)">{{ copy.pvaTitle }}</p>
-      <p class="num" style="margin:6px 0 0;font-size:13px;color:var(--color-muted)">{{ copy.pvaPlanned }}</p>
-      <p class="num" style="margin:2px 0 0;font-size:13px;color:var(--color-ink)">{{ copy.pvaActual }}</p>
-    </div>
-    <div style="height:100%;border-inline-start:1px solid var(--color-line)"></div>
-    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
-      <span class="tag" style="background:{{ pvaBg }};color:{{ pvaColor }}">{{ pvaLabel }}</span>
-      <p style="margin:0;font-size:12px;color:var(--color-muted);max-width:340px;text-align:end;text-wrap:pretty">{{ pvaNote }}</p>
-    </div>
-  </section>
-
-  <section class="card" style="padding:20px 26px">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-      <div>
-        <h2 style="margin:0;font-size:14px;font-weight:600">{{ copy.chartTitle }}</h2>
-        <p style="margin:2px 0 0;font-size:11.5px;color:var(--color-faint)">{{ copy.chartSub }}</p>
-      </div>
-      <div style="display:flex;align-items:center;gap:16px">
-        <div style="display:flex;gap:8px;font-size:11px;color:var(--color-muted)">
-          <button type="button" onClick="{{ togglePace }}" class="tag" style="cursor:pointer;gap:6px;background:var(--color-elevated);color:var(--color-ink);border:1px solid {{ paceBorder }};opacity:{{ paceOp }}"><span style="width:12px;height:2px;background:var(--color-accent);display:inline-block"></span>{{ copy.legPace }}</button>
-          <button type="button" onClick="{{ toggleHr }}" class="tag" style="cursor:pointer;gap:6px;background:var(--color-elevated);color:var(--color-ink);border:1px solid {{ hrBorder }};opacity:{{ hrOp }}"><span style="width:12px;height:2px;background:var(--color-tsb);display:inline-block"></span>{{ copy.legHr }}</button>
-          <button type="button" onClick="{{ toggleElev }}" class="tag" style="cursor:pointer;gap:6px;background:var(--color-elevated);color:var(--color-ink);border:1px solid {{ elevBorder }};opacity:{{ elevOp }}"><span style="width:12px;height:7px;background:var(--color-elevated);border:1px solid var(--color-line-strong);display:inline-block"></span>{{ copy.legElev }}</button>
-        </div>
-        <div style="display:flex;border:1px solid var(--color-line-strong);border-radius:var(--radius-control);overflow:hidden">
-          <button type="button" onClick="{{ setDist }}" class="num" style="font-size:11px;padding:5px 12px;border:none;cursor:pointer;background:{{ distBg }};color:{{ distColor }}">{{ copy.xDist }}</button>
-          <button type="button" onClick="{{ setTime }}" class="num" style="font-size:11px;padding:5px 12px;border:none;cursor:pointer;background:{{ timeBg }};color:{{ timeColor }}">{{ copy.xTime }}</button>
-        </div>
-      </div>
-    </div>
-    <div style="position:relative;margin-block-start:14px">
-      <svg viewBox="0 0 1180 300" style="width:100%;height:auto;display:block" onMouseMove="{{ onMove }}" onMouseLeave="{{ onLeave }}">
-        <text x="6" y="14" fill="var(--color-faint)" font-size="9" font-family="IBM Plex Mono">{{ copy.paceAxis }}</text>
-        <text x="1174" y="14" fill="var(--color-faint)" font-size="9" font-family="IBM Plex Mono" text-anchor="end">{{ copy.hrAxis }}</text>
-        <sc-for list="{{ gridY }}" as="g" hint-placeholder-count="3">
-          <g><line x1="44" x2="1136" y1="{{ g.y }}" y2="{{ g.y }}" stroke="var(--color-line)" stroke-width="1"></line>
-          <text x="38" y="{{ g.ty }}" fill="var(--color-faint)" font-size="9" font-family="IBM Plex Mono" text-anchor="end">{{ g.pace }}</text>
-          <text x="1142" y="{{ g.ty }}" fill="var(--color-faint)" font-size="9" font-family="IBM Plex Mono">{{ g.hr }}</text></g>
-        </sc-for>
-        <sc-for list="{{ gridX }}" as="g" hint-placeholder-count="6">
-          <text x="{{ g.x }}" y="296" fill="var(--color-faint)" font-size="9" font-family="IBM Plex Mono" text-anchor="middle">{{ g.label }}</text>
-        </sc-for>
-        <rect x="44" y="{{ planYTop }}" width="1092" height="{{ planYH }}" fill="var(--color-accent)" opacity="0.06"></rect>
-        <line x1="44" x2="1136" y1="{{ planY }}" y2="{{ planY }}" stroke="var(--color-accent)" stroke-width="1" stroke-dasharray="6 4" opacity="0.55"></line>
-        <text x="48" y="{{ planLabelY }}" fill="var(--color-accent)" font-size="9" font-family="IBM Plex Mono" opacity="0.85">{{ copy.planLine }}</text>
-        <path d="{{ elevArea }}" fill="var(--color-elevated)" stroke="var(--color-line-strong)" stroke-width="1" opacity="{{ elevVis }}"></path>
-        <path d="{{ hrPath }}" fill="none" stroke="var(--color-tsb)" stroke-width="1.3" opacity="{{ hrVis85 }}"></path>
-        <path d="{{ pacePath }}" fill="none" stroke="var(--color-accent)" stroke-width="1.8" opacity="{{ paceVis }}"></path>
-        <sc-if value="{{ hovering }}" hint-placeholder-val="{{ false }}">
-          <g><line x1="{{ tipX }}" x2="{{ tipX }}" y1="20" y2="284" stroke="var(--color-faint)" stroke-width="1" stroke-dasharray="3 3"></line>
-          <circle cx="{{ tipX }}" cy="{{ tipPaceY }}" r="3.5" fill="var(--color-accent)" opacity="{{ paceVis }}"></circle>
-          <circle cx="{{ tipX }}" cy="{{ tipHrY }}" r="3" fill="var(--color-tsb)" opacity="{{ hrVis }}"></circle></g>
-        </sc-if>
-      </svg>
-      <sc-if value="{{ hovering }}" hint-placeholder-val="{{ false }}">
-        <div class="num" style="position:absolute;top:12px;left:{{ tipLeft }};transform:{{ tipShift }};background:var(--color-elevated);border:1px solid var(--color-line-strong);border-radius:var(--radius-control);padding:8px 12px;font-size:11px;pointer-events:none;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.5)">
-          <div style="color:var(--color-faint);margin-block-end:3px">{{ tipHead }}</div>
-          <div style="color:var(--color-accent);display:{{ paceRow }}">{{ tipPace }}</div>
-          <div style="color:var(--color-tsb);display:{{ hrRow }}">{{ tipHr }}</div>
-          <div style="color:var(--color-muted);display:{{ elevRow }}">{{ tipElev }}</div>
-          <div style="color:{{ tipDeltaColor }};border-block-start:1px solid var(--color-line);margin-block-start:4px;padding-block-start:4px">{{ tipDelta }}</div>
-        </div>
-      </sc-if>
-    </div>
-  </section>
-
-  <section class="grid">
-    <div class="card c7" style="padding:20px 26px">
-      <h2 style="margin:0;font-size:14px;font-weight:600">{{ copy.splitsTitle }}</h2>
-      <div style="display:flex;flex-direction:column;gap:5px;margin-block-start:14px">
-        <sc-for list="{{ splits }}" as="s" hint-placeholder-count="6">
-          <div style="display:grid;grid-template-columns:28px 1fr 52px;align-items:center;gap:12px">
-            <span class="num" style="font-size:11px;color:var(--color-faint)">{{ s.km }}</span>
-            <div style="height:16px;background:var(--color-elevated);border-radius:3px;overflow:hidden">
-              <div style="width:{{ s.w }}%;height:16px;background:{{ s.bg }};border-radius:3px"></div>
+  <section class="card" style="padding:16px 18px">
+    <div class="head-grid" style="display:flex;flex-wrap:wrap;gap:8px;align-items:stretch">
+      <div style="display:flex;flex-direction:column;gap:8px;flex:1 1 250px;min-width:0">
+        <div style="display:flex;align-items:center;gap:10px;border:1px solid var(--color-line);border-radius:var(--radius-control);padding:6px 12px;flex:1">
+          <div style="position:relative;width:40px;height:40px;flex:none">
+            <image-slot id="activity-athlete" shape="circle" style="width:40px;height:40px;display:block" placeholder=""></image-slot>
+            <span class="num" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:var(--color-muted);pointer-events:none">SC</span>
+          </div>
+          <div style="min-width:0;padding-inline-start:4px;display:flex;flex-direction:column;gap:4px">
+            <span class="tag" style="background:var(--color-accent-soft);color:var(--color-accent);align-self:start">{{ copy.runType }}</span>
+            <div style="white-space:nowrap">
+              <span style="font-size:11.5px;font-weight:600">{{ copy.runDate }}</span>
+              <span class="num" style="font-size:10px;color:var(--color-faint)"> · {{ copy.runClock }}</span>
             </div>
-            <span class="num" style="font-size:11.5px;color:{{ s.txt }};text-align:end">{{ s.pace }}</span>
+          </div>
+        </div>
+        <div style="border:1px solid var(--color-line);border-radius:var(--radius-control);padding:6px 12px;display:flex;align-items:baseline;justify-content:center;gap:12px">
+          <span class="num" style="font-size:18px;font-weight:600;line-height:1.2;white-space:nowrap">{{ headKm }}<span style="font-size:10.5px;color:var(--color-faint)"> km</span></span>
+          <span class="num" style="font-size:12px;color:var(--color-muted);white-space:nowrap">{{ headDur }}<span style="font-size:10px;color:var(--color-faint)"> min</span></span>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex:99 1 520px;min-width:0">
+      <div style="border:1px solid var(--color-line);border-radius:var(--radius-control);padding:8px 12px;display:flex;flex-direction:column;justify-content:center;flex:1;min-width:0">
+        <p style="margin:0 0 4px;font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--color-pace);display:flex;align-items:center;gap:5px"><span style="width:20px;height:20px;border-radius:6px;background:color-mix(in oklab,var(--color-pace) 18%,transparent);display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"></path><path d="M3.34 19a10 10 0 1 1 17.32 0"></path></svg></span>{{ copy.hPace }}</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 8px">
+          <sc-for list="{{ paceRows }}" as="r" hint-placeholder-count="4">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+              <span style="font-size:10.5px;color:var(--color-muted)">{{ r.k }}</span>
+              <span class="num" style="font-size:12px;font-weight:500;white-space:nowrap;color:{{ r.c }}">{{ r.v }}<span style="font-size:9.5px;color:var(--color-faint)"> {{ r.sub }}</span></span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="border:1px solid var(--color-line);border-radius:var(--radius-control);padding:8px 12px;display:flex;flex-direction:column;justify-content:center;flex:1;min-width:0">
+        <p style="margin:0 0 4px;font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--color-hr);display:flex;align-items:center;gap:5px"><span style="width:20px;height:20px;border-radius:6px;background:color-mix(in oklab,var(--color-hr) 18%,transparent);display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg></span>{{ copy.hHr }}</p>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <sc-for list="{{ hrRows }}" as="r" hint-placeholder-count="2">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+              <span style="font-size:10.5px;color:var(--color-muted)">{{ r.k }}</span>
+              <span class="num" style="font-size:12px;font-weight:500;white-space:nowrap;color:{{ r.c }}">{{ r.v }}<span style="font-size:9.5px;color:var(--color-faint)"> {{ r.sub }}</span></span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="border:1px solid var(--color-line);border-radius:var(--radius-control);padding:8px 12px;display:flex;flex-direction:column;justify-content:center;flex:1;min-width:0">
+        <p style="margin:0 0 4px;font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--color-muted);display:flex;align-items:center;gap:5px"><span style="width:20px;height:20px;border-radius:6px;background:color-mix(in oklab,var(--color-ink) 12%,transparent);display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"></path></svg></span>{{ copy.hMore }}</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 8px">
+          <sc-for list="{{ moreRows }}" as="r" hint-placeholder-count="4">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+              <span style="font-size:10.5px;color:var(--color-muted)">{{ r.k }}</span>
+              <span class="num" style="font-size:12px;font-weight:500;white-space:nowrap;color:{{ r.c }}">{{ r.v }}<span style="font-size:9.5px;color:var(--color-faint)"> {{ r.sub }}</span></span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      </div>
+    </div>
+    <sc-if value="{{ selActive }}" hint-placeholder-val="{{ false }}">
+      <p class="num" style="margin:10px 0 0;font-size:11px;color:var(--color-accent)">{{ selNote }}</p>
+    </sc-if>
+  </section>
+
+  <section class="card" style="padding:20px 0 10px;overflow:hidden">
+    <div style="padding-inline-start:5.42%;padding-inline-end:2.54%">
+      <div style="display:flex">
+        <sc-for list="{{ segs }}" as="g" hint-placeholder-count="10">
+          <div style="width:{{ g.w }}%;background:{{ g.bg }};border-inline-end:1px solid var(--color-line);border-block-start:2px solid {{ g.edge }};padding:8px 2px 7px;text-align:center;overflow:hidden">
+            <p class="num" style="margin:0;font-size:12.5px;font-weight:600;color:{{ g.paceColor }}">{{ g.pace }}</p>
+            <p class="num" style="margin:3px 0 0;font-size:9px;color:var(--color-faint)">{{ g.dur }}</p>
+            <p class="num" style="margin:3px 0 0;font-size:9.5px;color:var(--color-hr)">{{ g.hr }}</p>
+            <p class="num" style="margin:3px 0 0;font-size:8.5px;letter-spacing:.06em;color:{{ g.zColor }}">{{ g.zone }}</p>
           </div>
         </sc-for>
       </div>
-      <p style="margin:14px 0 0;font-size:12.5px;color:var(--color-muted);text-wrap:pretty">{{ copy.splitsNote }}</p>
     </div>
-    <div class="card c5" style="padding:20px 26px;display:flex;flex-direction:column;gap:12px">
-      <div><span class="tag" style="background:var(--color-accent-soft);color:var(--color-accent)">{{ copy.aiTag }}</span></div>
-      <p style="margin:0;font-size:14px;line-height:1.6;text-wrap:pretty">{{ copy.aiNote }}</p>
-      <div style="margin-block-start:auto;display:flex;gap:10px">
-        <button class="btn btn-secondary" type="button">{{ copy.btnReason }}</button>
+
+    <div style="position:relative">
+      <svg viewBox="0 0 1180 372" style="width:100%;height:auto;display:block;cursor:crosshair" onMouseDown="{{ onDown }}" onMouseMove="{{ onMove }}" onMouseUp="{{ onUp }}" onMouseLeave="{{ onLeave }}">
+
+        <rect x="64" y="8" width="1086" height="65" fill="var(--color-elevated)" opacity="0.28"></rect>
+        <rect x="64" y="138" width="1086" height="65" fill="var(--color-elevated)" opacity="0.28"></rect>
+        <rect x="64" y="268" width="1086" height="64" fill="var(--color-elevated)" opacity="0.28"></rect>
+
+        <sc-for list="{{ vGrid }}" as="v" hint-placeholder-count="19">
+          <line x1="{{ v.x }}" x2="{{ v.x }}" y1="8" y2="332" stroke="var(--color-line)" stroke-width="{{ v.w }}"></line>
+        </sc-for>
+
+        <sc-for list="{{ paceTicks }}" as="t" hint-placeholder-count="3">
+          <g><line x1="64" x2="1150" y1="{{ t.gy }}" y2="{{ t.gy }}" stroke="var(--color-line)" stroke-width="0.6" stroke-dasharray="2 3"></line></g>
+        </sc-for>
+        <rect x="64" y="{{ planTop }}" width="1086" height="{{ planH }}" fill="var(--color-accent)" opacity="0.1"></rect>
+        <line x1="64" x2="1150" y1="{{ planMid }}" y2="{{ planMid }}" stroke="var(--color-accent)" stroke-width="1" stroke-dasharray="5 4" opacity="0.5"></line>
+        <path d="{{ paceArea }}" fill="var(--color-pace)" opacity="0.22"></path>
+        <path d="{{ pacePath }}" fill="none" stroke="var(--color-pace)" stroke-width="1.1"></path>
+
+        <sc-for list="{{ powTicks }}" as="t" hint-placeholder-count="3">
+          <g><line x1="64" x2="1150" y1="{{ t.gy }}" y2="{{ t.gy }}" stroke="var(--color-line)" stroke-width="0.6" stroke-dasharray="2 3"></line></g>
+        </sc-for>
+        <path d="{{ powArea }}" fill="var(--color-pow)" opacity="0.16"></path>
+        <path d="{{ powPath }}" fill="none" stroke="var(--color-pow)" stroke-width="1"></path>
+
+        <sc-for list="{{ hrTicks }}" as="t" hint-placeholder-count="3">
+          <g><line x1="64" x2="1150" y1="{{ t.gy }}" y2="{{ t.gy }}" stroke="var(--color-line)" stroke-width="0.6" stroke-dasharray="2 3"></line></g>
+        </sc-for>
+        <path d="{{ hrArea }}" fill="var(--color-hr)" opacity="0.16"></path>
+        <path d="{{ hrPath }}" fill="none" stroke="var(--color-hr)" stroke-width="1.1"></path>
+
+        <sc-for list="{{ cadTicks }}" as="t" hint-placeholder-count="3">
+          <g><line x1="64" x2="1150" y1="{{ t.gy }}" y2="{{ t.gy }}" stroke="var(--color-line)" stroke-width="0.6" stroke-dasharray="2 3"></line></g>
+        </sc-for>
+        <path d="{{ cadArea }}" fill="var(--color-cad)" opacity="0.16"></path>
+        <path d="{{ cadPath }}" fill="none" stroke="var(--color-cad)" stroke-width="1"></path>
+
+        <sc-for list="{{ elevTicks }}" as="t" hint-placeholder-count="3">
+          <g><line x1="64" x2="1150" y1="{{ t.gy }}" y2="{{ t.gy }}" stroke="var(--color-line)" stroke-width="0.6" stroke-dasharray="2 3"></line></g>
+        </sc-for>
+        <path d="{{ elevArea }}" fill="var(--color-atl)" opacity="0.28" stroke="var(--color-faint)" stroke-width="0.8"></path>
+
+        <line x1="64" x2="1150" y1="8" y2="8" stroke="var(--color-line-strong)" stroke-width="1"></line>
+        <line x1="64" x2="1150" y1="73" y2="73" stroke="var(--color-line-strong)" stroke-width="1"></line>
+        <line x1="64" x2="1150" y1="138" y2="138" stroke="var(--color-line-strong)" stroke-width="1"></line>
+        <line x1="64" x2="1150" y1="203" y2="203" stroke="var(--color-line-strong)" stroke-width="1"></line>
+        <line x1="64" x2="1150" y1="268" y2="268" stroke="var(--color-line-strong)" stroke-width="1"></line>
+        <line x1="64" x2="1150" y1="332" y2="332" stroke="var(--color-line-strong)" stroke-width="1"></line>
+
+        <rect x="{{ bestX }}" y="8" width="{{ bestW }}" height="324" fill="var(--color-positive)" opacity="0.07"></rect>
+        <line x1="{{ driftX }}" x2="{{ driftX }}" y1="8" y2="332" stroke="var(--color-caution)" stroke-width="1" stroke-dasharray="4 4" opacity="0.85"></line>
+
+        <sc-if value="{{ selActive }}" hint-placeholder-val="{{ false }}">
+          <rect x="{{ selX }}" y="8" width="{{ selW }}" height="324" fill="var(--color-accent)" opacity="0.12" stroke="var(--color-accent)" stroke-width="0.6"></rect>
+        </sc-if>
+
+
+        <sc-if value="{{ hovering }}" hint-placeholder-val="{{ false }}">
+          <g><line x1="{{ tipX }}" x2="{{ tipX }}" y1="8" y2="332" stroke="var(--color-ink)" stroke-width="0.8" opacity="0.6"></line>
+          <line x1="64" x2="1150" y1="{{ tipY }}" y2="{{ tipY }}" stroke="var(--color-faint)" stroke-width="0.7" opacity="0.55"></line>
+          <circle cx="{{ tipX }}" cy="{{ tipPaceY }}" r="3" fill="var(--color-pace)"></circle>
+          <circle cx="{{ tipX }}" cy="{{ tipPowY }}" r="2.5" fill="var(--color-pow)"></circle>
+          <circle cx="{{ tipX }}" cy="{{ tipHrY }}" r="3" fill="var(--color-hr)"></circle>
+          <circle cx="{{ tipX }}" cy="{{ tipCadY }}" r="2.5" fill="var(--color-cad)"></circle>
+          <circle cx="{{ tipX }}" cy="{{ tipElevY }}" r="2.5" fill="var(--color-faint)"></circle></g>
+        </sc-if>
+      </svg>
+      <div style="position:absolute;inset:0;pointer-events:none">
+        <sc-for list="{{ bandTitles }}" as="l" hint-placeholder-count="5">
+          <span class="num" style="position:absolute;left:{{ l.left }};top:{{ l.top }};transform:translate(-50%,-50%) rotate(-90deg);font-size:9px;letter-spacing:.06em;color:{{ l.c }};white-space:nowrap">{{ l.t }}</span>
+        </sc-for>
+        <sc-for list="{{ yLabels }}" as="l" hint-placeholder-count="17">
+          <span class="num" style="position:absolute;left:{{ l.left }};top:{{ l.top }};transform:translate(-100%,{{ l.ty }});font-size:{{ l.fs }}px;color:{{ l.c }};white-space:nowrap">{{ l.t }}</span>
+        </sc-for>
+        <sc-for list="{{ xLabels }}" as="l" hint-placeholder-count="29">
+          <span class="num" style="position:absolute;left:{{ l.left }};top:{{ l.top }};transform:translate(-50%,-50%);font-size:{{ l.fs }}px;color:{{ l.c }};white-space:nowrap">{{ l.t }}</span>
+        </sc-for>
+        <sc-for list="{{ markLabels }}" as="l" hint-placeholder-count="2">
+          <span class="num" style="position:absolute;left:{{ l.left }};top:{{ l.top }};transform:translate({{ l.tx }},-50%);font-size:8.5px;letter-spacing:.05em;color:{{ l.c }};white-space:nowrap">{{ l.t }}</span>
+        </sc-for>
+        <sc-if value="{{ hovering }}" hint-placeholder-val="{{ false }}">
+          <span class="num" style="position:absolute;left:5.25%;top:{{ yLblTop }};transform:translate(-100%,-50%);font-size:9px;padding:1px 5px;border-radius:3px;background:var(--color-elevated);border:1px solid var(--color-line-strong);color:var(--color-ink);white-space:nowrap">{{ yLbl }}</span>
+          <span class="num" style="position:absolute;left:{{ xLblLeft }};top:92.5%;transform:translate(-50%,-50%);font-size:9px;padding:1px 5px;border-radius:3px;background:var(--color-elevated);border:1px solid var(--color-line-strong);color:var(--color-ink);white-space:nowrap">{{ xLbl }}</span>
+        </sc-if>
       </div>
+      <sc-if value="{{ hovering }}" hint-placeholder-val="{{ false }}">
+        <div class="num" style="position:absolute;top:12px;left:{{ tipLeft }};transform:{{ tipShift }};background:var(--color-elevated);border:1px solid var(--color-line-strong);border-radius:var(--radius-control);padding:8px 12px;font-size:11px;pointer-events:none;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.5);z-index:5">
+          <div style="color:var(--color-faint);margin-block-end:3px">{{ tipHead }}</div>
+          <div style="color:var(--color-pace)">{{ tipPace }}</div>
+          <div style="color:var(--color-pow)">{{ tipPow }}</div>
+          <div style="color:var(--color-hr)">{{ tipHr }}</div>
+          <div style="color:var(--color-cad)">{{ tipCad }}</div>
+          <div style="color:var(--color-muted)">{{ tipElev }}</div>
+        </div>
+      </sc-if>
     </div>
+    <p style="margin:6px 0 0;font-size:10.5px;color:var(--color-faint);text-align:center">{{ copy.chartHint }}</p>
+  </section>
+
+  <section class="card" style="padding:20px 26px;display:flex;flex-direction:column;gap:12px">
+    <div><span class="tag" style="background:var(--color-accent-soft);color:var(--color-accent)">{{ copy.aiTag }}</span></div>
+    <p style="margin:0;font-size:14px;line-height:1.6;max-width:820px;text-wrap:pretty">{{ copy.aiNote }}</p>
+    <div><button class="btn btn-secondary" type="button">{{ copy.btnReason }}</button></div>
   </section>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;paceState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;ontarget&quot;,&quot;options&quot;:[&quot;ontarget&quot;,&quot;toofast&quot;,&quot;tooslow&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Demo states&quot;}}">
+<script type="text/x-dc" data-dc-script>
 class Component extends DCLogic {
-  state={hi:-1,xMode:'dist',showPace:true,showHr:true,showElev:true};
+  state={hi:-1,a:-1,b:-1,drag:false};
   rng(seed){let a=seed>>>0;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+  fmt(s){s=Math.max(0,Math.round(s));const m=Math.floor(s/60);return m+':'+String(s%60).padStart(2,'0')}
+  fmtH(s){s=Math.round(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?h+':'+String(m).padStart(2,'0')+':'+String(s%60).padStart(2,'0'):this.fmt(s)}
   build(){
-    const r=this.rng(7);
-    // ~200 samples every 10 s, 6.2 km, avg 5:24/km
-    const n=205,dt=10;const dist=[],vel=[],hr=[],alt=[],time=[];
-    let d=0,a=42;
-    const grade=[];
+    const r=this.rng(11);
+    const n=295,dt=10,dist=[],vel=[],hr=[],cad=[],alt=[],time=[];
+    let d=0,a=11,prevHr=122;
     for(let i=0;i<n;i++){
-      const t=i/n;
-      const hill=Math.sin(t*Math.PI*3.2)*1.4+Math.sin(t*Math.PI*7.3+1.2)*0.5;
-      grade.push(hill);
+      const t=i/(n-1);
+      const hill=Math.sin(t*Math.PI*4.6)*0.9+Math.sin(t*Math.PI*9.3+1.1)*0.35;
+      let p=356-104*t;
+      if(i<4)p=380-i*8;
+      p+=hill*11+(r()-0.5)*16;
+      p=Math.max(240,Math.min(392,p));
+      vel.push(1000/p);d+=vel[i]*dt;dist.push(d);time.push(i*dt);
+      a+=hill*0.28+(r()-0.5)*0.25;alt.push(a);
+      cad.push(Math.max(162,Math.min(188,166+15*t-hill*1.2+(r()-0.5)*2.4)));
+      const target=120+42*t+(vel[i]-2.9)*16;
+      prevHr=prevHr+(target-prevHr)*0.22+(r()-0.5)*2.2;
+      hr.push(Math.max(108,Math.min(181,prevHr)));
     }
-    let effortHist=[];
-    for(let i=0;i<n;i++){
-      const t=i/n;
-      let paceSec=324; // 5:24 base
-      if(t<0.04)paceSec=360-t*900; // rolling start
-      paceSec+=grade[i]*9;               // hills
-      paceSec+=(r()-0.5)*18;             // noise
-      paceSec+=t>0.6?(t-0.6)*70:0;       // second-half fade → last 2 km ~18 s/km slower
-      paceSec-=(t>0.3&&t<0.48)?8:0;      // best patch mid-run before the fade
-      paceSec=Math.max(280,Math.min(400,paceSec));
-      const v=1000/paceSec;
-      vel.push(v);d+=v*dt;dist.push(d);time.push(i*dt);
-      a+=grade[i]*0.55+(r()-0.5)*0.3;alt.push(a);
-      const effort=v*(1+grade[i]*0.06);
-      effortHist.push(effort);
-      const lag=Math.max(0,i-2); // ~25 s lag
-      const eff=effortHist.slice(Math.max(0,lag-3),lag+1);
-      const em=eff.reduce((s,x)=>s+x,0)/eff.length;
-      const target=118+(em-2.9)*95+t*9; // drift up over run
-      const prev=hr.length?hr[hr.length-1]:118;
-      hr.push(prev+(target-prev)*0.25+(r()-0.5)*1.6);
+    const scale=10000/d;d=0;
+    for(let i=0;i<n;i++){vel[i]*=scale;d+=vel[i]*dt;dist[i]=d}
+    const r2=this.rng(23),pow=[];
+    for(let i=0;i<n;i++){const grade=i?alt[i]-alt[i-1]:0;pow.push(Math.max(120,Math.min(580,70*vel[i]*1.32+grade*90+(r2()-0.5)*26)))}
+    const splits=[];let i0=0;
+    for(let k=1,i=0;i<n;i++){
+      if(dist[i]>=k*1000||i===n-1){
+        let hs=0;for(let j=i0;j<=i;j++)hs+=hr[j];
+        const secs=time[i]-(i0?time[i0-1]:0),m=dist[i]-(i0?dist[i0-1]:0);
+        splits.push({i0,i1:i,dur:secs,pace:secs/(m/1000),hr:hs/(i-i0+1)});
+        i0=i+1;k++;
+      }
     }
-    this._s={n,dist,vel,hr,alt,time};
-    // splits
-    const splits=[];let k=1,prevT=0,prevD=0;
-    for(let i=0;i<n;i++){if(dist[i]>=k*1000||i===n-1){
-      const m=dist[i]-prevD,seg=time[i]-prevT;
-      if(m>150)splits.push(seg/(m/1000)); // pace normalized per km; skip tiny tail
-      prevT=time[i];prevD=dist[i];k++;}}
-    this._splits=splits;
-    return true;
-  }
-  paths(){
-    const {n,dist,vel,hr,alt,time}=this._s;
-    const xm=this.state.xMode;
-    const X0=44,X1=1136,Y0=20,Y1=284;
-    const xr=xm==='dist'?dist:time;
-    const xmax=xr[n-1];
-    const X=i=>X0+(xr[i]/xmax)*(X1-X0);
-    // pace: inverted, domain 4:30(270)–6:40(400), faster up
-    const pY=v=>{const p=1000/v;return Y0+((p-270)/(400-270))*(Y1-Y0)};
-    const hY=v=>Y0+(1-(v-100)/(185-100))*(Y1-Y0);
+    this._s={n,dt,dist,vel,hr,cad,alt,time,pow,splits};
+    // geometry — contiguous bands like intervals.icu: pace 8-106, hr 106-204, cad 204-268, elev 268-332
+    const X0=64,X1=1150,dtot=dist[n-1];
+    const X=i=>X0+dist[i]/dtot*(X1-X0);
+    const pMin=240,pMax=392;
+    const pY=v=>{const p=1000/v;return 12+((p-pMin)/(pMax-pMin))*58};
+    const hY=v=>142+(1-(v-93)/(184-93))*57;const pwY=v=>77+(1-v/580)*57;
+    const cY=v=>207+(1-(v-158)/(192-158))*57;
     const aLo=Math.min(...alt),aHi=Math.max(...alt);
-    const aY=v=>Y1-((v-aLo)/((aHi-aLo)||1))*70;
-    const P=f=>Array.from({length:n},(_,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+f(i).toFixed(1)).join('');
-    const pacePath=P(i=>pY(vel[i])),hrPath=P(i=>hY(hr[i]));
-    const elevArea='M'+X0+' '+Y1+Array.from({length:n},(_,i)=>'L'+X(i).toFixed(1)+' '+aY(alt[i]).toFixed(1)).join('')+'L'+X1+' '+Y1+'Z';
-    const fmt=s=>Math.floor(s/60)+':'+String(Math.round(s%60)).padStart(2,'0');
-    const gridY=[290,320,350,380].map(p=>({y:(Y0+((p-270)/130)*(Y1-Y0)).toFixed(1),ty:(Y0+((p-270)/130)*(Y1-Y0)+3).toFixed(1),pace:fmt(p),hr:String(Math.round(185-((p-270)/130)*85))}));
-    const gridX=[];const steps=6;
-    for(let s=1;s<=steps;s++){const frac=s/steps;
-      gridX.push({x:(X0+frac*(X1-X0)).toFixed(0),label:xm==='dist'?(xmax*frac/1000).toFixed(1)+' km':fmt(xmax*frac)});}
-    return {pacePath,hrPath,elevArea,gridY,gridX,X,pY,hY,fmt};
+    const eY=v=>328-((v-aLo)/((aHi-aLo)||1))*56;
+    this._g={X,pY,pwY,hY,cY,eY,X0,X1,dtot};
+    const line=f=>Array.from({length:n},(_,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+f(i).toFixed(1)).join('');
+    const area=(f,base)=>'M'+X0+' '+base+Array.from({length:n},(_,i)=>'L'+X(i).toFixed(1)+' '+f(i).toFixed(1)).join('')+'L'+X1+' '+base+'Z';
+    const pacePath=line(i=>pY(vel[i])),paceArea=area(i=>pY(vel[i]),73);
+    const powPath=line(i=>pwY(pow[i])),powArea=area(i=>pwY(pow[i]),138);
+    const hrPath=line(i=>hY(hr[i])),hrArea=area(i=>hY(hr[i]),203);
+    const cadPath=line(i=>cY(cad[i])),cadArea=area(i=>cY(cad[i]),268);
+    const elevArea=area(i=>eY(alt[i]),332);
+    // axis ticks: km every 0.5, labels like intervals; time ticks every 5 min mapped through distance
+    const vGrid=[],kmTicks=[];
+    for(let k=1;k<=19;k++){
+      const km=k*0.5,x=(X0+km*1000/dtot*(X1-X0)).toFixed(1);
+      vGrid.push({x,w:k%2===0?'0.9':'0.5'});
+      kmTicks.push({x,label:km%1===0?String(km):km.toFixed(1)});
+    }
+    kmTicks.push({x:String(X1),label:'10'});
+    const timeTicks=[];
+    for(let m=5;m<=45;m+=5){
+      const tt=m*60;
+      let i=time.findIndex(x=>x>=tt);if(i<0)break;
+      timeTicks.push({x:X(i).toFixed(1),label:'0:'+String(m).padStart(2,'0')});
+    }
+    // markers
+    const best=splits.reduce((m,s,i)=>s.pace<splits[m].pace?i:m,0);
+    const bs=splits[best];
+    const bestX=X(bs.i0),bestW=X(bs.i1)-X(bs.i0);
+    const driftI=dist.findIndex(x=>x>=6500),driftX=X(driftI);
+    // per-band tick labels (top/mid/bottom)
+    const F='var(--color-faint)';
+    const paceTicks=[{ty:'16',gy:'12',label:this.fmt(pMin),c:F,fs:'9'},{ty:'44.5',gy:'41',label:this.fmt((pMin+pMax)/2),c:'var(--color-pace)',fs:'10.5'},{ty:'72',gy:'70',label:this.fmt(pMax),c:F,fs:'9'}];
+    const pMaxW=Math.round(Math.max(...pow)),pAvgW=Math.round(pow.reduce((a,b)=>a+b,0)/n);
+    const powTicks=[{ty:'81',gy:'77',label:String(pMaxW),c:F,fs:'9'},{ty:'109',gy:'105.5',label:String(pAvgW),c:'var(--color-pow)',fs:'10.5'},{ty:'136',gy:'134',label:'0',c:F,fs:'9'}];
+    const hrTicks=[{ty:'146',gy:'142',label:'184',c:F,fs:'9'},{ty:'174',gy:'170.5',label:'139',c:'var(--color-hr)',fs:'10.5'},{ty:'201',gy:'199',label:'93',c:F,fs:'9'}];
+    const cadTicks=[{ty:'211',gy:'207',label:'192',c:F,fs:'9'},{ty:'239',gy:'235.5',label:'175',c:'var(--color-cad)',fs:'10.5'},{ty:'266',gy:'264',label:'158',c:F,fs:'9'}];
+    const elevTicks=[{ty:'276',gy:'272',label:Math.round(aHi)+'m',c:F,fs:'9'},{ty:'304',gy:'300',label:Math.round((aHi+aLo)/2)+'m',c:'var(--color-ink)',fs:'10.5'},{ty:'330',gy:'328',label:Math.round(aLo)+'m',c:F,fs:'9'}];
+    // planned band 5:30 ± 10s
+    const planTop=(12+((320-pMin)/(pMax-pMin))*58).toFixed(1);
+    const planMid=(12+((330-pMin)/(pMax-pMin))*58).toFixed(1);
+    const planH=(20/(pMax-pMin)*58).toFixed(1);
+    // segment strip
+    const segs=splits.map((s,i)=>{
+      const z=s.hr<133?'Z1':s.hr<152?'Z2':s.hr<166?'Z3':s.hr<176?'Z4':'Z5';
+      const pct=Math.round(s.hr/184*100);
+      const zc=s.hr<152?'var(--color-positive)':s.hr<166?'var(--color-caution)':'var(--color-negative)';
+      const isBest=i===best;
+      return {w:((this._s.dist[s.i1]-(s.i0?this._s.dist[s.i0-1]:0))/dtot*100).toFixed(2),
+        pace:this.fmt(s.pace),dur:this.fmt(s.dur),hr:Math.round(s.hr)+'bpm',zone:z+' \u00b7 '+pct+'%',zColor:zc,
+        bg:isBest?'var(--color-accent-soft)':'transparent',
+        edge:isBest?'var(--color-accent)':'var(--color-line-strong)',
+        paceColor:isBest?'var(--color-accent)':'var(--color-ink)'};});
+    const pctX=x=>(x/1180*100).toFixed(2)+'%',pctY=y=>(y/372*100).toFixed(2)+'%';
+    const bandTitles=[
+      {t:'Pace/km',cy:40,c:'var(--color-pace)'},{t:'Power',cy:105,c:'var(--color-pow)'},
+      {t:'Heartrate',cy:170,c:'var(--color-hr)'},{t:'Cadence',cy:235,c:'var(--color-cad)'},
+      {t:'Altitude',cy:300,c:'var(--color-atl)'}].map(b=>({t:b.t,left:pctX(12),top:pctY(b.cy),c:b.c}));
+    const tickSets=[paceTicks,powTicks,hrTicks,cadTicks,elevTicks];
+    const yLabels=[];
+    tickSets.forEach(set=>set.forEach((t2,j)=>yLabels.push({t:t2.label,left:pctX(58),top:pctY(parseFloat(t2.gy)),fs:t2.fs,c:t2.c,
+      ty:j===0?'0%':(j===set.length-1?'-100%':'-50%')})));
+    yLabels.push({t:'km',left:pctX(58),top:pctY(343),fs:'8.5',c:'var(--color-faint)',ty:'-50%'},{t:'time',left:pctX(58),top:pctY(360),fs:'8.5',c:'var(--color-faint)',ty:'-50%'});
+    const xLabels=kmTicks.map(t2=>({t:t2.label,left:pctX(parseFloat(t2.x)),top:pctY(343),fs:'9.5',c:'var(--color-muted)'}))
+      .concat(timeTicks.map(t2=>({t:t2.label,left:pctX(parseFloat(t2.x)),top:pctY(360),fs:'9',c:'var(--color-faint)'})));
+    const markLabels=[
+      {t:'FASTEST KM',left:pctX(Math.min((bestX+X(bs.i1))/2,1075)),top:pctY(16),tx:'-50%',c:'var(--color-positive)'},
+      {t:'DRIFT ONSET',left:pctX(driftX+6),top:pctY(16),tx:'0%',c:'var(--color-caution)'}];
+    this._static={bandTitles,yLabels,xLabels,markLabels,pacePath,paceArea,powPath,powArea,powTicks,hrPath,hrArea,cadPath,cadArea,elevArea,
+      vGrid,kmTicks,timeTicks,paceTicks,hrTicks,cadTicks,elevTicks,
+      planTop,planMid,planH,segs,
+      bestX:bestX.toFixed(1),bestW:bestW.toFixed(1),bestLblX:((bestX+X(bs.i1))/2).toFixed(1),
+      driftX:driftX.toFixed(1),driftLblX:(driftX+6).toFixed(1)};
+  }
+  yAt(e){
+    const rect=e.currentTarget.getBoundingClientRect();
+    return Math.max(8,Math.min(332,(e.clientY-rect.top)/rect.height*372));
+  }
+  idxAt(e){
+    const rect=e.currentTarget.getBoundingClientRect();
+    const fx=(e.clientX-rect.left)/rect.width*1180;
+    const {dist}=this._s,{X0,X1,dtot}=this._g;
+    const target=Math.max(0,Math.min(1,(fx-X0)/(X1-X0)))*dtot;
+    let lo=0,hi=this._s.n-1;while(hi-lo>1){const m=(lo+hi)>>1;if(dist[m]<target)lo=m;else hi=m}
+    return lo;
+  }
+  stats(s0,s1){
+    const {dist,vel,hr,alt,time}=this._s;
+    const m=dist[s1]-(s0?dist[s0-1]:0),secs=time[s1]-(s0?time[s0-1]:0);
+    let hs=0,hm=0,gain=0;
+    for(let j=s0;j<=s1;j++){hs+=hr[j];if(hr[j]>hm)hm=hr[j];if(j>s0&&alt[j]>alt[j-1])gain+=alt[j]-alt[j-1]}
+    const pace=secs/(m/1000);
+    const mid=(s0+s1)>>1;
+    const rat=(a,b)=>{let x=0,c=0;for(let j=a;j<=b;j++){x+=hr[j]/vel[j];c++}return x/c};
+    const drift=(rat(mid,s1)/rat(s0,mid)-1)*100;
+    return {km:m/1000,secs,pace,avgHr:hs/(s1-s0+1),maxHr:hm,gain,gap:pace-6,drift};
   }
   renderVals(){
     if(!this._s)this.build();
-    const g=this.paths();
-    const {n,dist,vel,hr,alt,time}=this._s;
-    const xm=this.state.xMode,hi=this.state.hi,hovering=hi>=0;
-    const fmt=g.fmt;
-    const onMove=e=>{
-      const svg=e.currentTarget,rect=svg.getBoundingClientRect();
-      const fx=(e.clientX-rect.left)/rect.width*1180;
-      const xr=xm==='dist'?dist:time,xmax=xr[n-1];
-      const frac=Math.max(0,Math.min(1,(fx-44)/(1136-44)));
-      const target=frac*xmax;
-      let lo=0,hiI=n-1;while(hiI-lo>1){const m=(lo+hiI)>>1;if(xr[m]<target)lo=m;else hiI=m}
-      this.setState({hi:lo});
-    };
-    const PLAN=330; // 5:30/km planned
-    const pyOf=p=>20+((p-270)/(400-270))*(284-20);
-    const planVals={planY:pyOf(PLAN).toFixed(1),planYTop:pyOf(PLAN-10).toFixed(1),
-      planYH:(pyOf(PLAN+10)-pyOf(PLAN-10)).toFixed(1),planLabelY:(pyOf(PLAN-10)-4).toFixed(1),
-      coachView:typeof location!=='undefined'&&/coach=1/.test(location.search)};
+    const st=this._static,s=this.state,{n,dist,vel,hr,cad,alt,time,pow}=this._s,g=this._g;
+    const selActive=s.a>=0&&s.b>=0&&Math.abs(s.b-s.a)>3;
+    const [s0,s1]=selActive?[Math.min(s.a,s.b),Math.max(s.a,s.b)]:[0,n-1];
+    const t=this.stats(s0,s1);
+    const I='var(--color-ink)';
+    let cadSum=0;for(let j=s0;j<=s1;j++)cadSum+=cad[j];
+    const avgCad=cadSum/(s1-s0+1);
+    const kmh=(t.km/(t.secs/3600));
+    const paceRows=[
+      {k:'Pace',v:this.fmt(t.pace),sub:'/km',c:I},
+      {k:'GAP',v:this.fmt(t.gap),sub:'',c:I},
+      {k:'Speed',v:kmh.toFixed(1),sub:'km/h',c:I},
+      {k:'Climb',v:String(Math.round(t.gain)),sub:'m',c:I}];
+    const hrRows=[
+      {k:'Avg HR',v:String(Math.round(t.avgHr)),sub:Math.round(t.avgHr/181*100)+'%',c:I},
+      {k:'Max HR',v:String(Math.round(t.maxHr)),sub:Math.round(t.maxHr/181*100)+'%',c:I}];
+    const moreRows=[
+      {k:'Cadence',v:String(Math.round(avgCad/2)),sub:'spm',c:I},
+      {k:'Drift',v:(t.drift>0?'+':'')+t.drift.toFixed(1)+'%',sub:'',c:Math.abs(t.drift)<5?'var(--color-positive)':'var(--color-caution)'},
+      {k:'Load',v:'54',sub:'',c:I},
+      {k:'Calories',v:'657',sub:'',c:I}];
+    const headKm=t.km.toFixed(2),headDur=this.fmtH(t.secs);
+    const hovering=s.hi>=0;
     let tip={};
     if(hovering){
-      const x=g.X(hi);
-      const dp=Math.round(1000/vel[hi]-PLAN);
-      tip={tipDelta:'vs plan '+(dp>0?'+':'')+dp+' s/km',
-        tipDeltaColor:Math.abs(dp)<=10?'var(--color-positive)':'var(--color-caution)',
-        tipX:x.toFixed(1),tipPaceY:g.pY(vel[hi]).toFixed(1),tipHrY:g.hY(hr[hi]).toFixed(1),
-        tipLeft:(x/1180*100).toFixed(1)+'%',tipShift:x>900?'translateX(-110%)':'translateX(12px)',
-        tipHead:(dist[hi]/1000).toFixed(2)+' km · '+fmt(time[hi]),
-        tipPace:'Pace '+fmt(1000/vel[hi])+' /km',tipHr:'HR '+Math.round(hr[hi])+' bpm',
-        tipElev:'Elev '+Math.round(alt[hi])+' m'};
+      const i=s.hi,x=g.X(i);
+      const y=s.hiY||170;
+      // live y-axis readout for whichever band the cursor is in
+      let yLbl;
+      if(y<73)yLbl=this.fmt(240+((Math.min(Math.max(y,12),70)-12)/58)*152);
+      else if(y<138)yLbl=Math.round((1-(Math.min(Math.max(y,77),134)-77)/57)*580)+'W';
+      else if(y<203)yLbl=Math.round(93+(1-(Math.min(Math.max(y,142),199)-142)/57)*(184-93))+'bpm';
+      else if(y<268)yLbl=Math.round(158+(1-(Math.min(Math.max(y,207),264)-207)/57)*(192-158))+'spm';
+      else{const aLo2=Math.min(...alt),aHi2=Math.max(...alt);yLbl=Math.round(aLo2+((328-Math.min(Math.max(y,272),328))/56)*(aHi2-aLo2))+'m'}
+      tip={tipX:x.toFixed(1),tipY:y.toFixed(1),
+        yLbl,yLblTop:(y/372*100).toFixed(2)+'%',
+        xLbl:(dist[i]/1000).toFixed(2)+'km',
+        xLblLeft:(Math.min(Math.max(x,95),1120)/1180*100).toFixed(2)+'%',tipPaceY:g.pY(vel[i]).toFixed(1),tipPowY:g.pwY(pow[i]).toFixed(1),tipHrY:g.hY(hr[i]).toFixed(1),tipCadY:g.cY(cad[i]).toFixed(1),tipElevY:g.eY(alt[i]).toFixed(1),
+        tipLeft:(x/1180*100).toFixed(1)+'%',tipShift:x>880?'translateX(-112%)':'translateX(14px)',
+        tipHead:(dist[i]/1000).toFixed(2)+' km \u00b7 '+this.fmtH(time[i]),
+        tipPace:'Pace '+this.fmt(1000/vel[i])+' /km',
+        tipPow:'Power '+Math.round(pow[i])+' W',
+        tipHr:'HR '+Math.round(hr[i])+' bpm',
+        tipCad:'Cadence '+Math.round(cad[i])+' spm',
+        tipElev:'Elev '+Math.round(alt[i])+' m'};
     }
-    const sp=this._splits;
-    const spMin=Math.min(...sp),spMax=Math.max(...sp);
-    const splits=sp.map((s,i)=>{
-      const fastest=s===spMin,slowest=s===spMax;
-      return {km:String(i+1),w:((1/s)/(1/spMin)*100).toFixed(1),
-        bg:fastest?'var(--color-accent)':(slowest?'var(--color-caution)':'var(--color-line-strong)'),
-        txt:fastest?'var(--color-accent)':(slowest?'var(--color-caution)':'var(--color-muted)'),
-        pace:fmt(s)};});
-    const summary=[{v:'6.21',unit:'km',name:'Distance'},{v:'33:31',unit:'',name:'Moving time'},{v:'5:24',unit:'/km',name:'Avg pace'},{v:'148',unit:'bpm',name:'Avg heart rate'},{v:'64',unit:'m',name:'Elevation gain'}];
-    const state=this.props.paceState??'ontarget';
-    const pva={ontarget:{pvaLabel:'On target',pvaColor:'var(--color-positive)',pvaBg:'var(--color-elevated)',pvaNote:'Pace, heart rate and duration all landed inside the planned window.'},
-      toofast:{pvaLabel:'Too fast',pvaColor:'var(--color-caution)',pvaBg:'var(--color-elevated)',pvaNote:'You ran 18 s/km faster than planned on an easy day. That costs recovery — tomorrow\u2019s session assumes you kept this easy.'},
-      tooslow:{pvaLabel:'Below target',pvaColor:'var(--color-caution)',pvaBg:'var(--color-elevated)',pvaNote:'Pace came in 20 s/km slower than planned. If you felt heavy, that\u2019s worth logging — fatigue may be higher than the model estimates.'}}[state];
+    const sel={};
+    if(selActive){
+      sel.selX=g.X(s0).toFixed(1);sel.selW=(g.X(s1)-g.X(s0)).toFixed(1);
+      sel.selNote='Selection \u00b7 '+t.km.toFixed(2)+' km \u00b7 '+this.fmtH(t.secs)+' \u00b7 summary above reflects this range \u2014 click the chart to clear';
+    }
+    const bestPace=this.fmt(this._s.splits.reduce((m,x)=>Math.min(m,x.pace),1e9));
     const copy={brand:'ARI',back:'Back to dashboard',navHome:'Home',navActivities:'Activities',navPlan:'Plan',navSettings:'Settings',
-      runTitle:'Wednesday Easy Run',runDate:'Aug 12, 2026 · 6:42 AM',runType:'Easy Run',
-      pvaTitle:'Planned vs actual',pvaPlanned:'Planned · Easy run, 6 km @ 5:30/km',pvaActual:'Actual · 6.2 km @ 5:24/km',
-      chartTitle:'Pace · Heart rate · Elevation',chartSub:'Pace axis is inverted — faster is up. Shaded band = planned pace window (5:30 \u00b1 10 s).',
-      planLine:'PLAN 5:30 /km',
-      coachViewTag:'Coach view',coachViewMsg:'You are viewing Samuel Cohen\u2019s run \u2014 planned vs actual highlighted below.',coachBack:'Back to roster',
-      legPace:'Pace',legHr:'Heart rate',legElev:'Elevation',xDist:'Distance',xTime:'Time',
-      paceAxis:'min/km ↑ faster',hrAxis:'bpm',
-      splitsTitle:'Splits',
-      splitsNote:'Your last 2 km were 18 s/km slower — that\u2019s the cardiac drift showing up.',
+      coachViewTag:'Coach view',coachViewMsg:'You are viewing Samuel Cohen\u2019s run.',coachBack:'Back to roster',
+      runTitle:'Aug 17 \u00b7 10.0 km',runDate:'Monday, 17.08.26',runClock:'7:00 PM',runType:'Progressive Run',
+      hMoving:'Moving time',hPace:'Pace',hHr:'Heart rate',hMore:'Training',
+      chartTitle:'Pace \u00b7 Power \u00b7 Heart rate \u00b7 Cadence \u00b7 Elevation',
+      chartHint:'Pace is inverted \u2014 faster is up \u00b7 hover for detail \u00b7 drag to select a range',
+      bPace:'Pace/km',bPow:'Power',bHr:'Heartrate',bCad:'Cadence',bElev:'Altitude',
+      bestLbl:'FASTEST KM',driftLbl:'DRIFT ONSET',axKm:'km',axTime:'time',
       aiTag:'AI Coach',
-      aiNote:'Solid easy run. Heart rate stayed in zone 2 for 86% of the session, and the fade over the final 2 km matches your current 2.4% cardiac drift — nothing unusual for a warm morning. No change to the plan.',
+      aiNote:'Textbook progression \u2014 the closing kilometre was your fastest at '+bestPace+'/km, with heart rate still under control. Drift onset around 6.5 km is normal for this effort. This run moves your threshold estimate up; tomorrow stays easy.',
       btnReason:'Show reasoning'};
-    const sel='var(--color-accent)',selInk='var(--color-accent-ink)';
-    const onB='var(--color-line-strong)',offB='transparent';
-    const series={
-      showPace:this.state.showPace,showHr:this.state.showHr,showElev:this.state.showElev,
-      togglePace:()=>this.setState({showPace:!this.state.showPace}),
-      toggleHr:()=>this.setState({showHr:!this.state.showHr}),
-      toggleElev:()=>this.setState({showElev:!this.state.showElev}),
-      paceBorder:this.state.showPace?onB:offB,paceOp:this.state.showPace?'1':'0.38',
-      hrBorder:this.state.showHr?onB:offB,hrOp:this.state.showHr?'1':'0.38',
-      elevBorder:this.state.showElev?onB:offB,elevOp:this.state.showElev?'1':'0.38',
-      paceVis:this.state.showPace?'1':'0',hrVis:this.state.showHr?'1':'0',
-      hrVis85:this.state.showHr?'0.85':'0',elevVis:this.state.showElev?'1':'0',
-      paceRow:this.state.showPace?'block':'none',hrRow:this.state.showHr?'block':'none',elevRow:this.state.showElev?'block':'none'};
-    return Object.assign({copy,summary,splits,hovering,onMove},series,planVals,{
-      onLeave:()=>this.setState({hi:-1}),
-      setDist:()=>this.setState({xMode:'dist',hi:-1}),
-      setTime:()=>this.setState({xMode:'time',hi:-1}),
-      distBg:xm==='dist'?sel:'transparent',distColor:xm==='dist'?selInk:'var(--color-muted)',
-      timeBg:xm==='time'?sel:'transparent',timeColor:xm==='time'?selInk:'var(--color-muted)'},
-      pva,g,tip);
+    return Object.assign({copy,paceRows,hrRows,moreRows,headKm,headDur,hovering,selActive},st,tip,sel,{
+      onDown:e=>{const i=this.idxAt(e);this.setState({a:i,b:i,drag:true})},
+      onMove:e=>{const i=this.idxAt(e),y=this.yAt(e);this.setState(this.state.drag?{hi:i,hiY:y,b:i}:{hi:i,hiY:y})},
+      onUp:e=>{const i=this.idxAt(e);
+        if(Math.abs(i-this.state.a)<=3)this.setState({drag:false,a:-1,b:-1});
+        else this.setState({drag:false,b:i})},
+      onLeave:()=>this.setState({hi:-1,drag:false}),
+      coachView:typeof location!=='undefined'&&/coach=1/.test(location.search)});
   }
 }
 </script>

@@ -19,6 +19,7 @@ function rng(seed: number) {
 }
 
 import { formatMinSec } from "@/lib/format/pace";
+import { paceAxisFor } from "@/lib/activity/resample";
 
 /** Seconds -> "m:ss". Re-exported so the view keeps its short local name. */
 export const fmt = formatMinSec;
@@ -92,18 +93,67 @@ export function buildStreams(): { s: Streams; splits: number[] } {
   return { s: _s, splits };
 }
 
-/** Chart geometry. Pace axis is inverted: faster is up. */
+/**
+ * Chart geometry.
+ *
+ * The pace axis is inverted — faster is up — which is the convention every
+ * training tool uses, because "the line went up" should mean "I got faster".
+ *
+ * PACE_MIN/PACE_MAX are only a fallback now. The real axis is derived from each
+ * run by `paceAxisFor`, so a 4:00/km session and a 6:30/km recovery jog both
+ * fill the frame instead of being pressed against opposite edges of a fixed
+ * range that suited neither.
+ */
 export const GEOM = { X0: 44, X1: 1136, Y0: 20, Y1: 284, PACE_MIN: 270, PACE_MAX: 400 };
+
+/** Heart rate below this is a dropout, not a reading. */
+const HR_FLOOR = 60;
+
+/** The heart-rate axis for one run, padded and rounded to fives. */
+function hrAxisFor(hr: number[]): { min: number; max: number } {
+  const beats = hr.filter((b) => Number.isFinite(b) && b >= HR_FLOOR);
+  if (beats.length < 10) return { min: 100, max: 185 };
+  const lo = Math.min(...beats);
+  const hi = Math.max(...beats);
+  const pad = Math.max(5, (hi - lo) * 0.15);
+  const min = Math.max(40, Math.floor((lo - pad) / 5) * 5);
+  const max = Math.min(230, Math.ceil((hi + pad) / 5) * 5);
+  return max - min < 30 ? { min: Math.max(40, min - 15), max: Math.min(230, max + 15) } : { min, max };
+}
 
 export function buildPaths(s: Streams, xMode: "dist" | "time") {
   const { n, dist, vel, hr, alt, time } = s;
-  const { X0, X1, Y0, Y1, PACE_MIN, PACE_MAX } = GEOM;
+  const { X0, X1, Y0, Y1 } = GEOM;
+
+  const pace = paceAxisFor(vel, { min: GEOM.PACE_MIN, max: GEOM.PACE_MAX });
+  const beats = hrAxisFor(hr);
+
   const xr = xMode === "dist" ? dist : time;
-  const xmax = xr[n - 1];
+  const xmax = xr[n - 1] || 1;
   const X = (i: number) => X0 + (xr[i] / xmax) * (X1 - X0);
-  const pY = (v: number) => Y0 + ((1000 / v - PACE_MIN) / (PACE_MAX - PACE_MIN)) * (Y1 - Y0);
-  const hY = (v: number) => Y0 + (1 - (v - 100) / (185 - 100)) * (Y1 - Y0);
-  const aLo = Math.min(...alt), aHi = Math.max(...alt);
+
+  const clamp = (y: number) => Math.min(Y1, Math.max(Y0, y));
+
+  /**
+   * Pace, bounded to the frame.
+   *
+   * A stop makes speed zero and pace infinite. The chart shows stops — that is
+   * what the athlete asked for — but an unbounded value would drag the line off
+   * the canvas and take the shape of the run with it. Clamping puts the stop on
+   * the floor of the axis, which reads as "as slow as this chart goes", and is
+   * both true and drawable.
+   */
+  const pY = (v: number) => {
+    const secPerKm = v > 0.1 ? 1000 / v : Number.POSITIVE_INFINITY;
+    return clamp(Y0 + ((secPerKm - pace.min) / (pace.max - pace.min)) * (Y1 - Y0));
+  };
+
+  const hY = (v: number) =>
+    clamp(Y0 + (1 - (v - beats.min) / (beats.max - beats.min)) * (Y1 - Y0));
+
+  const heights = alt.filter((a) => Number.isFinite(a));
+  const aLo = heights.length ? Math.min(...heights) : 0;
+  const aHi = heights.length ? Math.max(...heights) : 1;
   const aY = (v: number) => Y1 - ((v - aLo) / (aHi - aLo || 1)) * 70;
 
   const P = (f: (i: number) => number) =>
@@ -116,11 +166,16 @@ export function buildPaths(s: Streams, xMode: "dist" | "time") {
     Array.from({ length: n }, (_, i) => "L" + X(i).toFixed(1) + " " + aY(alt[i]).toFixed(1)).join("") +
     "L" + X1 + " " + Y1 + "Z";
 
-  const gridY = [290, 320, 350, 380].map((p) => {
-    const y = Y0 + ((p - PACE_MIN) / 130) * (Y1 - Y0);
+  // Four gridlines, shared by both axes: pace read on the left, heart rate on
+  // the right. Both are generated from their own derived range, so the labels
+  // always describe the line that is actually drawn.
+  const gridY = [0.2, 0.4, 0.6, 0.8].map((f) => {
+    const y = Y0 + f * (Y1 - Y0);
     return {
-      y: y.toFixed(1), ty: (y + 3).toFixed(1), pace: fmt(p),
-      hr: String(Math.round(185 - ((p - PACE_MIN) / 130) * 85)),
+      y: y.toFixed(1),
+      ty: (y + 3).toFixed(1),
+      pace: fmt(pace.min + f * (pace.max - pace.min)),
+      hr: String(Math.round(beats.max - f * (beats.max - beats.min))),
     };
   });
 
@@ -134,7 +189,7 @@ export function buildPaths(s: Streams, xMode: "dist" | "time") {
     });
   }
 
-  return { pacePath, hrPath, elevArea, gridY, gridX, X, pY, hY };
+  return { pacePath, hrPath, elevArea, gridY, gridX, X, pY, hY, paceAxis: pace };
 }
 
 export const PLANNED_PACE = 330; // 5:30/km
