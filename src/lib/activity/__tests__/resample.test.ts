@@ -33,7 +33,8 @@ describe("resampleForChart", () => {
   it("stays inside the point budget for a long run", () => {
     const s = resampleForChart(run(7200, 3, 150));
     expect(s).not.toBeNull();
-    expect(s!.n).toBeLessThanOrEqual(CHART_POINTS);
+    // CHART_POINTS buckets, plus the leading boundary sample.
+    expect(s!.n).toBeLessThanOrEqual(CHART_POINTS + 1);
     expect(s!.n).toBeGreaterThan(100);
   });
 
@@ -52,6 +53,22 @@ describe("resampleForChart", () => {
       expect(s.dist[i]).toBeGreaterThanOrEqual(s.dist[i - 1]);
       expect(s.time[i]).toBeGreaterThan(s.time[i - 1]);
     }
+  });
+
+  it("starts where the run started", () => {
+    // Without a leading sample the chart begins at the end of the first bucket
+    // and silently loses the distance covered inside it.
+    const raw = run(3600, 3, 150);
+    const s = resampleForChart(raw)!;
+    expect(s.dist[0]).toBe(raw.distance[0]);
+    expect(s.time[0]).toBe(raw.time[0]);
+  });
+
+  it("preserves the total distance the athlete covered", () => {
+    const raw = run(3600, 3, 150);
+    const s = resampleForChart(raw)!;
+    const total = raw.distance[raw.distance.length - 1] - raw.distance[0];
+    expect(s.dist[s.n - 1] - s.dist[0]).toBeCloseTo(total, 6);
   });
 
   it("reaches the end of the run", () => {
@@ -149,6 +166,38 @@ describe("paceAxisFor", () => {
       expect(axis.min).toBeLessThan(axis.max);
       expect(axis.min).toBeGreaterThanOrEqual(120);
       expect(axis.max).toBeLessThanOrEqual(900);
+    }
+  });
+});
+
+describe("moving time, counted before the samples are reduced", () => {
+  it("measures a stop at the resolution it happened at", () => {
+    // Two minutes standing still inside a fifty-minute run. Deciding this from
+    // ten-second buckets over-counted it by half a minute; counting at 1 Hz
+    // does not.
+    const s = resampleForChart(run(3000, (t) => (t >= 1200 && t < 1320 ? 0 : 3), 150))!;
+    const stopped = 3000 - s.moving.reduce((a, b) => a + b, 0);
+    expect(stopped).toBeGreaterThan(115);
+    expect(stopped).toBeLessThan(125);
+  });
+
+  it("counts a run with no stops as all moving", () => {
+    const s = resampleForChart(run(1800, 3, 150))!;
+    expect(s.moving.reduce((a, b) => a + b, 0)).toBeCloseTo(1799, 0);
+  });
+
+  it("attributes moving time to the bucket it happened in", () => {
+    // so that dragging a selection over the stop, and only over the stop,
+    // reports almost no moving time
+    const s = resampleForChart(run(3000, (t) => (t >= 1200 && t < 1320 ? 0 : 3), 150))!;
+    const during = s.moving.filter((_, i) => s.time[i] > 1200 && s.time[i] <= 1320);
+    expect(during.reduce((a, b) => a + b, 0)).toBeLessThan(10);
+  });
+
+  it("never reports more moving time than the clock allows", () => {
+    const s = resampleForChart(run(3600, (t) => (t % 300 < 40 ? 0 : 3), 150))!;
+    for (let i = 1; i < s.n; i++) {
+      expect(s.moving[i]).toBeLessThanOrEqual(s.time[i] - s.time[i - 1] + 0.001);
     }
   });
 });

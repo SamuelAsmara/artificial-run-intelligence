@@ -209,6 +209,11 @@ export interface IcuActivity {
   elapsed_time?: number;
   average_heartrate?: number | null;
   max_heartrate?: number | null;
+  calories?: number | null;
+  /** one foot per minute, as Garmin counts it */
+  average_cadence?: number | null;
+  average_watts?: number | null;
+  icu_average_watts?: number | null;
   name?: string;
 }
 
@@ -249,6 +254,11 @@ export interface ActivityImport {
   distance_m: number | null;
   duration_s: number | null;
   avg_hr: number | null;
+  max_hr: number | null;
+  calories: number | null;
+  /** steps per minute, both feet */
+  avg_cadence: number | null;
+  avg_power: number | null;
   started_at: string | null;
 }
 
@@ -261,6 +271,19 @@ export interface ActivityImport {
  * cost real fatigue, so excluding them understates load for a cross-training
  * athlete — a known limitation, not an oversight.
  */
+/**
+ * Average power, from whichever field this activity happens to carry.
+ *
+ * intervals.icu exposes the device's own figure as `average_watts` and its
+ * recomputed one as `icu_average_watts`, and which of the two is present
+ * depends on the source. Preferring the device's keeps our number matching what
+ * the athlete sees on their watch.
+ */
+function pickWatts(a: IcuActivity): number | null {
+  const w = a.average_watts ?? a.icu_average_watts;
+  return typeof w === "number" && w > 0 ? Math.round(w) : null;
+}
+
 export function toActivityImports(rows: IcuActivity[]): ActivityImport[] {
   const out: ActivityImport[] = [];
   const seen = new Set<string>();
@@ -284,6 +307,18 @@ export function toActivityImports(rows: IcuActivity[]): ActivityImport[] {
         typeof a.average_heartrate === "number" && a.average_heartrate > 0
           ? Math.round(a.average_heartrate)
           : null,
+      max_hr:
+        typeof a.max_heartrate === "number" && a.max_heartrate > 0
+          ? Math.round(a.max_heartrate)
+          : null,
+      calories:
+        typeof a.calories === "number" && a.calories > 0 ? Math.round(a.calories) : null,
+      // Garmin counts one foot; every number a coach quotes counts both.
+      avg_cadence:
+        typeof a.average_cadence === "number" && a.average_cadence > 0
+          ? Math.round(a.average_cadence * 2)
+          : null,
+      avg_power: pickWatts(a),
       started_at: a.start_date_local ? new Date(a.start_date_local).toISOString() : null,
     });
   }

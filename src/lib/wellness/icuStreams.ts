@@ -28,7 +28,7 @@ const BASE = "https://intervals.icu/api/v1";
 const authHeader = (apiKey: string) => "Basic " + btoa(`API_KEY:${apiKey}`);
 
 /** The stream types we ask for. Anything else is wasted bandwidth. */
-const STREAM_TYPES = "time,distance,heartrate,velocity_smooth,altitude";
+const STREAM_TYPES = "time,distance,heartrate,velocity_smooth,altitude,cadence,watts";
 
 interface RawStream {
   type?: string;
@@ -46,6 +46,23 @@ export interface ActivityStreams {
   velocity: (number | null)[];
   /** metres above sea level */
   altitude: (number | null)[];
+  /**
+   * Steps per minute, as the device reports it.
+   *
+   * Garmin counts one foot, so a real 166 spm arrives as 83. The importer
+   * doubles it rather than storing the raw value, because every number a coach
+   * or an athlete quotes is the two-footed one.
+   */
+  cadence: (number | null)[];
+  /**
+   * Watts, estimated by the watch from pace, grade and mass.
+   *
+   * Running power is modelled, not measured, and the models disagree between
+   * brands — the same run reads differently on Garmin, Stryd and Coros. The
+   * shape is informative (power rises on a climb at unchanged pace); the
+   * absolute number means nothing without a threshold to scale it against.
+   */
+  power: (number | null)[];
 }
 
 export async function fetchStreams(
@@ -90,6 +107,8 @@ export async function fetchStreams(
     heartrate: pick("heartrate"),
     velocity: pick("velocity_smooth"),
     altitude: pick("altitude"),
+    cadence: pick("cadence").map((v) => (typeof v === "number" ? v * 2 : v)),
+    power: pick("watts"),
   };
 }
 

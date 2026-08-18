@@ -17,6 +17,8 @@ import {
   type IcuConfig, type RecoverySignal,
 } from "@/lib/wellness/intervalsIcu";
 import { deriveFromStreams, fetchStreams } from "@/lib/wellness/icuStreams";
+import { resampleForChart } from "@/lib/activity/resample";
+import { driftOnset } from "@/lib/activity/metrics";
 
 type Client = SupabaseClient<Database>;
 
@@ -157,6 +159,7 @@ async function processStreams(
         pace_shape?: (number | null)[];
         best_efforts?: Record<string, number>;
         cardiac_drift_pct?: number | null;
+        drift_onset_m?: number | null;
       } = {
         // Stamped even when there is no stream, so an activity without one is
         // not retried on every future sync.
@@ -172,6 +175,10 @@ async function processStreams(
             pace_shape: derived.paceShape,
             best_efforts: derived.bestEfforts,
             cardiac_drift_pct: derived.cardiacDriftPct,
+            // Where drift began, not just how much of it there was. Derived
+            // from the same fetch, because the stream is discarded afterwards
+            // and asking again would mean another round trip per activity.
+            drift_onset_m: onsetFrom(streams),
           };
           detailed++;
         }
@@ -193,4 +200,10 @@ async function processStreams(
     .is("streams_fetched_at", null);
 
   return { detailed, remaining: count ?? 0 };
+}
+
+/** Drift onset for one stream, or null when the run cannot support the claim. */
+function onsetFrom(streams: Parameters<typeof deriveFromStreams>[0]): number | null {
+  const chart = resampleForChart(streams);
+  return chart ? driftOnset(chart) : null;
 }

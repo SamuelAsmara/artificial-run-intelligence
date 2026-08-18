@@ -19,6 +19,10 @@ import { fetchStreams } from "@/lib/wellness/icuStreams";
 import { resampleForChart } from "@/lib/activity/resample";
 import { formatDuration, formatPace } from "@/lib/format/pace";
 import { comparePlanned, type Comparison } from "@/lib/activity/plannedVsActual";
+import type { ChartStreams } from "@/lib/activity/resample";
+import { driftOnset, readableSegments, summarise, fastestSegment, type RangeSummary, type Segment } from "@/lib/activity/metrics";
+import { buildActivityNote, type ActivityNote } from "@/lib/activity/buildActivityNote";
+import { effectiveHrMax, estimateLthr, observedHrMax } from "@/lib/activity/zones";
 
 export interface ActivityListItem {
   id: string;
@@ -77,34 +81,46 @@ export async function getActivities(limit = 60): Promise<ActivityListItem[]> {
     });
 }
 
-/** The per-second arrays the detail chart draws from. */
-export interface DetailStreams {
-  n: number;
-  /** metres, cumulative */
-  dist: number[];
-  /** metres per second */
-  vel: number[];
-  hr: number[];
-  alt: number[];
-  /** seconds from the start */
-  time: number[];
-}
-
+/** What the analysis screen needs, beyond the stream itself. */
 export interface ActivityDetail {
   id: string;
+  /** the device's moving time, which every figure on the page defers to */
+  movingS: number;
+  /** "Aug 17" */
   dateLabel: string;
-  /** "Monday 17 August 2026" */
+  /** "Monday, 17.08.26" */
   fullDate: string;
-  distanceKm: number;
-  duration: string;
-  pace: string;
-  avgHr: number | null;
+  /** "7:00 PM" */
+  clock: string;
+  /** the planned session's type when there was one, else "Run" */
+  runType: string;
+
+  /** for the small identity block in the header */
+  athlete: { name: string; initials: string; avatarUrl: string | null; avatarPosition: string };
+
+  /** every figure the header trio reports, over the whole run */
+  summary: RangeSummary;
+  segments: Segment[];
+  /** index into `segments`, or -1 */
+  fastestIndex: number;
+
+  /** metres into the run where drift began, null when it never did */
+  driftOnsetM: number | null;
   cardiacDriftPct: number | null;
+
+  /** threshold and maximum heart rate, for the zone labels */
+  lthr: number | null;
+  hrMax: number | null;
+
   bestEfforts: Record<string, number> | null;
+  /** as the device reported it; never derived */
+  calories: number | null;
+
   /** null when the stream could not be fetched — the page still renders */
-  streams: DetailStreams | null;
+  streams: ChartStreams | null;
   /** why the chart is missing, when it is */
   streamsNote: string | null;
+
   /**
    * How this run compared with the session planned for that day.
    *
@@ -113,6 +129,9 @@ export interface ActivityDetail {
    * showing a target that was never set.
    */
   comparison: Comparison | null;
+
+  /** the coach card, built from the facts above */
+  note: ActivityNote | null;
 }
 
 export async function getActivityDetail(id: string): Promise<ActivityDetail | null> {
@@ -124,7 +143,7 @@ export async function getActivityDetail(id: string): Promise<ActivityDetail | nu
 
   const { data: row } = await supabase
     .from("activities")
-    .select("id, source, external_id, started_at, distance_m, duration_s, avg_hr, cardiac_drift_pct, best_efforts")
+    .select("id, source, external_id, started_at, distance_m, duration_s, avg_hr, max_hr, calories, avg_cadence, avg_power, cardiac_drift_pct, drift_onset_m, best_efforts")
     // The id alone would be enough for Postgres, but scoping to the user means
     // a guessed id returns nothing rather than relying on RLS as the only guard.
     .eq("user_id", user.id)
@@ -137,7 +156,7 @@ export async function getActivityDetail(id: string): Promise<ActivityDetail | nu
   const km = (row.distance_m ?? 0) / 1000;
   const seconds = row.duration_s ?? 0;
 
-  let streams: DetailStreams | null = null;
+  let streams: ChartStreams | null = null;
   let streamsNote: string | null = null;
 
   if (row.source === "intervals_icu") {
@@ -166,22 +185,167 @@ export async function getActivityDetail(id: string): Promise<ActivityDetail | nu
     { distanceM: row.distance_m ?? 0, durationS: seconds },
   );
 
+  const [physiology, plannedType] = await Promise.all([
+    heartRateAnchors(supabase, user.id),
+    plannedTypeFor(supabase, user.id, (row.started_at as string).slice(0, 10)),
+  ]);
+
+  // Everything the header reports comes from the stream when there is one, so
+  // the whole-run figures and the drag-selection figures take the same path.
+  // Without a stream we fall back to the stored summary, which is thinner but
+  // never contradicts it.
+  const segments = streams ? readableSegments(streams) : [];
+
+  /**
+   * Drift onset, computed from the stream this request already has.
+   *
+   * The sync stores it too, but only for activities whose stream it fetches —
+   * and it skips any it has already seen, so every run imported before this
+   * measurement existed carries a null forever. Deriving it here from a stream
+   * that is in memory anyway costs nothing and means the page is right on the
+   * first load rather than after a backfill nobody remembered to run.
+   */
+  const onset = streams ? driftOnset(streams) : row.drift_onset_m;
+  const summary: RangeSummary = streams
+    // `seconds` is intervals.icu's moving_time — Garmin's own number, stored at
+    // import. It is the authority; the stream only says how to divide it up.
+    ? summarise(streams, 0, streams.n - 1, seconds)
+    : {
+        distanceM: row.distance_m ?? 0,
+        // The stored duration is already moving time, as intervals.icu reports
+        // it, so without a stream there is nothing to subtract.
+        durationS: seconds,
+        elapsedS: seconds,
+        stoppedS: 0,
+        paceSec: km > 0 && seconds > 0 ? seconds / km : null,
+        gapSec: null,
+        speedKmh: seconds > 0 ? km / (seconds / 3600) : null,
+        climbM: 0,
+        avgHr: row.avg_hr,
+        maxHr: row.max_hr,
+        avgCadence: row.avg_cadence,
+        avgPower: row.avg_power,
+      };
+
+  const note = streams
+    ? buildActivityNote({
+        summary,
+        segments,
+        driftOnsetM: onset,
+        driftPct: row.cardiac_drift_pct,
+        comparison,
+      })
+    : null;
+
+  const name = physiology.fullName ?? "";
+
   return {
     id: row.id,
+    movingS: seconds,
     dateLabel: label(row.started_at),
     fullDate: started.toLocaleDateString(undefined, {
-      weekday: "long", day: "numeric", month: "long", year: "numeric",
+      weekday: "long", day: "2-digit", month: "2-digit", year: "2-digit",
     }),
-    distanceKm: km,
-    duration: formatDuration(seconds),
-    pace: km > 0 ? formatPace(seconds / km) : "—",
-    avgHr: row.avg_hr,
+    clock: started.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+    runType: plannedType ?? "Run",
+    athlete: {
+      name,
+      initials: initialsOf(name),
+      avatarUrl: physiology.avatarUrl,
+      avatarPosition: physiology.avatarPosition,
+    },
+    summary,
+    segments,
+    fastestIndex: fastestSegment(segments),
+    driftOnsetM: onset,
     cardiacDriftPct: row.cardiac_drift_pct,
+    lthr: physiology.lthr,
+    hrMax: physiology.hrMax,
+    calories: row.calories,
     bestEfforts: row.best_efforts,
     streams,
     streamsNote,
     comparison,
+    note,
   };
+}
+
+/** "Samuel Asmara" -> "SA". Falls back to a single letter, then to nothing. */
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "";
+  if (parts.length === 1) return parts[0][0].toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+/**
+ * The two heart rates every zone label depends on, plus the athlete's identity.
+ *
+ * Maximum comes from what has actually been recorded across their runs, not
+ * from 220 minus their age — see src/lib/activity/zones.ts for why that formula
+ * is not good enough to label a training zone with.
+ */
+async function heartRateAnchors(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+) {
+  const [{ data: profile }, { data: runs }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("full_name, avatar_url, avatar_position, age, hr_max, lthr")
+      .eq("id", userId)
+      .maybeSingle(),
+    supabase
+      .from("activities")
+      .select("max_hr")
+      .eq("user_id", userId)
+      .not("max_hr", "is", null)
+      .order("max_hr", { ascending: false })
+      .limit(40),
+  ]);
+
+  const observed = observedHrMax((runs ?? []).map((r) => r.max_hr));
+  const hrMax = effectiveHrMax({
+    stated: profile?.hr_max ?? null,
+    observed,
+    age: profile?.age ?? null,
+  });
+
+  return {
+    fullName: profile?.full_name ?? null,
+    avatarUrl: profile?.avatar_url ?? null,
+    avatarPosition: profile?.avatar_position ?? "50% 30%",
+    hrMax,
+    lthr: profile?.lthr ?? (hrMax ? estimateLthr(hrMax) : null),
+  };
+}
+
+/** The planned session's type for a date, used as the run's tag. */
+async function plannedTypeFor(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  date: string,
+): Promise<string | null> {
+  const { data: plan } = await supabase
+    .from("training_plans")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!plan) return null;
+
+  const { data: workout } = await supabase
+    .from("plan_workouts")
+    .select("workout_type")
+    .eq("plan_id", plan.id)
+    .eq("day_date", date)
+    .maybeSingle();
+  if (!workout || workout.workout_type === "rest") return null;
+
+  const t = workout.workout_type;
+  return t.charAt(0).toUpperCase() + t.slice(1) + " Run";
 }
 
 /**

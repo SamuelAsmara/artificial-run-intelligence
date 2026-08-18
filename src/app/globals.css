@@ -44,6 +44,13 @@
   /* brand (settings / connectivity) */
   --color-strava: #fc4c02;
 
+  /* Activity-chart bands, from the v2 handoff. Each band owns a colour so the
+     y-axis figures, the line and the tooltip row cannot drift apart. */
+  --color-pace: #6fcf87;
+  --color-hr: #e0566b;
+  --color-cad: #5a9bf5;
+  --color-pow: #e3b84e;
+
   /* typography */
   --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;

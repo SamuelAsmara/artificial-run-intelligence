@@ -33,6 +33,15 @@ export const CHART_POINTS = 300;
 /** Below this many metres per second nobody is running. */
 export const MOVING_MPS = 1.5;
 
+/**
+ * Below this the athlete is stopped, not merely slow.
+ *
+ * A far lower bar than `MOVING_MPS`, which asks "is this a running pace?" —
+ * a different question. This one asks "did they stop?", and a watch answers it
+ * close to zero.
+ */
+export const STOPPED_MPS = 0.8;
+
 /** Below this the heart-rate strap is not reading, it is dropping out. */
 export const MIN_HR = 60;
 
@@ -42,6 +51,8 @@ export interface RawStreams {
   velocity: (number | null)[];
   heartrate: (number | null)[];
   altitude: (number | null)[];
+  cadence?: (number | null)[];
+  power?: (number | null)[];
 }
 
 export interface ChartStreams {
@@ -54,6 +65,28 @@ export interface ChartStreams {
   vel: number[];
   hr: number[];
   alt: number[];
+  /**
+   * Seconds of actual movement represented by each bucket.
+   *
+   * Measured at full resolution before the samples were reduced, because that
+   * is the only place it can be measured honestly. Deciding whether a
+   * ten-second bucket "was moving" from its own average blurs the edge of every
+   * stop, and the error compounds: on a real run it read 2:33 of standing
+   * against the watch's 2:07, and no choice of threshold fixed it — the
+   * resolution was the problem, not the cutoff.
+   *
+   * Summing this over a range gives moving time for that range exactly, which
+   * is what the header needs when a selection is dragged.
+   */
+  moving: number[];
+  /** steps per minute, both feet */
+  cad: number[];
+  /** watts; all zero when the device supplied none */
+  pow: number[];
+  /** false when this run carries no power at all, so the band can be hidden */
+  hasPower: boolean;
+  /** likewise for cadence */
+  hasCadence: boolean;
 }
 
 const mean = (xs: number[]) => xs.reduce((s, x) => s + x, 0) / xs.length;
@@ -75,6 +108,38 @@ export function resampleForChart(raw: RawStreams, points = CHART_POINTS): ChartS
   const vel: number[] = [];
   const hr: number[] = [];
   const alt: number[] = [];
+  const cad: number[] = [];
+  const pow: number[] = [];
+  const moving: number[] = [];
+
+  /**
+   * A leading boundary sample, so the run starts where the stream starts.
+   *
+   * Each bucket reports the cumulative value at its *end*, which is right for
+   * every bucket but the first: without a point in front of it the chart begins
+   * at the end of bucket one and quietly loses the distance covered inside it.
+   * On a 10.01 km run that surfaced as 9.98 km in the header — small, wrong,
+   * and exactly the kind of number an athlete checks against their watch.
+   *
+   * Only needed when buckets actually span more than one sample. At size 1 the
+   * first bucket already reports the first sample, and prepending would
+   * duplicate it.
+   */
+  const leading = size > 1;
+  if (leading) {
+    dist.push(raw.distance[0]);
+    time.push(raw.time[0]);
+    // The derived channels are filled in from bucket one once it exists: this
+    // is a boundary, not a measurement, and taking the raw first sample would
+    // reintroduce the very per-second noise the bucketing exists to remove.
+    vel.push(0);
+    hr.push(NaN);
+    alt.push(NaN);
+    cad.push(NaN);
+    pow.push(0);
+    // Nothing happened before the first sample.
+    moving.push(0);
+  }
 
   for (let start = 0; start < n; start += size) {
     const end = Math.min(start + size, n);
@@ -83,12 +148,26 @@ export function resampleForChart(raw: RawStreams, points = CHART_POINTS): ChartS
     dist.push(raw.distance[end - 1]);
     time.push(raw.time[end - 1]);
 
+    // Moving time, counted sample by sample while the resolution still exists.
+    // Distance decides it, not the speed channel: intervals.icu serves
+    // `velocity_smooth`, and a smoothed speed does not fall to zero when the
+    // athlete does. Metres that did not increase cannot lie about standing.
+    let movedS = 0;
+    for (let i = Math.max(1, start); i < end; i++) {
+      const dt = raw.time[i] - raw.time[i - 1];
+      const dd = raw.distance[i] - raw.distance[i - 1];
+      if (dt > 0 && dd / dt >= STOPPED_MPS) movedS += dt;
+    }
+    moving.push(movedS);
+
     // Speed: a real average over the bucket, zeros included. A minute of
     // standing at a crossing *is* a minute at zero, and hiding it would make
     // the chart disagree with the moving time in the header.
     const speeds: number[] = [];
     const beats: number[] = [];
     const heights: number[] = [];
+    const steps: number[] = [];
+    const watts: number[] = [];
     for (let i = start; i < end; i++) {
       const v = raw.velocity[i];
       if (typeof v === "number" && Number.isFinite(v) && v >= 0) speeds.push(v);
@@ -96,6 +175,10 @@ export function resampleForChart(raw: RawStreams, points = CHART_POINTS): ChartS
       if (typeof b === "number" && Number.isFinite(b) && b >= MIN_HR) beats.push(b);
       const a = raw.altitude[i];
       if (typeof a === "number" && Number.isFinite(a)) heights.push(a);
+      const c = raw.cadence?.[i];
+      if (typeof c === "number" && Number.isFinite(c) && c > 0) steps.push(c);
+      const w = raw.power?.[i];
+      if (typeof w === "number" && Number.isFinite(w) && w >= 0) watts.push(w);
     }
 
     vel.push(speeds.length ? mean(speeds) : 0);
@@ -104,7 +187,22 @@ export function resampleForChart(raw: RawStreams, points = CHART_POINTS): ChartS
     // zero speed is a fact about the run.
     hr.push(beats.length ? mean(beats) : NaN);
     alt.push(heights.length ? mean(heights) : NaN);
+    cad.push(steps.length ? mean(steps) : NaN);
+    // Power genuinely reaching zero is meaningful (you stopped), so unlike
+    // heart rate it is averaged as recorded rather than carried across gaps.
+    pow.push(watts.length ? mean(watts) : 0);
   }
+
+  // Give the boundary sample the first bucket's character.
+  if (leading && vel.length > 1) {
+    vel[0] = vel[1];
+    hr[0] = hr[1];
+    alt[0] = alt[1];
+    cad[0] = cad[1];
+    pow[0] = pow[1];
+  }
+
+  const carriedCadence = carryGaps(cad);
 
   return {
     n: dist.length,
@@ -113,6 +211,13 @@ export function resampleForChart(raw: RawStreams, points = CHART_POINTS): ChartS
     vel,
     hr: carryGaps(hr),
     alt: carryGaps(alt),
+    cad: carriedCadence,
+    pow,
+    moving,
+    // A run with no power at all should not be given an empty band. The same
+    // for cadence: a treadmill entry or a manual log has neither.
+    hasPower: pow.some((w) => w > 0),
+    hasCadence: carriedCadence.some((c) => c > 0),
   };
 }
 
