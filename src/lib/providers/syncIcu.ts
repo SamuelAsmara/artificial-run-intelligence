@@ -129,8 +129,12 @@ export async function importFromIcu(
  * Pulls per-second data for activities that do not have it yet, derives the
  * pace shape, best efforts and cardiac drift, and stores those. The raw stream
  * is discarded — see src/lib/wellness/icuStreams.ts for why.
+ *
+ * Exported so a manual sync can run several batches back to back. A first
+ * import of a year's running leaves hundreds of activities without detail, and
+ * one batch of 25 per press is a backfill measured in days of pressing.
  */
-async function processStreams(
+export async function processStreams(
   supabase: Client,
   userId: string,
   cfg: IcuConfig,

@@ -1,0 +1,196 @@
+"use client";
+
+/**
+ * A coach's four templates — one per distance.
+ *
+ * The validation runs in the browser as the coach types, using exactly the
+ * function the server uses on save. Not for speed: so the error appears next to
+ * the field that caused it. "The phases add up to 15 weeks but the plan is 14"
+ * is useful while you are looking at the phases and useless a page later.
+ */
+
+import { useMemo, useState, useTransition } from "react";
+import { CoachNav } from "@/components/coach/CoachNav";
+import { saveCoachTemplate } from "@/actions/coach";
+import {
+  MAX_WEEKS, MIN_WEEKS, PHASES, RACE_LABEL, SESSIONS,
+  defaultTemplate, runningDays, validateTemplate, type CoachTemplate,
+} from "@/lib/coach/templates";
+import { COACH_COPY } from "@/lib/screens/coachHome";
+
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+export function CoachTemplatesView({ templates }: { templates: CoachTemplate[] }) {
+  const [drafts, setDrafts] = useState<CoachTemplate[]>(templates);
+  const [note, setNote] = useState<Record<string, string>>({});
+  const [pending, startTransition] = useTransition();
+
+  const patch = (raceType: string, next: Partial<CoachTemplate>) => {
+    setDrafts((ds) => ds.map((d) => (d.raceType === raceType ? { ...d, ...next } : d)));
+    setNote((n) => ({ ...n, [raceType]: "" }));
+  };
+
+  const errors = useMemo(
+    () => Object.fromEntries(drafts.map((d) => [d.raceType, validateTemplate(d)])),
+    [drafts],
+  );
+
+  const save = (t: CoachTemplate) => {
+    const invalid = validateTemplate(t);
+    if (invalid) {
+      setNote((n) => ({ ...n, [t.raceType]: invalid }));
+      return;
+    }
+    startTransition(async () => {
+      const result = await saveCoachTemplate(t);
+      setNote((n) => ({ ...n, [t.raceType]: result.ok ? COACH_COPY.templateSaved : result.error }));
+      if (result.ok) {
+        setDrafts((ds) => ds.map((d) => (d.raceType === t.raceType ? { ...d, isDefault: false } : d)));
+      }
+    });
+  };
+
+  const counter = (
+    label: string,
+    value: number,
+    onChange: (v: number) => void,
+    max = 30,
+  ) => (
+    <label key={label} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+      <span className="num" style={{ fontSize: "9.5px", letterSpacing: ".08em", textTransform: "uppercase", color: "var(--color-faint)" }}>
+        {label}
+      </span>
+      <input
+        className="field"
+        type="number"
+        min={0}
+        max={max}
+        value={String(value)}
+        onChange={(e) => onChange(Math.max(0, Math.min(max, Math.round(Number(e.target.value) || 0))))}
+        style={{ width: "68px", textAlign: "center" }}
+      />
+    </label>
+  );
+
+  return (
+    <div style={{ maxWidth: "1280px", marginInline: "auto", padding: "16px 24px 40px", display: "flex", flexDirection: "column", gap: "12px" }}>
+      <CoachNav active="templates" />
+
+      <div>
+        <h1 style={{ margin: 0, fontSize: "17px", fontWeight: 600 }}>{COACH_COPY.templatesTitle}</h1>
+        <p style={{ margin: "2px 0 0", fontSize: "12px", color: "var(--color-muted)", maxWidth: "62ch" }}>
+          {COACH_COPY.templatesSub}
+        </p>
+      </div>
+
+      {drafts.map((t) => {
+        const error = errors[t.raceType];
+        const message = note[t.raceType];
+        const phaseTotal = Object.values(t.phaseStructure).reduce((a, b) => a + b, 0);
+        const mixTotal = Object.values(t.weeklyMix).reduce((a, b) => a + b, 0);
+
+        return (
+          <section key={t.raceType} className="card" style={{ padding: "18px 22px", display: "flex", flexDirection: "column", gap: "14px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <h2 style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>{RACE_LABEL[t.raceType]}</h2>
+                <span
+                  className="tag"
+                  style={{
+                    background: t.isDefault ? "var(--color-elevated)" : "var(--color-accent-soft)",
+                    color: t.isDefault ? "var(--color-faint)" : "var(--color-accent)",
+                  }}
+                >
+                  {t.isDefault ? COACH_COPY.usingDefault : COACH_COPY.yourOwn}
+                </span>
+              </div>
+              <span className="num" style={{ fontSize: "11px", color: "var(--color-faint)" }}>
+                {runningDays(t.weeklyMix)} {COACH_COPY.tRunningDays}
+              </span>
+            </div>
+
+            <div style={{ display: "flex", gap: "14px", flexWrap: "wrap", alignItems: "flex-end" }}>
+              <label style={{ display: "flex", flexDirection: "column", gap: "4px", flex: "1 1 220px" }}>
+                <span className="num" style={{ fontSize: "9.5px", letterSpacing: ".08em", textTransform: "uppercase", color: "var(--color-faint)" }}>
+                  {COACH_COPY.tName}
+                </span>
+                <input
+                  className="field"
+                  value={t.name}
+                  onChange={(e) => patch(t.raceType, { name: e.target.value })}
+                  maxLength={60}
+                />
+              </label>
+              {counter(COACH_COPY.tWeeks, t.weeks, (v) => patch(t.raceType, { weeks: v }), MAX_WEEKS)}
+            </div>
+
+            <div>
+              <p className="num" style={{ margin: "0 0 6px", fontSize: "9.5px", letterSpacing: ".08em", textTransform: "uppercase", color: "var(--color-faint)" }}>
+                {COACH_COPY.tPhases} — {phaseTotal}/{t.weeks} weeks
+              </p>
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                {PHASES.map((ph) =>
+                  counter(cap(ph), t.phaseStructure[ph] ?? 0, (v) =>
+                    patch(t.raceType, { phaseStructure: { ...t.phaseStructure, [ph]: v } }),
+                    MAX_WEEKS,
+                  ),
+                )}
+              </div>
+            </div>
+
+            <div>
+              <p className="num" style={{ margin: "0 0 6px", fontSize: "9.5px", letterSpacing: ".08em", textTransform: "uppercase", color: "var(--color-faint)" }}>
+                {COACH_COPY.tMix} — {mixTotal}/7 days
+              </p>
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                {SESSIONS.map((se) =>
+                  counter(cap(se), t.weeklyMix[se] ?? 0, (v) =>
+                    patch(t.raceType, { weeklyMix: { ...t.weeklyMix, [se]: v } }),
+                    7,
+                  ),
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+              <button
+                className="btn btn-primary"
+                type="button"
+                onClick={() => save(t)}
+                disabled={pending || error !== null}
+              >
+                {pending ? COACH_COPY.saving : COACH_COPY.save}
+              </button>
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={() => {
+                  const d = defaultTemplate(t.raceType);
+                  patch(t.raceType, { name: d.name, weeks: d.weeks, phaseStructure: d.phaseStructure, weeklyMix: d.weeklyMix });
+                }}
+              >
+                {COACH_COPY.resetDefault}
+              </button>
+              <span
+                className="num"
+                style={{ fontSize: "11.5px", color: error ? "var(--color-negative)" : message === COACH_COPY.templateSaved ? "var(--color-positive)" : "var(--color-negative)" }}
+              >
+                {error ?? message ?? ""}
+              </span>
+            </div>
+          </section>
+        );
+      })}
+
+      <p className="num" style={{ margin: 0, fontSize: "10.5px", color: "var(--color-faint)", maxWidth: "70ch", lineHeight: 1.6 }}>
+        Editing a template changes future plans only. Regenerating a plan an athlete is already
+        running would discard weeks of their history, so their plan keeps the structure it was
+        built with and your edit reaches the next athlete to start.
+      </p>
+      <p className="num" style={{ margin: 0, fontSize: "10.5px", color: "var(--color-faint)" }}>
+        Between {MIN_WEEKS} and {MAX_WEEKS} weeks. Phases must total the plan length; the week must
+        total seven days and include a rest day and a long run.
+      </p>
+    </div>
+  );
+}

@@ -34,6 +34,8 @@
 import { useMemo, useState, useTransition } from "react";
 import { AvatarEditor } from "@/components/settings/AvatarEditor";
 import { AccountSecurity } from "@/components/settings/AccountSecurity";
+import { CoachLink } from "@/components/settings/CoachLink";
+import type { MyCoach } from "@/actions/coach";
 import { saveAthleteProfile, type AthleteProfileView } from "@/actions/profile";
 import {
   connectIntervalsIcu,
@@ -61,9 +63,11 @@ const DASH = "—";
 export function SettingsView({
   icuConnection = null,
   profile = null,
+  coach = null,
 }: {
   icuConnection?: ProviderConnectionView | null;
   profile?: AthleteProfileView | null;
+  coach?: MyCoach | null;
 } = {}) {
   return (
     <div style={{
@@ -92,6 +96,7 @@ export function SettingsView({
 
       <ProfileCard profile={profile} />
       <ConnectionsCard connection={icuConnection} />
+      <CoachLink coach={coach} />
 
       <section className="card" style={{ padding: "20px 24px" }}>
         <h2 style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>{copy.secTitle}</h2>
@@ -527,10 +532,20 @@ function IntervalsPanel({
     setNote("");
     startTransition(async () => {
       const result = await syncIntervalsIcu();
+      if (!result.ok) {
+        setNote(result.error);
+        return;
+      }
+      // The count that was missing: how many runs still have no per-second
+      // detail. Without it the button says "Synced" and the charts stay empty,
+      // which reads as a broken app rather than an unfinished backfill.
+      const { runs, nights, detailed, remaining } = result.data;
+      const parts = [`Synced ${runs} runs and ${nights} nights`];
+      if (detailed > 0) parts.push(`${detailed} runs analysed`);
       setNote(
-        result.ok
-          ? `Synced — ${result.data.runs} runs and ${result.data.nights} nights.`
-          : result.error,
+        remaining > 0
+          ? `${parts.join(" · ")} — ${remaining} still to analyse. Press Sync again to continue.`
+          : `${parts.join(" · ")}.`,
       );
     });
   };

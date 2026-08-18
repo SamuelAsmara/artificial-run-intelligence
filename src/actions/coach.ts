@@ -18,13 +18,13 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import type { RaceType } from "@/types/database.types";
+import type { RaceType, WorkoutType } from "@/types/database.types";
 import {
   defaultTemplate, validateTemplate, RACE_TYPES,
   type CoachTemplate,
 } from "@/lib/coach/templates";
 import {
-  rosterFlags, summariseRoster, weekBoard, weekDates,
+  flagsFor, rosterFlags, summariseRoster, weekBoard, weekDates,
   type AthleteRow, type BoardRow, type Flag, type PlannedSession,
   type RosterSummary, type RunRecord,
 } from "@/lib/coach/roster";
@@ -373,6 +373,242 @@ export async function saveCoachTemplate(t: CoachTemplate): Promise<Result<null>>
     { onConflict: "coach_id,race_type" },
   );
 
+  if (error) return { ok: false, error: `Could not save: ${error.message}` };
+
+  revalidatePath("/coach");
+  return { ok: true, data: null };
+}
+
+/* ------------------------------------------------------------------ */
+/* One athlete                                                         */
+/* ------------------------------------------------------------------ */
+
+export interface AthleteWorkout {
+  id: string;
+  /** ISO date */
+  date: string;
+  weekNumber: number;
+  workoutType: string;
+  plannedDistanceM: number | null;
+  plannedPace: string | null;
+  status: string;
+  /** metres actually run that day, when something was */
+  actualM: number | null;
+  /** seconds actually run that day */
+  actualS: number | null;
+}
+
+export interface AthleteRun {
+  id: string;
+  startedAt: string | null;
+  distanceM: number | null;
+  durationS: number | null;
+  avgHr: number | null;
+}
+
+export interface AthleteTrend {
+  /** ISO date */
+  date: string;
+  ctl: number | null;
+  atl: number | null;
+  tsb: number | null;
+  readiness: number | null;
+}
+
+export interface AthleteDetail {
+  athlete: AthleteRow;
+  email: string | null;
+  level: string | null;
+  age: number | null;
+  /** the six weeks of fitness/fatigue behind today */
+  trend: AthleteTrend[];
+  /** last week and the next three, so the coach can see and change what is coming */
+  workouts: AthleteWorkout[];
+  recentRuns: AthleteRun[];
+  flags: Flag[];
+  /** null when they have no active plan */
+  planId: string | null;
+  targetTime: string | null;
+}
+
+const shift = (iso: string, days: number) =>
+  new Date(Date.parse(iso) + days * 86_400_000).toISOString().slice(0, 10);
+
+/**
+ * Everything one athlete's page shows.
+ *
+ * The link is checked explicitly before anything is read. RLS would refuse the
+ * rows anyway, but an unlinked athlete should get "not your athlete" rather than
+ * a page of empty sections that reads like a bug.
+ */
+export async function getAthleteDetail(athleteId: string): Promise<AthleteDetail | null> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data: link } = await supabase
+    .from("coach_athletes")
+    .select("athlete_id")
+    .eq("coach_id", user.id)
+    .eq("athlete_id", athleteId)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (!link) return null;
+
+  const day = today();
+  const from = shift(day, -42);
+  const workoutsFrom = shift(day, -7);
+  const workoutsTo = shift(day, 21);
+
+  const [{ data: profile }, { data: snaps }, { data: race }, { data: plan }, { data: runs }] =
+    await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, full_name, email, avatar_url, running_level, age")
+        .eq("id", athleteId)
+        .maybeSingle(),
+      supabase
+        .from("readiness_snapshots")
+        .select("date, ctl, atl, tsb, acwr, readiness_score")
+        .eq("user_id", athleteId)
+        .gte("date", from)
+        .order("date", { ascending: true }),
+      supabase
+        .from("goal_races")
+        .select("race_type, race_date, target_time")
+        .eq("user_id", athleteId)
+        .eq("status", "active")
+        .order("race_date", { ascending: true })
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from("training_plans")
+        .select("id")
+        .eq("user_id", athleteId)
+        .eq("status", "active")
+        .maybeSingle(),
+      supabase
+        .from("activities")
+        .select("id, started_at, distance_m, duration_s, avg_hr")
+        .eq("user_id", athleteId)
+        .order("started_at", { ascending: false })
+        .limit(30),
+    ]);
+
+  const { data: workoutRows } = plan?.id
+    ? await supabase
+        .from("plan_workouts")
+        .select("id, week_number, day_date, workout_type, planned_distance, planned_pace, status")
+        .eq("plan_id", plan.id)
+        .gte("day_date", workoutsFrom)
+        .lte("day_date", workoutsTo)
+        .order("day_date", { ascending: true })
+    : { data: [] };
+
+  // What was actually run, by day, so a planned session can be shown against it.
+  const ranByDay = new Map<string, { m: number; s: number }>();
+  for (const r of runs ?? []) {
+    if (!r.started_at) continue;
+    const d = r.started_at.slice(0, 10);
+    const prev = ranByDay.get(d) ?? { m: 0, s: 0 };
+    ranByDay.set(d, { m: prev.m + (r.distance_m ?? 0), s: prev.s + (r.duration_s ?? 0) });
+  }
+
+  const latest = (snaps ?? []).length ? (snaps ?? [])[(snaps ?? []).length - 1] : null;
+  const lastRun = (runs ?? [])[0] ?? null;
+
+  const week = weekDates(day);
+  const missedThisWeek = (workoutRows ?? []).filter(
+    (w) =>
+      w.day_date >= week[0] &&
+      w.day_date < day &&
+      w.workout_type !== "rest" &&
+      !ranByDay.has(w.day_date),
+  ).length;
+
+  const athlete: AthleteRow = {
+    id: athleteId,
+    name: profile?.full_name || profile?.email || "Athlete",
+    avatarUrl: profile?.avatar_url ?? null,
+    readiness: latest?.readiness_score ?? null,
+    form: latest?.tsb ?? null,
+    loadRatio: latest?.acwr ?? null,
+    lastRunAt: lastRun?.started_at ?? null,
+    lastRunM: lastRun?.distance_m ?? null,
+    raceType: (race?.race_type as RaceType | undefined) ?? null,
+    raceDate: race?.race_date ?? null,
+    missedThisWeek,
+  };
+
+  return {
+    athlete,
+    email: profile?.email ?? null,
+    level: profile?.running_level ?? null,
+    age: profile?.age ?? null,
+    trend: (snaps ?? []).map((s) => ({
+      date: s.date,
+      ctl: s.ctl,
+      atl: s.atl,
+      tsb: s.tsb,
+      readiness: s.readiness_score,
+    })),
+    workouts: (workoutRows ?? []).map((w) => {
+      const ran = ranByDay.get(w.day_date) ?? null;
+      return {
+        id: w.id,
+        date: w.day_date,
+        weekNumber: w.week_number,
+        workoutType: w.workout_type,
+        plannedDistanceM: w.planned_distance,
+        plannedPace: w.planned_pace,
+        status: w.status,
+        actualM: ran?.m ?? null,
+        actualS: ran?.s ?? null,
+      };
+    }),
+    recentRuns: (runs ?? []).slice(0, 10).map((r) => ({
+      id: r.id,
+      startedAt: r.started_at,
+      distanceM: r.distance_m,
+      durationS: r.duration_s,
+      avgHr: r.avg_hr,
+    })),
+    flags: flagsFor(athlete, day),
+    planId: plan?.id ?? null,
+    targetTime: race?.target_time ?? null,
+  };
+}
+
+/**
+ * Changes one planned session.
+ *
+ * A coach adjusting a plan is the whole point of the coaching side, and it is
+ * also the one place where their edit collides with the automatic adjustment
+ * engine. For now the coach wins and the change is written straight through;
+ * the provenance model that would let the engine know not to touch a
+ * hand-edited session (`origin`, `locked_by`) is documented as the next step
+ * rather than half-built here.
+ */
+export async function updateWorkout(
+  workoutId: string,
+  patch: { workoutType?: WorkoutType; plannedDistanceM?: number | null; plannedPace?: string | null },
+): Promise<Result<null>> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "You need to be signed in." };
+
+  const fields: {
+    workout_type?: WorkoutType;
+    planned_distance?: number | null;
+    planned_pace?: string | null;
+  } = {};
+  if (patch.workoutType !== undefined) fields.workout_type = patch.workoutType;
+  if (patch.plannedDistanceM !== undefined) fields.planned_distance = patch.plannedDistanceM;
+  if (patch.plannedPace !== undefined) fields.planned_pace = patch.plannedPace;
+  if (Object.keys(fields).length === 0) return { ok: true, data: null };
+
+  const { error } = await supabase.from("plan_workouts").update(fields).eq("id", workoutId);
   if (error) return { ok: false, error: `Could not save: ${error.message}` };
 
   revalidatePath("/coach");

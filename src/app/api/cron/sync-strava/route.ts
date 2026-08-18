@@ -77,3 +77,6 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ syncedUsers, failedUsers });
 }
+
+/** Vercel Cron issues a GET; the work is identical. */
+export const GET = POST;

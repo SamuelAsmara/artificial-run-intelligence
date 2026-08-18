@@ -20,7 +20,16 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { icuConfigForCurrentUser } from "@/lib/providers/credentials";
-import { importFromIcu, type IcuImportResult } from "@/lib/providers/syncIcu";
+import { importFromIcu, processStreams, type IcuImportResult } from "@/lib/providers/syncIcu";
+
+/**
+ * How long a manual sync keeps fetching activity detail before reporting back.
+ *
+ * Short enough to stay well inside the platform's request timeout, long enough
+ * that a first backfill finishes in a handful of presses rather than a
+ * fortnight of them.
+ */
+const SYNC_BUDGET_MS = 20_000;
 import { recomputeForUser } from "@/lib/readiness/recompute";
 import {
   apiKeyHint,
@@ -250,7 +259,30 @@ export async function syncIntervalsIcu(): Promise<Result<IcuImportResult>> {
   if (!cfg) return { ok: false, error: "No intervals.icu connection yet." };
 
   try {
-    const imported = await importFromIcu(supabase, user.id, cfg);
+    const first = await importFromIcu(supabase, user.id, cfg);
+
+    // A first import leaves every activity without its per-second detail, and
+    // `processStreams` deliberately takes only a batch at a time so one request
+    // cannot make hundreds of round trips. That is right for the nightly job
+    // and wrong for somebody standing at the screen: they press Sync, are told
+    // it worked, and their charts are empty. So a manual press keeps going —
+    // bounded by wall clock rather than by batch count, because the limit that
+    // matters is the request timeout — and then reports exactly what is left.
+    let detailed = first.detailed;
+    let remaining = first.remaining;
+    const startedAt = Date.now();
+
+    while (remaining > 0 && Date.now() - startedAt < SYNC_BUDGET_MS) {
+      const more = await processStreams(supabase, user.id, cfg);
+      detailed += more.detailed;
+      remaining = more.remaining;
+      // Nothing moved: every activity left has no stream to fetch. Spinning
+      // would burn the budget without changing the number.
+      if (more.detailed === 0) break;
+    }
+
+    const imported = { ...first, detailed, remaining };
+
     // Same call the nightly job makes, so a manual press and a scheduled run
     // cannot produce different results.
     await recomputeForUser(supabase, user.id, 120);
@@ -265,6 +297,11 @@ export async function syncIntervalsIcu(): Promise<Result<IcuImportResult>> {
       .eq("user_id", user.id)
       .eq("provider", "intervals_icu");
 
+    // Settings too, and its absence was a real bug: the row it renders is
+    // "Last checked", the sync had just written that timestamp, and the cached
+    // page kept saying "Never". A sync that reports success while the screen
+    // insists nothing happened is worse than one that fails loudly.
+    revalidatePath("/settings");
     revalidatePath("/dashboard");
     revalidatePath("/activities");
     return { ok: true, data: imported };
