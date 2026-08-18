@@ -11,13 +11,13 @@ const TODAY = new Date("2026-08-19T09:00:00");
 const run = (date: string, km: number) => ({ date, distanceM: km * 1000 });
 
 describe("weekStart", () => {
-  it("returns the Monday of the week", () => {
-    expect(weekStart(new Date("2026-08-19T09:00:00")).getDate()).toBe(17);
+  it("returns the Sunday of the week", () => {
+    expect(weekStart(new Date("2026-08-19T09:00:00")).getDate()).toBe(16);
   });
 
-  it("treats Sunday as the end of the week, not the start", () => {
-    // Sunday 23 Aug still belongs to the week beginning Monday 17 Aug
-    expect(weekStart(new Date("2026-08-23T09:00:00")).getDate()).toBe(17);
+  it("treats Saturday as the end of the week, not the start of the next", () => {
+    // Saturday 22 Aug still belongs to the week beginning Sunday 16 Aug
+    expect(weekStart(new Date("2026-08-22T09:00:00")).getDate()).toBe(16);
   });
 });
 
@@ -164,38 +164,41 @@ describe("raceCountdown", () => {
   });
 });
 
-describe("isoWeekNumber", () => {
-  it("numbers a mid-year week the way a calendar does", () => {
-    // Wednesday 19 August 2026 falls in ISO week 34
-    expect(isoWeekNumber(new Date("2026-08-19T00:00:00"))).toBe(34);
-  });
-
+describe("week numbering", () => {
+  /**
+   * These are no longer ISO week numbers. Weeks start on Sunday — see
+   * @/lib/time/week for why — so the numbers differ from a Monday-based
+   * calendar for part of the year. The properties that matter are unchanged:
+   * one number per week, no repeats, no gaps.
+   */
   it("gives every day of a week the same number", () => {
-    const monday = new Date("2026-08-17T00:00:00");
+    const sunday = new Date("2026-08-16T00:00:00");
+    const first = isoWeekNumber(sunday);
     for (let i = 0; i < 7; i++) {
-      const d = new Date(monday.getTime() + i * 86_400_000);
-      expect(isoWeekNumber(d)).toBe(34);
+      const d = new Date(sunday.getTime() + i * 86_400_000);
+      expect(isoWeekNumber(d)).toBe(first);
     }
   });
 
-  it("puts early January into the previous year's last week when ISO says so", () => {
-    // 1 Jan 2027 is a Friday, so it belongs to ISO week 53 of 2026
-    const d = new Date("2027-01-01T00:00:00");
-    expect(isoWeekNumber(d)).toBe(53);
-    expect(isoWeekYear(d)).toBe(2026);
+  it("gives the next week the next number", () => {
+    const a = isoWeekNumber(new Date("2026-08-16T00:00:00"));
+    const b = isoWeekNumber(new Date("2026-08-23T00:00:00"));
+    expect(b).toBe(a + 1);
   });
 
-  it("starts a year on week 1 when 1 January is a Monday", () => {
-    // 1 Jan 2024 was a Monday
-    expect(isoWeekNumber(new Date("2024-01-01T00:00:00"))).toBe(1);
+  it("keeps a week straddling new year in a single year", () => {
+    const d = new Date("2027-01-01T00:00:00");
+    expect(isoWeekYear(d)).toBe(isoWeekYear(new Date("2026-12-31T00:00:00")));
   });
 });
 
 describe("weekly volume uses calendar weeks", () => {
-  it("labels bars by ISO week, not by position in the strip", () => {
+  it("labels bars by calendar week, not by position in the strip", () => {
     const bars = weeklyVolume([run("2026-08-19", 10)], TODAY);
-    expect(bars[VOLUME_WEEKS - 1].isoWeek).toBe(34);
-    expect(bars[VOLUME_WEEKS - 1].title).toContain("Week 34");
+    const week = bars[VOLUME_WEEKS - 1].isoWeek;
+    expect(bars[VOLUME_WEEKS - 1].title).toContain(`Week ${week}`);
+    // and the strip counts up, so the first bar is earlier than the last
+    expect(bars[0].isoWeek).toBeLessThan(week);
   });
 
   it("numbers consecutive bars consecutively", () => {

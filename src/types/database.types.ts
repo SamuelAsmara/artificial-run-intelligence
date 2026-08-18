@@ -34,9 +34,9 @@ export interface Database {
   public: {
     Tables: {
       profiles: {
-        Row: { id: string; email: string; role: Role; created_at: string; full_name: string | null; age: number | null; sex: Sex | null; height_cm: number | null; weight_kg: number | null; running_level: RunningLevel | null; bio: string | null; hr_max: number | null; lthr: number | null; threshold_speed_mps: number | null; thresholds_measured: boolean; thresholds_updated_at: string | null; avatar_url: string | null; avatar_position: string };
-        Insert: { id: string; email: string; role?: Role; created_at?: string; full_name?: string | null; age?: number | null; sex?: Sex | null; height_cm?: number | null; weight_kg?: number | null; running_level?: RunningLevel | null; bio?: string | null; hr_max?: number | null; lthr?: number | null; threshold_speed_mps?: number | null; thresholds_measured?: boolean; thresholds_updated_at?: string | null; avatar_url?: string | null; avatar_position?: string };
-        Update: Upd<{ id: string; email: string; role: Role; created_at: string; full_name: string | null; age: number | null; sex: Sex | null; height_cm: number | null; weight_kg: number | null; running_level: RunningLevel | null; bio: string | null; hr_max: number | null; lthr: number | null; threshold_speed_mps: number | null; thresholds_measured: boolean; thresholds_updated_at: string | null; avatar_url: string | null; avatar_position: string }>;
+        Row: { id: string; email: string; role: Role; created_at: string; full_name: string | null; age: number | null; sex: Sex | null; height_cm: number | null; weight_kg: number | null; running_level: RunningLevel | null; bio: string | null; hr_max: number | null; lthr: number | null; threshold_speed_mps: number | null; thresholds_measured: boolean; thresholds_updated_at: string | null; avatar_url: string | null; avatar_position: string; coach_code: string | null };
+        Insert: { id: string; email: string; role?: Role; created_at?: string; full_name?: string | null; age?: number | null; sex?: Sex | null; height_cm?: number | null; weight_kg?: number | null; running_level?: RunningLevel | null; bio?: string | null; hr_max?: number | null; lthr?: number | null; threshold_speed_mps?: number | null; thresholds_measured?: boolean; thresholds_updated_at?: string | null; avatar_url?: string | null; avatar_position?: string; coach_code?: string | null };
+        Update: Upd<{ id: string; email: string; role: Role; created_at: string; full_name: string | null; age: number | null; sex: Sex | null; height_cm: number | null; weight_kg: number | null; running_level: RunningLevel | null; bio: string | null; hr_max: number | null; lthr: number | null; threshold_speed_mps: number | null; thresholds_measured: boolean; thresholds_updated_at: string | null; avatar_url: string | null; avatar_position: string; coach_code: string | null }>;
         Relationships: [];
       };
       coach_athletes: {
@@ -64,9 +64,9 @@ export interface Database {
         Relationships: [];
       };
       plan_templates: {
-        Row: { id: string; race_type: RaceType; level: Level; weeks: number; phase_structure: Record<string, number>; weekly_mix: Record<string, number> };
-        Insert: { id?: string; race_type: RaceType; level: Level; weeks: number; phase_structure: Record<string, number>; weekly_mix: Record<string, number> };
-        Update: Upd<{ id: string; race_type: RaceType; level: Level; weeks: number; phase_structure: Record<string, number>; weekly_mix: Record<string, number> }>;
+        Row: { id: string; race_type: RaceType; level: Level; weeks: number; phase_structure: Record<string, number>; weekly_mix: Record<string, number>; coach_id: string | null; name: string | null; updated_at: string };
+        Insert: { id?: string; race_type: RaceType; level: Level; weeks: number; phase_structure: Record<string, number>; weekly_mix: Record<string, number>; coach_id?: string | null; name?: string | null; updated_at?: string };
+        Update: Upd<{ id: string; race_type: RaceType; level: Level; weeks: number; phase_structure: Record<string, number>; weekly_mix: Record<string, number>; coach_id: string | null; name: string | null; updated_at: string }>;
         Relationships: [];
       };
       goal_races: {
@@ -119,6 +119,21 @@ export interface Database {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      /** Issues this coach a join code, or returns the one they already have. */
+      my_coach_code: {
+        Args: Record<string, never>;
+        Returns: string;
+      };
+      /**
+       * Redeems a coach's join code. SECURITY DEFINER, so the athlete can find
+       * a coach by code without being able to read profiles — see migration
+       * 0008 for why that matters.
+       */
+      join_coach: {
+        Args: { code: string };
+        Returns: { coach_id: string; coach_name: string }[];
+      };
+    };
   };
 }

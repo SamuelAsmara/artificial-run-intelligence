@@ -33,9 +33,10 @@ const COPY = {
   aiTag: "AI Coach",
   readinessCaption: "Readiness · needs 7 days of data",
   narrative:
-    "Welcome! I don’t know anything about your running yet. Connect Strava or " +
-    "add your first run, then build a plan — or join a coach’s plan with a code.",
-  ctaConnect: "Connect Strava",
+    "Welcome! I don’t know anything about your running yet. Connect intervals.icu " +
+    "and ARI will read your runs, your sleep and your heart-rate variability — " +
+    "then build you a plan around them.",
+  ctaConnect: "Connect intervals.icu",
   ctaBuild: "Build my training plan",
   noData: "No data yet",
   chartTitle: "Fitness · Fatigue · Form will appear here",

@@ -9,6 +9,7 @@
  * Deliberately free of database calls so it can be tested.
  */
 
+import { weekNumber, weekStart, weekYear } from "@/lib/time/week";
 import {
   calendarDotColor, volumeBarAppearance, volumeBarHeight, volumeBarTitle,
   type DayState, type WeekPosition,
@@ -30,24 +31,17 @@ const iso = (d: Date) => d.toISOString().slice(0, 10);
  * January — a year can start mid-week, and the naive version puts two different
  * dates in the same numbered week.
  */
-export function isoWeekNumber(d: Date): number {
-  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  const dayNum = (t.getUTCDay() + 6) % 7; // Monday = 0
-  t.setUTCDate(t.getUTCDate() - dayNum + 3); // the Thursday of this week
-
-  const firstThursday = new Date(Date.UTC(t.getUTCFullYear(), 0, 4));
-  const firstDayNum = (firstThursday.getUTCDay() + 6) % 7;
-  firstThursday.setUTCDate(firstThursday.getUTCDate() - firstDayNum + 3);
-
-  return 1 + Math.round((t.getTime() - firstThursday.getTime()) / (7 * DAY));
-}
-
-/** The year an ISO week belongs to, which is not always the calendar year. */
-export function isoWeekYear(d: Date): number {
-  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7) + 3);
-  return t.getUTCFullYear();
-}
+/**
+ * Week numbering, from the shared definition in `@/lib/time/week`.
+ *
+ * Re-exported under the old names so callers do not have to care, but note the
+ * change of meaning: these are no longer ISO 8601 week numbers. Weeks now start
+ * on Sunday because that is where our athletes' week starts, and ISO's numbers
+ * are Monday-based by definition. See the note at the top of `time/week.ts`.
+ */
+export const isoWeekNumber = weekNumber;
+export const isoWeekYear = weekYear;
+export { weekStart };
 
 export interface RunRow {
   /** ISO date, YYYY-MM-DD */
@@ -84,14 +78,6 @@ export interface VolumeBar {
   interrupted: boolean;
 }
 
-/** Monday of the week containing `d`. Weeks start Monday, as the plan does. */
-export function weekStart(d: Date): Date {
-  const out = new Date(d);
-  const shift = (out.getDay() + 6) % 7;
-  out.setDate(out.getDate() - shift);
-  out.setHours(0, 0, 0, 0);
-  return out;
-}
 
 /**
  * The last twelve weeks of running, oldest first.
