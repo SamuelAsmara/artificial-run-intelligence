@@ -5,8 +5,11 @@ import type { DailyLoad } from "../acwr";
 // מסמך אפיון בדיקות §1: adjustPlan — מוריד עצימות שבוע קדימה כאשר ACWR
 // מחושב מעל 1.5; ומזיז את שבוע הבנייה כשיותר מאימון אחד פוספס.
 
+/** תאריך קבוע — כך שהטסט לא נשבר מעצמו כשעובר הזמן. */
+const FIXED_TODAY = "2026-08-06";
+
 function highLoadDailyLoads(): DailyLoad[] {
-  const asOf = new Date("2026-08-06");
+  const asOf = new Date(FIXED_TODAY);
   const loads: DailyLoad[] = [];
   for (let i = 0; i < 28; i++) {
     const d = new Date(asOf);
@@ -25,7 +28,7 @@ const plannedWorkout: WorkoutForAdjustment = {
 
 describe("decideAdjustments", () => {
   it("מוריד עצימות כאשר ACWR מחושב מעל 1.5", () => {
-    const decisions = decideAdjustments([plannedWorkout], highLoadDailyLoads(), 0);
+    const decisions = decideAdjustments([plannedWorkout], highLoadDailyLoads(), 0, new Date(FIXED_TODAY));
     expect(decisions[0].action).toBe("reduce_intensity");
     expect(decisions[0].reductionFactor).toBeLessThan(1);
   });
@@ -50,13 +53,13 @@ describe("decideAdjustments", () => {
   });
 
   it("לא משנה כלום כשהעומס יציב ואין פספוסים", () => {
-    const asOf = new Date("2026-08-06");
+    const asOf = new Date(FIXED_TODAY);
     const stableLoads: DailyLoad[] = Array.from({ length: 28 }, (_, i) => {
       const d = new Date(asOf);
       d.setDate(d.getDate() - i);
       return { date: d.toISOString().slice(0, 10), load: 1000 };
     });
-    const decisions = decideAdjustments([plannedWorkout], stableLoads, 0);
+    const decisions = decideAdjustments([plannedWorkout], stableLoads, 0, new Date(FIXED_TODAY));
     expect(decisions[0].action).toBe("none");
   });
 });
