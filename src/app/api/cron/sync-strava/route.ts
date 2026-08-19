@@ -5,6 +5,22 @@ import { listRecentActivities, refreshStravaToken } from "@/lib/strava/api";
 import { runPlanAdjustment } from "@/lib/planning/runAdjustment";
 
 /**
+ * ⚠️ NO LONGER SCHEDULED — removed from `vercel.json`, not deleted.
+ *
+ * Nothing in the interface starts the Strava OAuth flow: the Strava tile on
+ * Settings routes to the intervals.icu panel, because intervals.icu is the
+ * aggregator every device (Garmin, Polar, Coros, Strava itself) already reaches
+ * ARI through. So `strava_connections` is never written, and this job iterated
+ * an empty list at 03:30 every night while holding one of the two cron slots a
+ * Hobby project gets.
+ *
+ * The route and its OAuth callback stay: they work, and they are the starting
+ * point if a direct Strava application is ever registered. Re-add the entry to
+ * `vercel.json` on that day. (The reason lives here rather than in that file
+ * because `vercel.json` is schema-validated and rejects any key it does not
+ * recognise — including a comment — which is what broke the deploy that first
+ * tried to explain this there.)
+ *
  * POST /api/cron/sync-strava — מסמך ארכיטקטורה §5-6, מסמך סקייל §1,7.
  * מופעל ע"י Vercel Cron. מוגן בסוד CRON_SECRET (מסמך אבטחה §6).
  *

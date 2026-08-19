@@ -1,14 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "_note": [
-    "The Strava cron was removed, not disabled.",
-    "Nothing in the interface starts the Strava OAuth flow — the Strava tile on Settings",
-    "routes to intervals.icu, which is the aggregator every device already reaches ARI",
-    "through. So `strava_connections` is never written, and this job iterated an empty",
-    "list at 03:30 every night while occupying one of two cron slots on the Hobby plan.",
-    "The route and its callback are left in place: they work, and they are the starting",
-    "point if a direct Strava app is ever registered."
-  ],
   "crons": [
     {
       "path": "/api/cron/sync-intervals",
