@@ -27,6 +27,23 @@ const iso = (d: Date) => d.toISOString().slice(0, 10);
 export const BACKFILL_DAYS = 400;
 
 /**
+ * Which version of the stream derivation this build implements.
+ *
+ * The four derived columns are a cache of a pure function over a stream we no
+ * longer keep, so when the function changes the cache is silently wrong and
+ * nothing re-derives it — the sync skips anything already stamped
+ * `streams_fetched_at`. Raising this number is how a maths change reaches data
+ * that was imported before it.
+ *
+ *   1 — original
+ *   2 — bestEfforts measures its windows on moving time rather than elapsed,
+ *       so a stop inside a fast stretch no longer counts against the effort
+ *
+ * See migration 0010.
+ */
+export const DERIVATION_VERSION = 2;
+
+/**
  * Activity streams processed per run.
  *
  * Each is a separate request to intervals.icu, so a first backfill of a year's
@@ -139,12 +156,13 @@ export async function processStreams(
   userId: string,
   cfg: IcuConfig,
 ): Promise<{ detailed: number; remaining: number }> {
+  // Never derived, or derived by an older version of the maths.
   const { data: pending } = await supabase
     .from("activities")
     .select("id, external_id")
     .eq("user_id", userId)
     .eq("source", "intervals_icu")
-    .is("streams_fetched_at", null)
+    .lt("streams_derived_version", DERIVATION_VERSION)
     .order("started_at", { ascending: false })
     .limit(STREAM_BATCH);
 
@@ -160,6 +178,7 @@ export async function processStreams(
 
       let update: {
         streams_fetched_at: string;
+        streams_derived_version: number;
         pace_shape?: (number | null)[];
         best_efforts?: Record<string, number>;
         cardiac_drift_pct?: number | null;
@@ -168,6 +187,7 @@ export async function processStreams(
         // Stamped even when there is no stream, so an activity without one is
         // not retried on every future sync.
         streams_fetched_at: new Date().toISOString(),
+        streams_derived_version: DERIVATION_VERSION,
       };
 
       try {
@@ -201,7 +221,7 @@ export async function processStreams(
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
     .eq("source", "intervals_icu")
-    .is("streams_fetched_at", null);
+    .lt("streams_derived_version", DERIVATION_VERSION);
 
   return { detailed, remaining: count ?? 0 };
 }

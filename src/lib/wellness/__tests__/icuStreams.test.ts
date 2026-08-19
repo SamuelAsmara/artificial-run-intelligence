@@ -156,3 +156,60 @@ describe("deriveFromStreams", () => {
     for (const v of Object.values(d.bestEfforts)) expect(Number.isFinite(v)).toBe(true);
   });
 });
+
+describe("bestEfforts uses moving time", () => {
+  /**
+   * Builds a run with an explicit stop in the middle: `stopS` seconds during
+   * which the clock advances and the distance does not.
+   */
+  function runWithStop(secs: number, mps: number, stopAt: number, stopS: number): ActivityStreams {
+    const time: number[] = [];
+    const distance: number[] = [];
+    const velocity: (number | null)[] = [];
+    let d = 0;
+    let t = 0;
+    for (let i = 0; i < secs; i++) {
+      if (i === stopAt) {
+        for (let s = 0; s < stopS; s++) {
+          time.push(t++); distance.push(d); velocity.push(0);
+        }
+      }
+      time.push(t++); distance.push(d); velocity.push(mps);
+      d += mps;
+    }
+    const nulls = time.map(() => null);
+    return { time, distance, velocity, heartrate: nulls, altitude: nulls, cadence: nulls, power: nulls };
+  }
+
+  it("does not charge a red light against a personal best", () => {
+    // 12 km at 5:00/km, with a two-minute stop in the middle.
+    const clean = runWithStop(3600, 1000 / 300, 0, 0);
+    const stopped = runWithStop(3600, 1000 / 300, 1800, 120);
+
+    const a = bestEfforts(clean)["10k"];
+    const b = bestEfforts(stopped)["10k"];
+
+    expect(a).toBeDefined();
+    expect(b).toBeDefined();
+    // The stop must not appear in the effort at all.
+    expect(Math.abs((b as number) - (a as number))).toBeLessThan(5);
+  });
+
+  /**
+   * The case that started this: a faster run with more stops was reported as
+   * the slower personal best, because the window was measured on the wall clock.
+   */
+  it("ranks the genuinely faster run ahead of the slower one", () => {
+    const fasterWithStops = runWithStop(3000, 1000 / 295, 1500, 120);
+    const slowerWithout = runWithStop(3000, 1000 / 299, 0, 0);
+
+    const fast = bestEfforts(fasterWithStops)["10k"] as number;
+    const slow = bestEfforts(slowerWithout)["10k"] as number;
+
+    expect(fast).toBeLessThan(slow);
+  });
+
+  it("still refuses a distance the run never covered", () => {
+    expect(bestEfforts(runWithStop(600, 3, 0, 0)).marathon).toBeUndefined();
+  });
+});

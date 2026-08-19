@@ -651,8 +651,26 @@ export async function updateWorkout(
     if (!link) return { ok: false, error: "That session no longer exists." };
   }
 
-  const { error } = await supabase.from("plan_workouts").update(fields).eq("id", workoutId);
+  /*
+   * `select()` on the update, so a row that RLS silently declined is not
+   * reported as saved.
+   *
+   * Postgres does not raise when a policy excludes a row from an UPDATE — the
+   * statement simply matches nothing and returns success. Before migration 0009
+   * there was no coach UPDATE policy on `plan_workouts` at all, so every edit a
+   * coach made came back `error === null`, showed "Saved", and changed nothing.
+   * Asking for the changed rows back turns that silence into an answer.
+   */
+  const { data: changed, error } = await supabase
+    .from("plan_workouts")
+    .update(fields)
+    .eq("id", workoutId)
+    .select("id");
+
   if (error) return { ok: false, error: `Could not save: ${error.message}` };
+  if (!changed || changed.length === 0) {
+    return { ok: false, error: "That change was refused — you may not have permission to edit this session." };
+  }
 
   revalidatePath("/coach");
   return { ok: true, data: null };

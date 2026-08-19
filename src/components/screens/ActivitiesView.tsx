@@ -64,16 +64,32 @@ export function ActivitiesView({ data }: { data?: { acts: Act[]; weekKm: number[
   }));
   const volLabels = [{ t: "W1" }, { t: "W2" }, { t: "W3" }, { t: "W4 · so far" }];
 
-  /* pace trend — lower is faster, so the y axis is not inverted here:
-     the chart plots seconds/km directly and the caption says "faster ↑". */
-  const pMin = 320, pMax = 344, X0 = 34, X1 = 536, Y0 = 10, Y1 = 82;
-  const px = (i: number) => X0 + (i / (wp.length - 1)) * (X1 - X0);
-  const py = (v: number) => Y0 + ((v - pMin) / (pMax - pMin)) * (Y1 - Y0);
+  /*
+   * Pace trend — lower is faster, so the y axis is not inverted here: the chart
+   * plots seconds/km directly and the caption says "faster ↑".
+   *
+   * The range used to be the constants 320 and 344 — the prototype athlete's
+   * easy-run band. A real athlete running 4:55/km sits at 295, well off the top
+   * of a 320–344 window, so every point clipped to the edge and the line came
+   * out as a jagged block. The range is now read from the data with a little
+   * padding, and clamped so one bad point cannot flatten the rest.
+   */
+  const pLo = Math.min(...wp), pHi = Math.max(...wp);
+  const pPad = Math.max(6, (pHi - pLo) * 0.25);
+  const pMin = Math.floor((pLo - pPad) / 5) * 5;
+  const pMax = Math.ceil((pHi + pPad) / 5) * 5;
+  const X0 = 34, X1 = 536, Y0 = 10, Y1 = 82;
+  const px = (i: number) => X0 + (wp.length > 1 ? i / (wp.length - 1) : 0.5) * (X1 - X0);
+  const py = (v: number) => {
+    const t = (v - pMin) / (pMax - pMin || 1);
+    return Y0 + Math.max(0, Math.min(1, t)) * (Y1 - Y0);
+  };
   const pacePath = wp.map((v, i) => (i ? "L" : "M") + px(i).toFixed(1) + " " + py(v).toFixed(1)).join("");
   const paceArea = pacePath + "L" + X1 + " " + Y1 + "L" + X0 + " " + Y1 + "Z";
   const paceDots = wp.map((v, i) => ({ x: px(i).toFixed(1), y: py(v).toFixed(1) }));
-  const paceGrid = [325, 340].map((v) => ({
-    y: py(v).toFixed(1), ty: (py(v) + 3).toFixed(1), label: fmtPace(v),
+  // Two gridlines inside the range we actually drew, rather than 325 and 340.
+  const paceGrid = [pMin + (pMax - pMin) / 3, pMin + ((pMax - pMin) * 2) / 3].map((v) => ({
+    y: py(v).toFixed(1), ty: (py(v) + 3).toFixed(1), label: fmtPace(Math.round(v)),
   }));
 
   return (

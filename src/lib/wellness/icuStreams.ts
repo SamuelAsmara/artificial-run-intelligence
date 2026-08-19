@@ -156,6 +156,15 @@ export function paceShape(streams: ActivityStreams, points = SPARK_POINTS): (num
 /* 2. best efforts                                                     */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Below this, between two samples, the athlete had stopped.
+ *
+ * The same threshold the chart uses — see `STOPPED_MPS` in lib/activity/resample.
+ * Repeated rather than imported to keep this module free of dependencies on the
+ * rendering layer; if one changes, change both.
+ */
+const STOPPED_MPS = 0.8;
+
 /** Distances we look for a personal best over, in metres. */
 export const PR_DISTANCES: Record<string, number> = {
   "1k": 1_000,
@@ -168,16 +177,53 @@ export const PR_DISTANCES: Record<string, number> = {
 export type BestEfforts = Record<string, number>;
 
 /**
+ * Cumulative *moving* seconds at each sample.
+ *
+ * Stopped time is excluded on the same rule the chart uses — below
+ * `STOPPED_MPS` between two samples is a stop, not slow running.
+ */
+function movingClock(distance: number[], time: number[], n: number): number[] {
+  const clock = new Array<number>(n);
+  clock[0] = 0;
+  for (let i = 1; i < n; i++) {
+    const dt = time[i] - time[i - 1];
+    const dd = distance[i] - distance[i - 1];
+    clock[i] = clock[i - 1] + (dt > 0 && dd / dt >= STOPPED_MPS ? dt : 0);
+  }
+  return clock;
+}
+
+/**
  * The fastest continuous stretch of each distance within this run.
  *
  * This is what a personal best actually means, and it is why a 5K best can come
  * out of a 10 km training run. Implemented as a two-pointer sweep over the
  * cumulative distance array: linear in the number of samples, so scanning a
  * year of running stays cheap.
+ *
+ * ## Moving time, not elapsed
+ *
+ * The window used to be measured with `time[hi] - time[lo]`, which is the
+ * stream's wall clock — every red light inside the window counted against the
+ * effort. That produced a result nobody could reconcile with their own screen:
+ *
+ *   31 May   10.01 km   moving 49:53   best 10k 50:39
+ *   17 Aug   10.01 km   moving 49:10   best 10k 51:14   ← faster run, worse "best"
+ *
+ * The August run was 43 seconds quicker and had about two minutes of stops in
+ * it, so on the wall clock it lost. A personal best measured on a different
+ * clock from the duration shown beside it is not a personal best; it is a
+ * second, hidden definition of the same word. Both now mean moving time.
+ *
+ * The remaining imprecision is that a window covers *at least* the target
+ * distance rather than exactly it, so an effort is reported a fraction slow.
+ * That is conservative and consistent across every run, which is what a record
+ * needs — it never flatters.
  */
 export function bestEfforts(streams: ActivityStreams): BestEfforts {
   const { distance, time } = streams;
   const n = Math.min(distance.length, time.length);
+  const clock = n > 0 ? movingClock(distance, time, n) : [];
   // The span actually covered. A stream does not have to start at zero, and
   // using the last cumulative value would silently drop a run that covered the
   // distance exactly.
@@ -194,7 +240,7 @@ export function bestEfforts(streams: ActivityStreams): BestEfforts {
       // advance the trailing pointer while the window still covers the target
       while (lo < hi && distance[hi] - distance[lo + 1] >= target) lo++;
       if (distance[hi] - distance[lo] >= target) {
-        const seconds = time[hi] - time[lo];
+        const seconds = clock[hi] - clock[lo];
         if (seconds > 0 && seconds < best) best = seconds;
       }
     }

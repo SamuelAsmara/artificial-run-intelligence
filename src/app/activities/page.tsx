@@ -62,8 +62,32 @@ export default async function ActivitiesPage() {
     if (weeksAgo >= 0 && weeksAgo < 4) weekKm[3 - weeksAgo] += r.distanceKm;
   }
 
-  const easyPaces = acts.filter((a) => a.type === "easy").map((a) => a.paceSec).reverse();
-  const wp = easyPaces.length >= 2 ? easyPaces : [medianPace, medianPace];
+  /*
+   * The easy-run pace trend, one point per week.
+   *
+   * The caption says "weekly average" and this used to plot every easy run
+   * individually — forty points of ordinary day-to-day variation, which is what
+   * made the line look like noise rather than a trend. Averaging by week is
+   * both what the label promises and what makes a direction visible.
+   */
+  const easyByWeek = new Map<number, { sum: number; n: number }>();
+  for (const r of rows) {
+    const paceSec = r.distanceKm > 0 ? r.durationSec / r.distanceKm : 0;
+    if (paceSec <= 0) continue;
+    if (classify({ distanceKm: r.distanceKm, paceSec, medianPace }) !== "easy") continue;
+    const weeksAgo = Math.floor((now - Date.parse(r.date)) / (7 * 86_400_000));
+    if (weeksAgo < 0 || weeksAgo > 11) continue;
+    const bucket = easyByWeek.get(weeksAgo) ?? { sum: 0, n: 0 };
+    bucket.sum += paceSec;
+    bucket.n += 1;
+    easyByWeek.set(weeksAgo, bucket);
+  }
+
+  const weekly = [...easyByWeek.entries()]
+    .sort((a, b) => b[0] - a[0]) // oldest week first
+    .map(([, v]) => v.sum / v.n);
+
+  const wp = weekly.length >= 2 ? weekly : [medianPace, medianPace];
 
   const pb10k = prs.find((r) => r.key === "10k")?.time ?? null;
 
