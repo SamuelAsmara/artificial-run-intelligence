@@ -111,6 +111,18 @@ export interface Database {
         Update: Upd<{ id: string; user_id: string; provider: ProviderId; external_id: string; api_key: string; api_key_hint: string | null; status: ProviderStatus; last_error: string | null; last_synced_at: string | null; connected_at: string; updated_at: string }>;
         Relationships: [];
       };
+      coach_preferences: {
+        Row: { coach_id: string; race_colors: Record<string, string>; silent_days: number; overload_ratio: number; underload_ratio: number; low_readiness: number; race_soon_days: number; updated_at: string };
+        Insert: { coach_id: string; race_colors?: Record<string, string>; silent_days?: number; overload_ratio?: number; underload_ratio?: number; low_readiness?: number; race_soon_days?: number; updated_at?: string };
+        Update: Upd<{ coach_id: string; race_colors: Record<string, string>; silent_days: number; overload_ratio: number; underload_ratio: number; low_readiness: number; race_soon_days: number; updated_at: string }>;
+        Relationships: [];
+      };
+      coach_reminders: {
+        Row: { id: string; coach_id: string; athlete_id: string | null; body: string; due_date: string | null; done: boolean; created_at: string };
+        Insert: { id?: string; coach_id: string; athlete_id?: string | null; body: string; due_date?: string | null; done?: boolean; created_at?: string };
+        Update: Upd<{ id: string; coach_id: string; athlete_id: string | null; body: string; due_date: string | null; done: boolean; created_at: string }>;
+        Relationships: [];
+      };
       recovery_signals: {
         Row: { id: string; user_id: string; date: string; source: RecoverySource; sleep_hours: number | null; resting_hr: number | null; hrv: number | null };
         Insert: { id?: string; user_id: string; date: string; source: RecoverySource; sleep_hours?: number | null; resting_hr?: number | null; hrv?: number | null };

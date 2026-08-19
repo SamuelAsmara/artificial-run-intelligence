@@ -23,6 +23,10 @@ import {
   defaultTemplate, validateTemplate, RACE_TYPES,
   type CoachTemplate,
 } from "@/lib/coach/templates";
+import type { CalendarSession } from "@/lib/coach/calendar";
+import {
+  DEFAULT_PREFERENCES, targetPaceSeconds, type CoachPreferences,
+} from "@/lib/coach/preferences";
 import {
   flagsFor, rosterFlags, summariseRoster, weekBoard, weekDates,
   type AthleteRow, type BoardRow, type Flag, type PlannedSession,
@@ -191,7 +195,7 @@ export async function getCoachHome(): Promise<CoachHome | null> {
 
   const [{ data: profiles }, { data: snapshots }, { data: runs }, { data: races }, { data: plans }] =
     await Promise.all([
-      supabase.from("profiles").select("id, full_name, email, avatar_url").in("id", ids),
+      supabase.from("profiles").select("id, full_name, email, avatar_url, age, sex").in("id", ids),
       // Newest first; the first row seen per athlete is their current state.
       supabase
         .from("readiness_snapshots")
@@ -206,7 +210,7 @@ export async function getCoachHome(): Promise<CoachHome | null> {
         .order("started_at", { ascending: false }),
       supabase
         .from("goal_races")
-        .select("user_id, race_type, race_date")
+        .select("user_id, race_type, race_date, target_time")
         .in("user_id", ids)
         .eq("status", "active")
         .order("race_date", { ascending: true }),
@@ -674,4 +678,388 @@ export async function updateWorkout(
 
   revalidatePath("/coach");
   return { ok: true, data: null };
+}
+
+/* ------------------------------------------------------------------ */
+/* The coach workspace                                                 */
+/* ------------------------------------------------------------------ */
+
+/** This coach's settings, or the built-in defaults when they have never saved. */
+export async function getCoachPreferences(): Promise<CoachPreferences> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return DEFAULT_PREFERENCES;
+
+  const { data } = await supabase
+    .from("coach_preferences")
+    .select("race_colors, silent_days, overload_ratio, underload_ratio, low_readiness, race_soon_days")
+    .eq("coach_id", user.id)
+    .maybeSingle();
+
+  if (!data) return DEFAULT_PREFERENCES;
+
+  return {
+    raceColors: (data.race_colors as Record<string, string>) ?? {},
+    silentDays: data.silent_days,
+    overloadRatio: Number(data.overload_ratio),
+    underloadRatio: Number(data.underload_ratio),
+    lowReadiness: data.low_readiness,
+    raceSoonDays: data.race_soon_days,
+  };
+}
+
+const HEX = /^#[0-9a-f]{6}$/i;
+
+/**
+ * Saves a coach's settings.
+ *
+ * Colours are validated here as well as where they are read. The value ends up
+ * in an inline style, and a check at the only place it enters the system is
+ * cheaper than trusting every place it leaves.
+ */
+export async function saveCoachPreferences(prefs: CoachPreferences): Promise<Result<null>> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "You need to be signed in." };
+
+  const colors: Record<string, string> = {};
+  for (const [key, value] of Object.entries(prefs.raceColors)) {
+    if (RACE_TYPES.includes(key as RaceType) && HEX.test(value)) colors[key] = value;
+  }
+
+  const inRange = (v: number, lo: number, hi: number) => Number.isFinite(v) && v >= lo && v <= hi;
+  if (!inRange(prefs.silentDays, 1, 30)) return { ok: false, error: "Silent days must be between 1 and 30." };
+  if (!inRange(prefs.overloadRatio, 1, 3)) return { ok: false, error: "The overload ratio must be between 1.0 and 3.0." };
+  if (!inRange(prefs.underloadRatio, 0.1, 1)) return { ok: false, error: "The underload ratio must be between 0.1 and 1.0." };
+  if (!inRange(prefs.lowReadiness, 0, 100)) return { ok: false, error: "Readiness must be between 0 and 100." };
+  if (!inRange(prefs.raceSoonDays, 1, 120)) return { ok: false, error: "Race window must be between 1 and 120 days." };
+
+  const { error } = await supabase.from("coach_preferences").upsert(
+    {
+      coach_id: user.id,
+      race_colors: colors,
+      silent_days: Math.round(prefs.silentDays),
+      overload_ratio: prefs.overloadRatio,
+      underload_ratio: prefs.underloadRatio,
+      low_readiness: Math.round(prefs.lowReadiness),
+      race_soon_days: Math.round(prefs.raceSoonDays),
+    },
+    { onConflict: "coach_id" },
+  );
+
+  if (error) return { ok: false, error: `Could not save: ${error.message}` };
+  revalidatePath("/coach");
+  return { ok: true, data: null };
+}
+
+/* ------------------------------------------------------------------ */
+/* Reminders                                                           */
+/* ------------------------------------------------------------------ */
+
+export interface Reminder {
+  id: string;
+  body: string;
+  dueDate: string | null;
+  done: boolean;
+  athleteId: string | null;
+  athleteName: string | null;
+}
+
+export async function getReminders(): Promise<Reminder[]> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data } = await supabase
+    .from("coach_reminders")
+    .select("id, body, due_date, done, athlete_id")
+    .eq("coach_id", user.id)
+    .eq("done", false)
+    // Dated notes first, soonest at the top; undated ones sink below them.
+    .order("due_date", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  const rows = data ?? [];
+  const athleteIds = [...new Set(rows.map((r) => r.athlete_id).filter((v): v is string => !!v))];
+
+  const names = new Map<string, string>();
+  if (athleteIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, full_name, email")
+      .in("id", athleteIds);
+    for (const p of profiles ?? []) names.set(p.id, p.full_name || p.email || "Athlete");
+  }
+
+  return rows.map((r) => ({
+    id: r.id,
+    body: r.body,
+    dueDate: r.due_date,
+    done: r.done,
+    athleteId: r.athlete_id,
+    athleteName: r.athlete_id ? names.get(r.athlete_id) ?? null : null,
+  }));
+}
+
+export async function addReminder(
+  body: string,
+  dueDate: string | null,
+  athleteId: string | null,
+): Promise<Result<null>> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "You need to be signed in." };
+
+  const text = body.trim();
+  if (text.length === 0) return { ok: false, error: "A note needs some words." };
+  if (text.length > 500) return { ok: false, error: "That note is too long." };
+
+  const { error } = await supabase.from("coach_reminders").insert({
+    coach_id: user.id,
+    athlete_id: athleteId,
+    body: text,
+    due_date: dueDate,
+  });
+
+  if (error) return { ok: false, error: `Could not save: ${error.message}` };
+  revalidatePath("/coach");
+  return { ok: true, data: null };
+}
+
+/** Marks a note done. Scoped to the caller, so an id alone is not enough. */
+export async function completeReminder(id: string): Promise<Result<null>> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "You need to be signed in." };
+
+  const { data, error } = await supabase
+    .from("coach_reminders")
+    .update({ done: true })
+    .eq("id", id)
+    .eq("coach_id", user.id)
+    .select("id");
+
+  if (error) return { ok: false, error: `Could not save: ${error.message}` };
+  if (!data || data.length === 0) return { ok: false, error: "That note no longer exists." };
+
+  revalidatePath("/coach");
+  return { ok: true, data: null };
+}
+
+/* ------------------------------------------------------------------ */
+/* The calendar                                                        */
+/* ------------------------------------------------------------------ */
+
+/** An athlete plus the details only the roster screen needs. */
+export interface CoachRosterRow extends AthleteRow {
+  age: number | null;
+  sex: string | null;
+  /** the goal time they entered, verbatim */
+  targetTime: string | null;
+  /** that time over that distance, in seconds per kilometre */
+  targetPaceSec: number | null;
+  /** the cycle they belong to, or null when they have no goal race */
+  cycleId: string | null;
+}
+
+export interface CoachWorkspace {
+  athletes: AthleteRow[];
+  /** the same people, with the extra columns the Athletes screen shows */
+  roster: CoachRosterRow[];
+  summary: RosterSummary;
+  flags: Flag[];
+  code: string | null;
+  preferences: CoachPreferences;
+  reminders: Reminder[];
+  /** every planned session in the requested window, across the whole roster */
+  sessions: CalendarSession[];
+  /** ISO date the window starts and ends on */
+  from: string;
+  to: string;
+  /** the coach's own name, for the greeting */
+  coachName: string | null;
+}
+
+const shiftIso = (iso: string, days: number) =>
+  new Date(Date.parse(iso) + days * 86_400_000).toISOString().slice(0, 10);
+
+/**
+ * Everything the coach's home needs, for a window of dates.
+ *
+ * One call rather than one per panel. The window is a parameter because the
+ * same screen draws a week, a month and a year: asking for a year of sessions
+ * to render a week would be wasteful, and asking for a week to render a year
+ * would be wrong.
+ */
+export async function getCoachWorkspace(
+  from?: string,
+  to?: string,
+): Promise<CoachWorkspace | null> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const day = today();
+  const windowFrom = from ?? shiftIso(day, -35);
+  const windowTo = to ?? shiftIso(day, 35);
+
+  const { data: links } = await supabase
+    .from("coach_athletes")
+    .select("athlete_id")
+    .eq("coach_id", user.id)
+    .eq("status", "active");
+
+  const ids = (links ?? []).map((l) => l.athlete_id);
+
+  const [code, preferences, reminders, { data: me }] = await Promise.all([
+    getMyCoachCode(),
+    getCoachPreferences(),
+    getReminders(),
+    supabase.from("profiles").select("full_name, email").eq("id", user.id).maybeSingle(),
+  ]);
+
+  const coachName = me?.full_name || me?.email?.split("@")[0] || null;
+
+  if (ids.length === 0) {
+    return {
+      athletes: [], roster: [], summary: summariseRoster([], day), flags: [], code,
+      preferences, reminders, sessions: [], from: windowFrom, to: windowTo, coachName,
+    };
+  }
+
+  const [{ data: profiles }, { data: snapshots }, { data: races }, { data: plans }, { data: lastRuns }] =
+    await Promise.all([
+      supabase.from("profiles").select("id, full_name, email, avatar_url, age, sex").in("id", ids),
+      supabase
+        .from("readiness_snapshots")
+        .select("user_id, date, readiness_score, tsb, acwr")
+        .in("user_id", ids)
+        .order("date", { ascending: false }),
+      supabase
+        .from("goal_races")
+        .select("user_id, race_type, race_date, target_time")
+        .in("user_id", ids)
+        .eq("status", "active")
+        .order("race_date", { ascending: true }),
+      supabase.from("training_plans").select("id, user_id").in("user_id", ids).eq("status", "active"),
+      supabase
+        .from("activities")
+        .select("user_id, started_at, distance_m")
+        .in("user_id", ids)
+        .order("started_at", { ascending: false }),
+    ]);
+
+  const nameOf = new Map(
+    (profiles ?? []).map((p) => [p.id, p.full_name || p.email || "Athlete"] as const),
+  );
+
+  const latestSnap = new Map<string, { readiness_score: number | null; tsb: number | null; acwr: number | null }>();
+  for (const s of snapshots ?? []) if (!latestSnap.has(s.user_id)) latestSnap.set(s.user_id, s);
+
+  const raceOf = new Map<string, { race_type: RaceType; race_date: string; target_time: string | null }>();
+  for (const r of races ?? []) {
+    if (!raceOf.has(r.user_id)) {
+      raceOf.set(r.user_id, { race_type: r.race_type, race_date: r.race_date, target_time: r.target_time });
+    }
+  }
+
+  const lastRunOf = new Map<string, { started_at: string | null; distance_m: number | null }>();
+  const ranByDay = new Set<string>();
+  for (const r of lastRuns ?? []) {
+    if (!lastRunOf.has(r.user_id)) lastRunOf.set(r.user_id, r);
+    if (r.started_at) ranByDay.add(`${r.user_id}|${r.started_at.slice(0, 10)}`);
+  }
+
+  const planIds = (plans ?? []).map((p) => p.id);
+  const planOwner = new Map((plans ?? []).map((p) => [p.id, p.user_id]));
+
+  const { data: workouts } = planIds.length
+    ? await supabase
+        .from("plan_workouts")
+        .select("plan_id, day_date, workout_type, planned_distance")
+        .in("plan_id", planIds)
+        .gte("day_date", windowFrom)
+        .lte("day_date", windowTo)
+    : { data: [] };
+
+  const week = weekDates(day);
+  const athletes: AthleteRow[] = ids.map((id) => {
+    const snap = latestSnap.get(id);
+    const race = raceOf.get(id);
+    const last = lastRunOf.get(id);
+    const missed = (workouts ?? []).filter((w) => {
+      if (planOwner.get(w.plan_id) !== id) return false;
+      return (
+        w.day_date >= week[0] &&
+        w.day_date < day &&
+        w.workout_type !== "rest" &&
+        !ranByDay.has(`${id}|${w.day_date}`)
+      );
+    }).length;
+
+    return {
+      id,
+      name: nameOf.get(id) ?? "Athlete",
+      avatarUrl: (profiles ?? []).find((p) => p.id === id)?.avatar_url ?? null,
+      readiness: snap?.readiness_score ?? null,
+      form: snap?.tsb ?? null,
+      loadRatio: snap?.acwr ?? null,
+      lastRunAt: last?.started_at ?? null,
+      lastRunM: last?.distance_m ?? null,
+      raceType: race?.race_type ?? null,
+      raceDate: race?.race_date ?? null,
+      missedThisWeek: missed,
+    };
+  });
+
+  const sessions: CalendarSession[] = (workouts ?? []).flatMap((w) => {
+    const athleteId = planOwner.get(w.plan_id);
+    if (!athleteId) return [];
+    return [{
+      date: w.day_date,
+      athleteId,
+      athleteName: nameOf.get(athleteId) ?? "Athlete",
+      raceType: raceOf.get(athleteId)?.race_type ?? null,
+      workoutType: w.workout_type,
+      plannedDistanceM: w.planned_distance,
+      done: ranByDay.has(`${athleteId}|${w.day_date}`),
+    }];
+  });
+
+  const profileOf = new Map((profiles ?? []).map((p) => [p.id, p] as const));
+
+  const roster: CoachRosterRow[] = athletes.map((a) => {
+    const p = profileOf.get(a.id);
+    const race = raceOf.get(a.id);
+    return {
+      ...a,
+      age: p?.age ?? null,
+      sex: p?.sex ?? null,
+      targetTime: race?.target_time ?? null,
+      targetPaceSec: targetPaceSeconds(race?.race_type ?? null, race?.target_time ?? null),
+      cycleId: race ? `${race.race_type}|${race.race_date}` : null,
+    };
+  });
+
+  return {
+    athletes,
+    roster,
+    summary: summariseRoster(athletes, day),
+    // The coach's own thresholds, not ours — see coach_preferences.
+    flags: rosterFlags(athletes, day, {
+      silentDays: preferences.silentDays,
+      overloadRatio: preferences.overloadRatio,
+      underloadRatio: preferences.underloadRatio,
+      lowReadiness: preferences.lowReadiness,
+      raceSoonDays: preferences.raceSoonDays,
+    }),
+    code,
+    preferences,
+    reminders,
+    sessions,
+    from: windowFrom,
+    to: windowTo,
+    coachName,
+  };
 }

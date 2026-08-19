@@ -35,6 +35,7 @@ import { useMemo, useState, useTransition } from "react";
 import { AvatarEditor } from "@/components/settings/AvatarEditor";
 import { AccountSecurity } from "@/components/settings/AccountSecurity";
 import { CoachLink } from "@/components/settings/CoachLink";
+import { SignOutButton } from "@/components/SignOutButton";
 import { APP_LOCALE, APP_TIME_ZONE } from "@/lib/time/week";
 import type { MyCoach } from "@/actions/coach";
 import { saveAthleteProfile, type AthleteProfileView } from "@/actions/profile";
@@ -103,6 +104,16 @@ export function SettingsView({
         <h2 style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>{copy.secTitle}</h2>
         <p style={{ margin: "2px 0 0", fontSize: "11.5px", color: "var(--color-faint)" }}>{copy.secSub}</p>
         <AccountSecurity email={profile?.email ?? ""} />
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", marginBlockStart: "20px", paddingBlockStart: "16px", borderBlockStart: "1px solid var(--color-line)" }}>
+          <div>
+            <p style={{ margin: 0, fontSize: "12.5px", fontWeight: 500 }}>Signed in as {profile?.email ?? "\u2014"}</p>
+            <p style={{ margin: "2px 0 0", fontSize: "11px", color: "var(--color-faint)" }}>
+              Your data stays where it is; you can sign back in at any time.
+            </p>
+          </div>
+          <SignOutButton />
+        </div>
       </section>
     </div>
   );

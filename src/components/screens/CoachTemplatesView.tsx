@@ -74,7 +74,7 @@ export function CoachTemplatesView({ templates }: { templates: CoachTemplate[] }
 
   return (
     <div style={{ maxWidth: "1280px", marginInline: "auto", padding: "16px 24px 40px", display: "flex", flexDirection: "column", gap: "12px" }}>
-      <CoachNav active="templates" />
+      <CoachNav active="settings" />
 
       <div>
         <h1 style={{ margin: 0, fontSize: "17px", fontWeight: 600 }}>{COACH_COPY.templatesTitle}</h1>

@@ -8,7 +8,11 @@
 
 import { COACH_COPY } from "@/lib/screens/coachHome";
 
-export function CoachNav({ active }: { active: "home" | "athletes" | "templates" }) {
+export function CoachNav({
+  active,
+}: {
+  active: "home" | "cycles" | "athletes" | "mine" | "settings";
+}) {
   const link = (key: string, href: string, label: string) => (
     <a
       key={key}
@@ -32,11 +36,21 @@ export function CoachNav({ active }: { active: "home" | "athletes" | "templates"
       </div>
       <nav className="topnav" style={{ display: "flex", gap: "20px", fontSize: "13px" }}>
         {link("home", "/coach", COACH_COPY.navHome)}
+        {link("cycles", "/coach/cycles", COACH_COPY.navCycles)}
         {link("athletes", "/coach/athletes", COACH_COPY.navAthletes)}
-        {link("templates", "/coach/templates", COACH_COPY.navTemplates)}
+        {/*
+          The coach's own training. Almost every running coach runs, and a
+          single-role account forces a choice nobody should have to make — so
+          this is one nav item rather than a second account. It opens the
+          athlete side, which has its own row of tabs underneath.
+        */}
+        {link("mine", "/dashboard", COACH_COPY.navMine)}
       </nav>
       <div style={{ flex: 1 }} />
-      <a href="/settings" style={{ fontSize: "13px", color: "var(--color-muted)" }}>
+      <a
+        href="/coach/settings"
+        style={{ fontSize: "13px", color: active === "settings" ? "var(--color-ink)" : "var(--color-muted)" }}
+      >
         {COACH_COPY.navSettings}
       </a>
     </header>

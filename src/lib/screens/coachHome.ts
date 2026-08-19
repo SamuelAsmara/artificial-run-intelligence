@@ -87,7 +87,114 @@ export const COACH_COPY = {
   yourOwn: "Yours",
   resetDefault: "Reset to default",
   templateSaved: "Saved — future plans will use this.",
+
+  navCycles: "Cycles",
+  navMine: "My training",
+
+  hello: "Hello",
+  highlightsTitle: "Worth knowing",
+  highlightsEmpty: "Nothing to raise this morning.",
+
+  cyclesTitle: "Preparation cycles",
+  cyclesSub: "Everyone sharing a race and a date is preparing together.",
+  cycleEmpty: "No cycles yet — a cycle appears once an athlete sets a goal race.",
+  noRaceGroup: "No goal race",
+  selectAll: "All",
+  clearAll: "Clear",
+
+  fSex: "Sex",
+  fPace: "Target pace",
+  fCycle: "Cycle",
+  anyOption: "Any",
+
+  hAge: "Age",
+  hTarget: "Target",
+  hPace: "Pace",
+  hPlan: "Cycle",
+
+  prefsTitle: "Calendar colours",
+  prefsSub: "How each distance is drawn on your calendar.",
+  thresholdsTitle: "When to flag an athlete",
+  thresholdsSub:
+    "The defaults are defensible, not universal. A coach working with beginners wants different numbers from one working with a club.",
+  tSilent: "Days without a run",
+  tOverload: "Load ratio above",
+  tUnderload: "Load ratio below",
+  tReadiness: "Readiness below",
+  tRaceSoon: "Race within (days)",
+  restoreDefaults: "Restore defaults",
 } as const;
+
+/**
+ * The two or three things a coach should read before anything else.
+ *
+ * Not a feed and not a log — a short list that earns its place at the top of
+ * the screen. Anything that is merely true rather than actionable belongs in
+ * the panels below it.
+ */
+export interface Highlight {
+  text: string;
+  tone: "negative" | "caution" | "accent" | "muted";
+}
+
+export function buildHighlights(input: {
+  athleteCount: number;
+  flagCount: number;
+  needAttention: number;
+  nextRace: { name: string; daysAway: number } | null;
+  thisWeekPlanned: number;
+  thisWeekDone: number;
+  withoutRace: number;
+}): Highlight[] {
+  const out: Highlight[] = [];
+
+  if (input.athleteCount === 0) {
+    return [{ text: "No athletes yet — share your coach code to get started.", tone: "accent" }];
+  }
+
+  if (input.needAttention > 0) {
+    out.push({
+      text:
+        input.needAttention === 1
+          ? "One athlete needs a look today."
+          : `${input.needAttention} athletes need a look today.`,
+      tone: "negative",
+    });
+  }
+
+  if (input.nextRace) {
+    const { name, daysAway } = input.nextRace;
+    out.push({
+      text:
+        daysAway === 0
+          ? `${name} races today.`
+          : daysAway === 1
+            ? `${name} races tomorrow.`
+            : `${name} races in ${daysAway} days.`,
+      tone: daysAway <= 7 ? "caution" : "accent",
+    });
+  }
+
+  if (input.thisWeekPlanned > 0) {
+    const pct = Math.round((input.thisWeekDone / input.thisWeekPlanned) * 100);
+    out.push({
+      text: `${input.thisWeekDone} of ${input.thisWeekPlanned} sessions done this week — ${pct}%.`,
+      tone: pct >= 70 ? "muted" : "caution",
+    });
+  }
+
+  if (input.withoutRace > 0) {
+    out.push({
+      text:
+        input.withoutRace === 1
+          ? "One athlete has no goal race, so no plan can be built for them."
+          : `${input.withoutRace} athletes have no goal race, so no plan can be built for them.`,
+      tone: "caution",
+    });
+  }
+
+  return out;
+}
 
 /* ------------------------------------------------------------------ */
 /* The week board                                                      */

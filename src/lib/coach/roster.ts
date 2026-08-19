@@ -76,14 +76,41 @@ const daysBetween = (from: string, to: string) =>
  * severity in the abstract: an athlete who has vanished for a week matters more
  * than one whose readiness dipped this morning.
  */
-export function flagsFor(a: AthleteRow, today: string): Flag[] {
+/**
+ * The numbers that decide when an athlete is flagged.
+ *
+ * Passed in rather than read from the constants above, because they are a
+ * coach's judgement and not a fact — see `coach_preferences` in migration 0012.
+ * The constants remain the defaults for anyone who has never changed them.
+ */
+export interface FlagThresholds {
+  silentDays: number;
+  overloadRatio: number;
+  underloadRatio: number;
+  lowReadiness: number;
+  raceSoonDays: number;
+}
+
+export const DEFAULT_THRESHOLDS: FlagThresholds = {
+  silentDays: SILENT_DAYS,
+  overloadRatio: OVERLOAD_RATIO,
+  underloadRatio: UNDERLOAD_RATIO,
+  lowReadiness: LOW_READINESS,
+  raceSoonDays: RACE_SOON_DAYS,
+};
+
+export function flagsFor(
+  a: AthleteRow,
+  today: string,
+  thresholds: FlagThresholds = DEFAULT_THRESHOLDS,
+): Flag[] {
   const out: Flag[] = [];
   const add = (kind: FlagKind, tone: Flag["tone"], text: string) =>
     out.push({ athleteId: a.id, athleteName: a.name, kind, tone, text });
 
   if (a.lastRunAt) {
     const quiet = daysBetween(a.lastRunAt.slice(0, 10), today);
-    if (quiet >= SILENT_DAYS) {
+    if (quiet >= thresholds.silentDays) {
       add("silent", "negative", `No run in ${quiet} days.`);
     }
   }
@@ -98,19 +125,19 @@ export function flagsFor(a: AthleteRow, today: string): Flag[] {
     );
   }
 
-  if (a.loadRatio !== null && a.loadRatio > OVERLOAD_RATIO) {
+  if (a.loadRatio !== null && a.loadRatio > thresholds.overloadRatio) {
     add("overload", "negative", `Load ratio ${a.loadRatio.toFixed(2)} — ramping faster than they have absorbed.`);
-  } else if (a.loadRatio !== null && a.loadRatio < UNDERLOAD_RATIO) {
+  } else if (a.loadRatio !== null && a.loadRatio < thresholds.underloadRatio) {
     add("underload", "accent", `Load ratio ${a.loadRatio.toFixed(2)} — losing more fitness than they are building.`);
   }
 
-  if (a.readiness !== null && a.readiness < LOW_READINESS) {
+  if (a.readiness !== null && a.readiness < thresholds.lowReadiness) {
     add("flat", "caution", `Readiness ${a.readiness} — worth an easier day.`);
   }
 
   if (a.raceDate) {
     const away = daysBetween(today, a.raceDate);
-    if (away >= 0 && away <= RACE_SOON_DAYS) {
+    if (away >= 0 && away <= thresholds.raceSoonDays) {
       add("race", "accent", `Races in ${away} ${away === 1 ? "day" : "days"}.`);
     }
   }
@@ -119,10 +146,14 @@ export function flagsFor(a: AthleteRow, today: string): Flag[] {
 }
 
 /** Every flag across the roster, loudest first. */
-export function rosterFlags(athletes: AthleteRow[], today: string): Flag[] {
+export function rosterFlags(
+  athletes: AthleteRow[],
+  today: string,
+  thresholds: FlagThresholds = DEFAULT_THRESHOLDS,
+): Flag[] {
   const order: Record<Flag["tone"], number> = { negative: 0, caution: 1, accent: 2 };
   return athletes
-    .flatMap((a) => flagsFor(a, today))
+    .flatMap((a) => flagsFor(a, today, thresholds))
     .sort((x, y) => order[x.tone] - order[y.tone]);
 }
 
