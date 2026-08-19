@@ -193,13 +193,19 @@ export async function connectIntervalsIcu(
   try {
     imported = await importFromIcu(supabase, user.id, { athleteId, apiKey });
     await recomputeForUser(supabase, user.id, 120);
-    if (imported.nights > 0 || imported.runs > 0) {
-      await supabase
-        .from("provider_connections")
-        .update({ last_synced_at: new Date().toISOString() })
-        .eq("user_id", user.id)
-        .eq("provider", "intervals_icu");
-    }
+    /*
+     * We looked. Say so, even if there was nothing there.
+     *
+     * This used to be gated on `nights > 0 || runs > 0`, so an athlete with no
+     * history yet connected successfully and immediately read "Last checked:
+     * Never" — the same dishonest timestamp, in the other direction. The field
+     * records when we last asked, not whether the answer was interesting.
+     */
+    await supabase
+      .from("provider_connections")
+      .update({ last_synced_at: new Date().toISOString() })
+      .eq("user_id", user.id)
+      .eq("provider", "intervals_icu");
   } catch {
     /* the connection itself is valid */
   }
@@ -281,11 +287,21 @@ export async function syncIntervalsIcu(): Promise<Result<IcuImportResult>> {
     // cannot produce different results.
     await recomputeForUser(supabase, user.id, 120);
 
+    /*
+     * A partial failure is still a working connection.
+     *
+     * `status` used to flip to "error" whenever anything at all went wrong —
+     * including "could not read recovery data" on an account that has no
+     * wellness — so the panel read "Not connected" for credentials that had
+     * just successfully imported a hundred runs. The warning is worth showing,
+     * and it is now shown (see `lastError` on the settings panel); it is not
+     * worth calling the connection broken.
+     */
     await supabase
       .from("provider_connections")
       .update({
         last_synced_at: new Date().toISOString(),
-        status: imported.warning ? "error" : "connected",
+        status: "connected",
         last_error: imported.warning ?? null,
       })
       .eq("user_id", user.id)
@@ -306,6 +322,14 @@ export async function syncIntervalsIcu(): Promise<Result<IcuImportResult>> {
       .update({ status: "error", last_error: message })
       .eq("user_id", user.id)
       .eq("provider", "intervals_icu");
+    /*
+     * A Server Action that revalidates nothing does not re-render the page at
+     * all. The success path above revalidates; this one did not, so a failed
+     * sync wrote `status: "error"` into the database and left the panel on
+     * screen still bordered green, still tagged "Connected", still showing this
+     * morning's "Last checked". The athlete found out days later.
+     */
+    revalidatePath("/settings");
     return { ok: false, error: message };
   }
 }

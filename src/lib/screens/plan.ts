@@ -28,6 +28,10 @@ export interface PlanDay {
   type: WType; name: string; dist: number; pace: string;
   day: string; dateNum: number; mon: string; monIdx: number;
   status: string; done: boolean; missed: boolean; today: boolean;
+  /** why ARI reduced this session — see `Day.reason` in dashboard/model.ts */
+  reason?: string | null;
+  /** true when a coach or the athlete set these numbers, not the generator */
+  byPerson?: boolean;
 }
 export interface PlanWeek {
   days: PlanDay[]; km: number; phase: string; monIdx: number; monName: string;
@@ -93,11 +97,21 @@ export function planSegsFor(type: WType) {
   return [];
 }
 
+/**
+ * Why each kind of session exists.
+ *
+ * Rewritten to describe the *intent* rather than a structure we never
+ * prescribed. The previous copy specified "20 minutes at comfortably-hard
+ * effort", "6 × 800 m at 5K effort with 90 s jog recovery" and "fuelling every
+ * 40 minutes" — details of the prototype athlete's sessions, printed under
+ * whatever the plan actually said. `plan_workouts` stores a type, a distance
+ * and a target pace; anything more specific than that is invention.
+ */
 export const PURPOSE: Record<WType, string> = {
   easy: "Aerobic maintenance — conversational pace, heart rate zone 2. These runs build the engine without adding stress.",
-  tempo: "Threshold development — 20 minutes at comfortably-hard effort to raise the pace you can sustain.",
-  int: "VO2max intervals — 6 × 800 m at 5K effort with 90 s jog recovery. Quality over quantity.",
-  long: "Long endurance run — steady zone 2, practice fueling every 40 minutes. The cornerstone of marathon training.",
+  tempo: "Threshold development — sustained comfortably-hard effort, to raise the pace you can hold.",
+  int: "VO2max work — hard repetitions with recovery between them, at an effort you could not hold for the whole session. Quality over quantity.",
+  long: "Long endurance run — steady zone 2, fuelling as you go. The cornerstone of endurance training.",
   rest: "Full rest. Recovery is where adaptation happens — no cross-training needed.",
 };
 
@@ -153,6 +167,8 @@ export function realPlanWeeks(weeks: ModelWeek[]): PlanWeek[] {
       status: d.status,
       done: d.done,
       missed: d.missed,
+      reason: d.reason ?? null,
+      byPerson: d.byPerson ?? false,
       today: d.today,
     }));
 
@@ -178,5 +194,10 @@ export const PLAN_EMPTY = {
   title: "No plan yet",
   body:
     "A training plan needs a goal race — the distance and the date. Set one in Settings and ARI will build the weeks between now and then from what you are already running.",
+  /** Shown once the race exists, when the only thing left to do is press build. */
+  bodyWithRace:
+    "ARI will build the weeks between today and race day from what you are already running — the long run grows from your current long run, not from a table.",
   cta: "Go to Settings",
+  build: "Build my plan",
+  building: "Building…",
 } as const;

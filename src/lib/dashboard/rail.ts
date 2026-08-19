@@ -9,7 +9,7 @@
  * Deliberately free of database calls so it can be tested.
  */
 
-import { addDays, isoDate, weekNumber, weekStart, weekYear } from "@/lib/time/week";
+import { addDays, isoDate, weekNumber, weekStart, weekYear, zonedNow } from "@/lib/time/week";
 import {
   calendarDotColor, volumeBarAppearance, volumeBarHeight, volumeBarTitle,
   type DayState, type WeekPosition,
@@ -98,7 +98,7 @@ export interface VolumeBar {
  * existed. Empty weeks are marked `interrupted` so the interface can say so
  * rather than leaving a silent notch in the strip.
  */
-export function weeklyVolume(runs: RunRow[], asOf: Date = new Date()): VolumeBar[] {
+export function weeklyVolume(runs: RunRow[], asOf: Date = zonedNow()): VolumeBar[] {
   const currentStart = weekStart(asOf);
 
   // The twelve week-starts, stepped by calendar rather than by milliseconds,
@@ -166,7 +166,7 @@ export function weeklyVolume(runs: RunRow[], asOf: Date = new Date()): VolumeBar
  */
 export function weeklyVolumeSummary(
   runs: RunRow[],
-  asOf: Date = new Date(),
+  asOf: Date = zonedNow(),
 ): { km: number; changePct: number | null; partialWeek: boolean } {
   const bars = weeklyVolume(runs, asOf);
   const thisWeek = bars[bars.length - 1]?.km ?? 0;
@@ -210,7 +210,7 @@ export function weeklyVolumeSummary(
 export function calendarDots(
   planned: PlannedRow[],
   runs: RunRow[],
-  asOf: Date = new Date(),
+  asOf: Date = zonedNow(),
 ): Record<number, string> {
   const todayIso = iso(asOf);
   const ran = new Set(runs.filter((r) => r.distanceM > 0).map((r) => r.date));
@@ -253,7 +253,7 @@ export function calendarDots(
  * the app before their run has not broken anything yet. Requiring a run today
  * would reset the number every night, which is both wrong and demoralising.
  */
-export function runStreak(runs: RunRow[], asOf: Date = new Date()): number {
+export function runStreak(runs: RunRow[], asOf: Date = zonedNow()): number {
   const ran = new Set(runs.filter((r) => r.distanceM > 0).map((r) => r.date));
   if (ran.size === 0) return 0;
 
@@ -305,7 +305,7 @@ export function raceCountdown(
   raceDateIso: string,
   planStartIso: string | null,
   totalWeeks: number,
-  asOf: Date = new Date(),
+  asOf: Date = zonedNow(),
 ): RaceCountdown | null {
   const race = new Date(raceDateIso + "T00:00:00");
   if (Number.isNaN(race.getTime())) return null;

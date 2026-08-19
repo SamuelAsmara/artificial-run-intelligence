@@ -148,8 +148,14 @@ export function CoachAthletesView({ data, today }: { data: CoachWorkspace; today
           </div>
 
           {shown.length === 0 ? (
-            <p style={{ margin: "16px 0 0", fontSize: "12.5px", color: FAINT, textAlign: "center" }}>
-              Nobody matches those filters.
+            /*
+             * Two different situations wore the same sentence. A coach with an
+             * empty roster and no filters set was told "Nobody matches those
+             * filters" — a false explanation, and no next step. What they need
+             * is the join code.
+             */
+            <p style={{ margin: "16px 0 0", fontSize: "12.5px", color: FAINT, textAlign: "center", lineHeight: 1.7 }}>
+              {roster.length === 0 ? COACH_COPY.rosterEmpty : COACH_COPY.rosterFiltered}
             </p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column" }}>
@@ -185,10 +191,24 @@ function PaceInput({
   onChange: (v: number | null) => void;
   placeholder: string;
 }) {
-  const [text, setText] = useState(value === null ? "" : formatMinSec(value));
+  /*
+   * The draft the coach is mid-way through typing.
+   *
+   * `null` means "show whatever the parent holds" — which is how pressing Clear
+   * empties the box. This used to be seeded from `value` once and never resynced,
+   * so Clear reset the filter, brought the whole roster back, and left "4:30" and
+   * "5:30" sitting in the two inputs: a screen claiming to be filtered when it
+   * was not.
+   *
+   * It cannot be fully controlled either: "4:" is a legal thing to have typed
+   * and parses to nothing, and echoing the parsed value back would delete the
+   * colon under the coach's cursor.
+   */
+  const [draft, setDraft] = useState<string | null>(null);
+  const text = draft ?? (value === null ? "" : formatMinSec(value));
 
   const commit = (raw: string) => {
-    setText(raw);
+    setDraft(raw);
     const t = raw.trim();
     if (t === "") return onChange(null);
     const parts = t.split(":");
@@ -205,6 +225,7 @@ function PaceInput({
       className="field"
       value={text}
       onChange={(e) => commit(e.target.value)}
+      onBlur={() => setDraft(null)}
       placeholder={placeholder}
       style={{ width: "72px", fontSize: "11.5px", textAlign: "center" }}
     />

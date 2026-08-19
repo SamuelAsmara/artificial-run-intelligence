@@ -637,6 +637,24 @@ function IntervalsPanel({
             ))}
           </div>
 
+          {/*
+            The last error the sync recorded.
+
+            `lastError` has been on the connection object all along and was
+            rendered nowhere. A regenerated API key put "error" in the database
+            and left this panel looking healthy, with the one sentence that
+            explains it sitting unread in a column.
+          */}
+          {connection.lastError ? (
+            <p style={{
+              margin: 0, padding: "0 14px 12px", fontSize: "11.5px",
+              color: connection.status === "error" ? "var(--color-negative)" : "var(--color-caution)",
+              lineHeight: 1.6,
+            }}>
+              {connection.lastError}
+            </p>
+          ) : null}
+
           <div style={{
             borderBlockStart: "1px solid var(--color-line)", padding: "10px 14px",
             display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap",

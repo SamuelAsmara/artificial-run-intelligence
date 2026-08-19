@@ -11,6 +11,14 @@ export type GoalRaceStatus = "active" | "cancelled" | "completed";
 export type PlanStatus = "active" | "completed" | "cancelled";
 export type WorkoutType = "easy" | "interval" | "long" | "rest";
 export type WorkoutStatus = "planned" | "completed" | "missed" | "adjusted";
+/**
+ * Whose decision the current numbers on a session are — see migration 0014.
+ *
+ * The adjustment engine may change what it generated. It may not overrule a
+ * person: a coach who sets Thursday to 18 km used to find 14.4 km there in the
+ * morning, silently.
+ */
+export type WorkoutOrigin = "generated" | "coach" | "athlete";
 export type RecoverySource = "webhook" | "derived";
 export type CoachLinkStatus = "invited" | "active";
 export type Plan = "free" | "pro";
@@ -82,15 +90,15 @@ export interface Database {
         Relationships: [];
       };
       plan_workouts: {
-        Row: { id: string; plan_id: string; week_number: number; day_date: string; workout_type: WorkoutType; planned_distance: number | null; planned_pace: string | null; status: WorkoutStatus };
-        Insert: { id?: string; plan_id: string; week_number: number; day_date: string; workout_type: WorkoutType; planned_distance?: number | null; planned_pace?: string | null; status?: WorkoutStatus };
-        Update: Upd<{ id: string; plan_id: string; week_number: number; day_date: string; workout_type: WorkoutType; planned_distance: number | null; planned_pace: string | null; status: WorkoutStatus }>;
+        Row: { id: string; plan_id: string; week_number: number; day_date: string; workout_type: WorkoutType; planned_distance: number | null; planned_pace: string | null; status: WorkoutStatus; origin: WorkoutOrigin; planned_distance_original: number | null; adjusted_reason: string | null; adjusted_at: string | null };
+        Insert: { id?: string; plan_id: string; week_number: number; day_date: string; workout_type: WorkoutType; planned_distance?: number | null; planned_pace?: string | null; status?: WorkoutStatus; origin?: WorkoutOrigin; planned_distance_original?: number | null; adjusted_reason?: string | null; adjusted_at?: string | null };
+        Update: Upd<{ id: string; plan_id: string; week_number: number; day_date: string; workout_type: WorkoutType; planned_distance: number | null; planned_pace: string | null; status: WorkoutStatus; origin: WorkoutOrigin; planned_distance_original: number | null; adjusted_reason: string | null; adjusted_at: string | null }>;
         Relationships: [];
       };
       activities: {
-        Row: { id: string; user_id: string; source: ActivitySource; external_id: string; strava_activity_id: number | null; type: string | null; distance_m: number | null; duration_s: number | null; avg_hr: number | null; max_hr: number | null; calories: number | null; avg_cadence: number | null; avg_power: number | null; drift_onset_m: number | null; avg_pace: string | null; started_at: string | null; pace_shape: (number | null)[] | null; best_efforts: Record<string, number> | null; cardiac_drift_pct: number | null; streams_fetched_at: string | null; streams_derived_version: number };
-        Insert: { id?: string; user_id: string; source?: ActivitySource; external_id: string; strava_activity_id?: number | null; type?: string | null; distance_m?: number | null; duration_s?: number | null; avg_hr?: number | null; max_hr?: number | null; calories?: number | null; avg_cadence?: number | null; avg_power?: number | null; drift_onset_m?: number | null; avg_pace?: string | null; started_at?: string | null; pace_shape?: (number | null)[] | null; best_efforts?: Record<string, number> | null; cardiac_drift_pct?: number | null; streams_fetched_at?: string | null; streams_derived_version?: number };
-        Update: Upd<{ id: string; user_id: string; source: ActivitySource; external_id: string; strava_activity_id: number | null; type: string | null; distance_m: number | null; duration_s: number | null; avg_hr: number | null; max_hr: number | null; calories: number | null; avg_cadence: number | null; avg_power: number | null; drift_onset_m: number | null; avg_pace: string | null; started_at: string | null; pace_shape: (number | null)[] | null; best_efforts: Record<string, number> | null; cardiac_drift_pct: number | null; streams_fetched_at: string | null; streams_derived_version: number }>;
+        Row: { id: string; user_id: string; source: ActivitySource; external_id: string; strava_activity_id: number | null; type: string | null; distance_m: number | null; duration_s: number | null; avg_hr: number | null; max_hr: number | null; calories: number | null; avg_cadence: number | null; avg_power: number | null; drift_onset_m: number | null; avg_pace: string | null; started_at: string | null; pace_shape: (number | null)[] | null; best_efforts: Record<string, number> | null; cardiac_drift_pct: number | null; streams_fetched_at: string | null; streams_derived_version: number; source_updated_at: string | null };
+        Insert: { id?: string; user_id: string; source?: ActivitySource; external_id: string; strava_activity_id?: number | null; type?: string | null; distance_m?: number | null; duration_s?: number | null; avg_hr?: number | null; max_hr?: number | null; calories?: number | null; avg_cadence?: number | null; avg_power?: number | null; drift_onset_m?: number | null; avg_pace?: string | null; started_at?: string | null; pace_shape?: (number | null)[] | null; best_efforts?: Record<string, number> | null; cardiac_drift_pct?: number | null; streams_fetched_at?: string | null; streams_derived_version?: number; source_updated_at?: string | null };
+        Update: Upd<{ id: string; user_id: string; source: ActivitySource; external_id: string; strava_activity_id: number | null; type: string | null; distance_m: number | null; duration_s: number | null; avg_hr: number | null; max_hr: number | null; calories: number | null; avg_cadence: number | null; avg_power: number | null; drift_onset_m: number | null; avg_pace: string | null; started_at: string | null; pace_shape: (number | null)[] | null; best_efforts: Record<string, number> | null; cardiac_drift_pct: number | null; streams_fetched_at: string | null; streams_derived_version: number; source_updated_at: string | null }>;
         Relationships: [];
       };
       readiness_snapshots: {
@@ -132,10 +140,30 @@ export interface Database {
     };
     Views: Record<string, never>;
     Functions: {
-      /** Issues this coach a join code, or returns the one they already have. */
+      /**
+       * This user's join code, or null when they have never asked for one.
+       * Read-only since migration 0013 — it used to mint on first call, so
+       * merely opening /coach issued the visitor a bearer credential.
+       */
       my_coach_code: {
         Args: Record<string, never>;
+        Returns: string | null;
+      };
+      /** Mints this user's join code. Explicit, because the code is a credential. */
+      issue_coach_code: {
+        Args: Record<string, never>;
         Returns: string;
+      };
+      /**
+       * The name of the coach the caller has joined, and when they joined.
+       *
+       * A narrow SECURITY DEFINER read rather than a wider `profiles` policy:
+       * the coaching relationship is deliberately one-way, so an athlete cannot
+       * select their coach's row directly. See migration 0013.
+       */
+      my_coach_name: {
+        Args: Record<string, never>;
+        Returns: { coach_id: string; coach_name: string; since: string }[];
       };
       /**
        * Redeems a coach's join code. SECURITY DEFINER, so the athlete can find

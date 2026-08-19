@@ -12,15 +12,10 @@ import {
   MONTHS_LONG, PLAN_COPY, PLAN_EMPTY, PURPOSE, planSegsFor, planWeeks, realPlanWeeks,
 } from "@/lib/screens/plan";
 import { RACE_LABEL } from "@/lib/coach/templates";
+import { BuildPlanCard } from "@/components/plan/BuildPlanCard";
+import { plannedMinutes, sessionShape } from "@/lib/planning/sessionShape";
 import type { RealPlan } from "@/lib/dashboard/realPlan";
 import type { RaceType } from "@/types/database.types";
-
-/** Today, as a local calendar date. */
-const todayIso = () => {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-};
 
 const RACE_KM: Record<string, string> = {
   "5k": "5 km", "10k": "10 km", half: "21.1 km", full: "42.2 km",
@@ -29,6 +24,17 @@ const RACE_KM: Record<string, string> = {
 export interface PlanScreenData {
   plan: RealPlan | null;
   race: { raceType: string; raceDate: string; targetTime: string | null } | null;
+  /**
+   * Today, as `YYYY-MM-DD`, computed on the server in the athlete's timezone.
+   *
+   * This screen used to build it from `new Date()` in the component body. It is
+   * a client component rendered on the server first, so that ran twice — once
+   * in UTC and once in the browser's zone — and between local midnight and
+   * 03:00 the countdown said "61 days to race" on the server and "60" after
+   * hydration. React logs it as a mismatch; the athlete watches the number
+   * change under their eyes.
+   */
+  today: string;
 }
 
 export function PlanView({ data }: { data?: PlanScreenData } = {}) {
@@ -41,6 +47,7 @@ export function PlanView({ data }: { data?: PlanScreenData } = {}) {
   const isReal = data !== undefined;
   const realPlan = data?.plan ?? null;
   const race = data?.race ?? null;
+  const todayIso = () => data?.today ?? "1970-01-01";
 
   const W = useMemo(
     () => (isReal ? (realPlan ? realPlanWeeks(realPlan.weeks) : []) : planWeeks()),
@@ -83,12 +90,24 @@ export function PlanView({ data }: { data?: PlanScreenData } = {}) {
     }));
 
     const sel = open && selDay >= 0 ? wk.days[selDay] : null;
-    const segs = sel ? planSegsFor(sel.type) : [];
+    /*
+     * A real session is drawn from its own distance and pace.
+     *
+     * `planSegsFor` hard-codes "800 m rep @ 4:15" — the prototype athlete's
+     * track workout — and drew it over every interval day whatever the plan
+     * said. It stays for the reference render only.
+     */
+    const segs = !sel
+      ? []
+      : isReal
+        ? sessionShape({ type: sel.type, distanceKm: sel.dist, pace: sel.pace || null })
+        : planSegsFor(sel.type);
     const tot = segs.reduce((s, x) => s + x.m, 0) || 1;
     const barBg = sel ? (sel.missed ? "var(--color-line-strong)" : sel.done ? AC : CA) : "transparent";
-    const dur = sel && sel.dist
-      ? Math.round(sel.dist * (sel.type === "int" ? 4.9 : sel.type === "tempo" ? 4.9 : 5.6))
-      : 0;
+    // From the session's own target pace, not from 4.9 or 5.6 minutes per
+    // kilometre — two constants that belonged to the prototype's athlete and
+    // ignored the pace printed immediately beside them.
+    const dur = sel ? plannedMinutes(sel.dist, sel.pace || null) : null;
 
     return {
       w, open, days, km: wk.km, label: wk.label, range: wk.range,
@@ -102,15 +121,20 @@ export function PlanView({ data }: { data?: PlanScreenData } = {}) {
       hasSel: !!sel,
       selTitle: sel ? sel.name + " · " + sel.day + " " + sel.mon + " " + sel.dateNum : "",
       selMeta: sel
-        ? sel.type === "rest" ? "Recovery day"
-          : sel.dist + " km @ " + sel.pace + "/km · ~" + dur + " min"
+        ? sel.type === "rest"
+          ? "Recovery day"
+          : [
+              `${sel.dist} km`,
+              sel.pace ? `@ ${sel.pace}/km` : null,
+              dur ? `~${dur} min` : null,
+            ].filter(Boolean).join(" · ")
         : "",
       selStatus: sel ? sel.status || "Planned" : "",
       selStatusColor: sel
         ? sel.status === "Done" ? P : sel.status === "Missed" ? N
           : sel.status === "Today" ? AC : sel.status === "Adjusted" ? CA : M
         : M,
-      selHasBar: !!sel && sel.type !== "rest",
+      selHasBar: !!sel && sel.type !== "rest" && segs.length > 0,
       selSegments: segs.map((s) => ({
         w: ((s.m / tot) * 100).toFixed(2), h: s.h, bg: barBg, title: s.t,
       })),
@@ -128,8 +152,22 @@ export function PlanView({ data }: { data?: PlanScreenData } = {}) {
       selPurpose: sel ? PURPOSE[sel.type] : "",
       // An adjustment reason is a specific claim about a specific week. We do
       // not store one per session yet, so a real plan does not assert one.
-      selAdjusted: !isReal && !!sel && sel.status === "Adjusted",
-      selReason: "Downgraded from intervals — acute load climbed 12% this week; protecting Saturday’s long run.",
+      /*
+       * The real reason, when the engine wrote one.
+       *
+       * This used to be a fixed sentence — "acute load climbed 12% this week;
+       * protecting Saturday's long run" — shown under any adjusted session,
+       * describing a week that never happened. Migration 0014 stores the actual
+       * reason, and a session a coach set says so instead.
+       */
+      selAdjusted: !!sel && (!!sel.reason || !!sel.byPerson || (!isReal && sel.status === "Adjusted")),
+      selReason: sel?.reason
+        ? sel.reason
+        : sel?.byPerson
+          ? "Set by hand — ARI will not adjust this session automatically."
+          : isReal
+            ? ""
+            : "Downgraded from intervals — acute load climbed 12% this week; protecting Saturday’s long run.",
     };
   });
 
@@ -216,6 +254,6 @@ export function PlanView({ data }: { data?: PlanScreenData } = {}) {
       ];
 
   return (
-<div style={{ maxWidth: "1280px", marginInline: "auto", padding: "16px 24px 40px", display: "flex", flexDirection: "column", gap: "12px" }}><header style={{ display: "flex", alignItems: "center", gap: "24px", paddingBlock: "6px 10px" }}><div style={{ display: "flex", alignItems: "center", gap: "9px" }}><span style={{ width: "10px", height: "10px", background: "var(--color-accent)", borderRadius: "2px", display: "inline-block" }}></span><span className="num" style={{ fontWeight: "500", fontSize: "16px", letterSpacing: ".12em" }}>{copy.brand}</span></div><nav className="topnav" style={{ display: "flex", gap: "20px", fontSize: "13px", color: "var(--color-muted)" }}><a href="/dashboard" style={{ color: "var(--color-muted)" }}>{copy.navHome}</a><a href="/activities" style={{ color: "var(--color-muted)" }}>{copy.navActivities}</a><a href="#" style={{ color: "var(--color-ink)" }}>{copy.navPlan}</a><a href="/settings" style={{ color: "var(--color-muted)" }}>{copy.navSettings}</a></nav><div style={{ flex: "1" }}></div><div style={{ textAlign: "end" }}><h1 style={{ margin: "0", fontSize: "15px", fontWeight: "600" }}>{planTitle}</h1><p style={{ margin: "0", fontSize: "11.5px", color: "var(--color-muted)" }}>{planSubtitle}</p></div></header>{(!hasPlan) ? (<section className="card" style={{ padding: "40px 26px", textAlign: "center" }}><h2 style={{ margin: "0", fontSize: "16px", fontWeight: "600" }}>{PLAN_EMPTY.title}</h2><p style={{ margin: "10px auto 0", fontSize: "13px", color: "var(--color-muted)", maxWidth: "52ch", lineHeight: "1.7" }}>{PLAN_EMPTY.body}</p><a className="btn btn-primary" href="/settings" style={{ display: "inline-block", marginBlockStart: "18px" }}>{PLAN_EMPTY.cta}</a></section>) : null}{(hasPlan) ? (<><section className="card stat-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "16px", padding: "16px 22px" }}>{planStats.map((s, _i1) => (<React.Fragment key={_i1}><div style={{ borderInlineStart: `1px solid ${s.divider}`, paddingInlineStart: "16px" }}><p className="num" style={{ margin: "0", fontSize: "20px", fontWeight: "500" }}>{s.v}</p><p style={{ margin: "2px 0 0", fontSize: "11px", color: "var(--color-muted)" }}>{s.name}</p></div></React.Fragment>))}</section>{months.map((mo, _i2) => (<React.Fragment key={_i2}><section><h2 className="num" style={{ margin: "10px 0 8px", fontSize: "12px", letterSpacing: ".12em", textTransform: "uppercase", color: "var(--color-faint)" }}>{mo.name}</h2><div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>{mo.weeks.map((w, _i3) => (<React.Fragment key={_i3}><div className="card" style={{ overflow: "hidden", borderColor: w.border }}><button className="wk-row" type="button" onClick={w.toggle} style={{ width: "100%", display: "grid", gridTemplateColumns: "96px 1fr auto auto auto", alignItems: "center", gap: "16px", padding: "13px 18px", background: "transparent", border: "none", cursor: "pointer", fontFamily: "inherit", color: "var(--color-ink)", textAlign: "start" }}><span className="num" style={{ fontSize: "13px", fontWeight: "500", color: w.numColor }}>{w.label}</span><span className="num hide-m" style={{ fontSize: "11.5px", color: "var(--color-faint)" }}>{w.range}</span><span className="tag hide-m" style={{ background: "var(--color-elevated)", color: w.phaseColor }}>{w.phase}</span><span className="num" style={{ fontSize: "12px", color: "var(--color-muted)", minWidth: "56px", textAlign: "end" }}>{w.km} km</span><span className="num" style={{ fontSize: "10px", letterSpacing: ".06em", textTransform: "uppercase", color: w.statusColor, minWidth: "64px", textAlign: "end" }}>{w.status}</span></button>{(w.open) ? (<><div style={{ borderBlockStart: "1px solid var(--color-line)", padding: "14px 18px 16px" }}><div className="wk-days" style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: "8px" }}>{w.days.map((d, _i4) => (<React.Fragment key={_i4}><button className="dc-hover-border" type="button" onClick={d.select} style={{ textAlign: "start", fontFamily: "inherit", cursor: "pointer", display: "flex", flexDirection: "column", gap: "6px", padding: "10px 11px", borderRadius: "var(--radius-control)", background: d.bg, border: `1px solid ${d.edge}`, minHeight: "92px" }}><div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "6px", width: "100%" }}><span className="num" style={{ fontSize: "10px", letterSpacing: ".1em", textTransform: "uppercase", color: d.dayColor, whiteSpace: "nowrap" }}>{d.day}</span><span className="num" style={{ fontSize: "8.5px", letterSpacing: ".04em", textTransform: "uppercase", color: d.statusColor, whiteSpace: "nowrap", minWidth: "0", overflow: "hidden", textOverflow: "ellipsis" }}>{d.status}</span></div><div style={{ flex: "1" }}><p style={{ margin: "0", fontSize: "12px", fontWeight: "500", color: d.nameColor }}>{d.name}</p><p className="num" style={{ margin: "2px 0 0", fontSize: "10.5px", color: "var(--color-faint)" }}>{d.dist}</p></div></button></React.Fragment>))}</div>{(w.hasSel) ? (<><div style={{ marginBlockStart: "12px", borderBlockStart: "1px solid var(--color-line)", paddingBlockStart: "14px" }}><div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}><div><h3 style={{ margin: "0", fontSize: "13px", fontWeight: "600" }}>{w.selTitle}</h3><p className="num" style={{ margin: "2px 0 0", fontSize: "11.5px", color: "var(--color-muted)" }}>{w.selMeta}</p></div><span className="tag" style={{ background: "var(--color-elevated)", color: w.selStatusColor }}>{w.selStatus}</span></div>{(w.selHasBar) ? (<><div style={{ display: "flex", alignItems: "flex-end", gap: "2px", height: "48px", marginBlockStart: "12px" }}>{w.selSegments.map((s, _i5) => (<React.Fragment key={_i5}><div title={s.title} style={{ width: `${s.w}%`, height: `${s.h}px`, background: s.bg, borderRadius: "3px 3px 0 0" }}></div></React.Fragment>))}</div><div className="num" style={{ display: "flex", justifyContent: "space-between", marginBlockStart: "5px" }}><span style={{ fontSize: "10px", color: "var(--color-faint)" }}>{w.selSegStart}</span><span style={{ fontSize: "10px", color: "var(--color-muted)" }}>{w.selSegMid}</span><span style={{ fontSize: "10px", color: "var(--color-faint)" }}>{w.selSegEnd}</span></div></>) : null}<p style={{ margin: "10px 0 0", fontSize: "12px", color: "var(--color-muted)", textWrap: "pretty" }}>{w.selPurpose}</p>{(w.selAdjusted) ? (<><p style={{ margin: "6px 0 0", fontSize: "12px", color: "var(--color-caution)" }}>{w.selReason}</p></>) : null}</div></>) : null}</div></>) : null}</div></React.Fragment>))}</div></section></React.Fragment>))}{(showRaceBanner) ? (<section className="card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", padding: "13px 20px", borderColor: "var(--color-accent-soft)" }}><div style={{ display: "flex", alignItems: "center", gap: "12px" }}><span className="tag" style={{ background: "var(--color-accent-soft)", color: "var(--color-accent)" }}>{copy.raceTag}</span><p className="num" style={{ margin: "0", fontSize: "13px" }}>{raceLine}</p></div><span className="num" style={{ fontSize: "12px", color: "var(--color-muted)" }}>{raceTargetLine}</span></section>) : null}</>) : null}</div>
+<div style={{ maxWidth: "1280px", marginInline: "auto", padding: "16px 24px 40px", display: "flex", flexDirection: "column", gap: "12px" }}><header style={{ display: "flex", alignItems: "center", gap: "24px", paddingBlock: "6px 10px" }}><div style={{ display: "flex", alignItems: "center", gap: "9px" }}><span style={{ width: "10px", height: "10px", background: "var(--color-accent)", borderRadius: "2px", display: "inline-block" }}></span><span className="num" style={{ fontWeight: "500", fontSize: "16px", letterSpacing: ".12em" }}>{copy.brand}</span></div><nav className="topnav" style={{ display: "flex", gap: "20px", fontSize: "13px", color: "var(--color-muted)" }}><a href="/dashboard" style={{ color: "var(--color-muted)" }}>{copy.navHome}</a><a href="/activities" style={{ color: "var(--color-muted)" }}>{copy.navActivities}</a><a href="/plan" style={{ color: "var(--color-ink)" }}>{copy.navPlan}</a><a href="/settings" style={{ color: "var(--color-muted)" }}>{copy.navSettings}</a></nav><div style={{ flex: "1" }}></div><div style={{ textAlign: "end" }}><h1 style={{ margin: "0", fontSize: "15px", fontWeight: "600" }}>{planTitle}</h1><p style={{ margin: "0", fontSize: "11.5px", color: "var(--color-muted)" }}>{planSubtitle}</p></div></header>{(!hasPlan) ? (isReal ? (<BuildPlanCard hasRace={race !== null} raceLine={raceLine} />) : (<section className="card" style={{ padding: "40px 26px", textAlign: "center" }}><h2 style={{ margin: "0", fontSize: "16px", fontWeight: "600" }}>{PLAN_EMPTY.title}</h2><p style={{ margin: "10px auto 0", fontSize: "13px", color: "var(--color-muted)", maxWidth: "52ch", lineHeight: "1.7" }}>{PLAN_EMPTY.body}</p><a className="btn btn-primary" href="/settings" style={{ display: "inline-block", marginBlockStart: "18px" }}>{PLAN_EMPTY.cta}</a></section>)) : null}{(hasPlan) ? (<><section className="card stat-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "16px", padding: "16px 22px" }}>{planStats.map((s, _i1) => (<React.Fragment key={_i1}><div style={{ borderInlineStart: `1px solid ${s.divider}`, paddingInlineStart: "16px" }}><p className="num" style={{ margin: "0", fontSize: "20px", fontWeight: "500" }}>{s.v}</p><p style={{ margin: "2px 0 0", fontSize: "11px", color: "var(--color-muted)" }}>{s.name}</p></div></React.Fragment>))}</section>{months.map((mo, _i2) => (<React.Fragment key={_i2}><section><h2 className="num" style={{ margin: "10px 0 8px", fontSize: "12px", letterSpacing: ".12em", textTransform: "uppercase", color: "var(--color-faint)" }}>{mo.name}</h2><div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>{mo.weeks.map((w, _i3) => (<React.Fragment key={_i3}><div className="card" style={{ overflow: "hidden", borderColor: w.border }}><button className="wk-row" type="button" onClick={w.toggle} style={{ width: "100%", display: "grid", gridTemplateColumns: "96px 1fr auto auto auto", alignItems: "center", gap: "16px", padding: "13px 18px", background: "transparent", border: "none", cursor: "pointer", fontFamily: "inherit", color: "var(--color-ink)", textAlign: "start" }}><span className="num" style={{ fontSize: "13px", fontWeight: "500", color: w.numColor }}>{w.label}</span><span className="num hide-m" style={{ fontSize: "11.5px", color: "var(--color-faint)" }}>{w.range}</span>{(w.phase) ? (<span className="tag hide-m" style={{ background: "var(--color-elevated)", color: w.phaseColor }}>{w.phase}</span>) : (<span className="hide-m" />)}<span className="num" style={{ fontSize: "12px", color: "var(--color-muted)", minWidth: "56px", textAlign: "end" }}>{w.km} km</span><span className="num" style={{ fontSize: "10px", letterSpacing: ".06em", textTransform: "uppercase", color: w.statusColor, minWidth: "64px", textAlign: "end" }}>{w.status}</span></button>{(w.open) ? (<><div style={{ borderBlockStart: "1px solid var(--color-line)", padding: "14px 18px 16px" }}><div className="wk-days" style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: "8px" }}>{w.days.map((d, _i4) => (<React.Fragment key={_i4}><button className="dc-hover-border" type="button" onClick={d.select} style={{ textAlign: "start", fontFamily: "inherit", cursor: "pointer", display: "flex", flexDirection: "column", gap: "6px", padding: "10px 11px", borderRadius: "var(--radius-control)", background: d.bg, border: `1px solid ${d.edge}`, minHeight: "92px" }}><div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "6px", width: "100%" }}><span className="num" style={{ fontSize: "10px", letterSpacing: ".1em", textTransform: "uppercase", color: d.dayColor, whiteSpace: "nowrap" }}>{d.day}</span><span className="num" style={{ fontSize: "8.5px", letterSpacing: ".04em", textTransform: "uppercase", color: d.statusColor, whiteSpace: "nowrap", minWidth: "0", overflow: "hidden", textOverflow: "ellipsis" }}>{d.status}</span></div><div style={{ flex: "1" }}><p style={{ margin: "0", fontSize: "12px", fontWeight: "500", color: d.nameColor }}>{d.name}</p><p className="num" style={{ margin: "2px 0 0", fontSize: "10.5px", color: "var(--color-faint)" }}>{d.dist}</p></div></button></React.Fragment>))}</div>{(w.hasSel) ? (<><div style={{ marginBlockStart: "12px", borderBlockStart: "1px solid var(--color-line)", paddingBlockStart: "14px" }}><div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}><div><h3 style={{ margin: "0", fontSize: "13px", fontWeight: "600" }}>{w.selTitle}</h3><p className="num" style={{ margin: "2px 0 0", fontSize: "11.5px", color: "var(--color-muted)" }}>{w.selMeta}</p></div><span className="tag" style={{ background: "var(--color-elevated)", color: w.selStatusColor }}>{w.selStatus}</span></div>{(w.selHasBar) ? (<><div style={{ display: "flex", alignItems: "flex-end", gap: "2px", height: "48px", marginBlockStart: "12px" }}>{w.selSegments.map((s, _i5) => (<React.Fragment key={_i5}><div title={s.title} style={{ width: `${s.w}%`, height: `${s.h}px`, background: s.bg, borderRadius: "3px 3px 0 0" }}></div></React.Fragment>))}</div><div className="num" style={{ display: "flex", justifyContent: "space-between", marginBlockStart: "5px" }}><span style={{ fontSize: "10px", color: "var(--color-faint)" }}>{w.selSegStart}</span><span style={{ fontSize: "10px", color: "var(--color-muted)" }}>{w.selSegMid}</span><span style={{ fontSize: "10px", color: "var(--color-faint)" }}>{w.selSegEnd}</span></div></>) : null}<p style={{ margin: "10px 0 0", fontSize: "12px", color: "var(--color-muted)", textWrap: "pretty" }}>{w.selPurpose}</p>{(w.selAdjusted) ? (<><p style={{ margin: "6px 0 0", fontSize: "12px", color: "var(--color-caution)" }}>{w.selReason}</p></>) : null}</div></>) : null}</div></>) : null}</div></React.Fragment>))}</div></section></React.Fragment>))}{(showRaceBanner) ? (<section className="card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", padding: "13px 20px", borderColor: "var(--color-accent-soft)" }}><div style={{ display: "flex", alignItems: "center", gap: "12px" }}><span className="tag" style={{ background: "var(--color-accent-soft)", color: "var(--color-accent)" }}>{copy.raceTag}</span><p className="num" style={{ margin: "0", fontSize: "13px" }}>{raceLine}</p></div><span className="num" style={{ fontSize: "12px", color: "var(--color-muted)" }}>{raceTargetLine}</span></section>) : null}</>) : null}</div>
   );
 }

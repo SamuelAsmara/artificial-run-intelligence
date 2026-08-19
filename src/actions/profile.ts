@@ -15,6 +15,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { recomputeForUser } from "@/lib/readiness/recompute";
 import { parseTargetTime } from "@/lib/screens/settings";
 import type { RaceType, RunningLevel } from "@/types/database.types";
 
@@ -145,6 +146,23 @@ export async function saveAthleteProfile(edit: ProfileEdit): Promise<Result<null
     return { ok: false, error: "That doesn't look like an image." };
   }
 
+  /*
+   * What the demographics were before this save.
+   *
+   * Age and sex are inputs to the maximum-heart-rate estimate, which sets the
+   * threshold, which sets the load score of every run in history. Changing them
+   * therefore invalidates every stored readiness snapshot — and nothing
+   * recomputed. A 54-year-old signing up was scored against the default 34,
+   * corrected his age here, saw three screens re-render, and read exactly the
+   * same fitness, fatigue, form and readiness numbers back. Forever, if he had
+   * no intervals.icu connection to trigger the nightly job.
+   */
+  const { data: before } = await supabase
+    .from("profiles")
+    .select("age, sex")
+    .eq("id", user.id)
+    .maybeSingle();
+
   const { error } = await supabase
     .from("profiles")
     .update({
@@ -164,6 +182,13 @@ export async function saveAthleteProfile(edit: ProfileEdit): Promise<Result<null
 
   const raceSaved = await saveGoalRace(supabase, user.id, edit);
   if (!raceSaved.ok) return raceSaved;
+
+  // Only when they actually moved — a recompute over 120 days is not free, and
+  // saving a bio should not trigger one.
+  if ((before?.age ?? null) !== age || (before?.sex ?? null) !== sex) {
+    await recomputeForUser(supabase, user.id, 120);
+    revalidatePath("/activities");
+  }
 
   revalidatePath("/settings");
   revalidatePath("/dashboard");

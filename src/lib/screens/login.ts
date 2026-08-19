@@ -12,6 +12,15 @@
  * fabrication waiting for somebody to import it.
  */
 
+/**
+ * The shortest password we will let anybody choose.
+ *
+ * Lives here rather than in a screen so the sign-up card and the password-reset
+ * card cannot drift apart — a reset screen that accepts six characters would
+ * quietly undo the rule the sign-up screen enforces.
+ */
+export const MIN_PASSWORD = 8;
+
 export const LOGIN_COPY = {
   brand: "ARI",
 
@@ -46,6 +55,13 @@ export const LOGIN_COPY = {
   forgot: "Forgot password?",
   resetSent: "Check your inbox for the reset link.",
   confirmSent: "Account created — check your inbox to confirm the address.",
+  /**
+   * Shown when the address already has an account.
+   *
+   * Worded so it reads the same whether or not that is true — see the note at
+   * the call site. It has to be useful without confirming anything.
+   */
+  maybeExisting: "Check your inbox. If you already have an account, log in instead.",
 
   submitLogin: "Log in",
   submitSignup: "Create account",

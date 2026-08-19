@@ -10,7 +10,8 @@
 
 import { useState, useTransition } from "react";
 import { CoachNav } from "@/components/coach/CoachNav";
-import { updateWorkout, type AthleteDetail, type AthleteWorkout } from "@/actions/coach";
+import { useRouter } from "next/navigation";
+import { removeAthlete, updateWorkout, type AthleteDetail, type AthleteWorkout } from "@/actions/coach";
 import { formatDuration } from "@/lib/format/pace";
 import { RACE_LABEL } from "@/lib/coach/templates";
 import {
@@ -29,6 +30,31 @@ export function CoachAthleteView({ detail, today }: { detail: AthleteDetail; tod
   const [draft, setDraft] = useState<{ type: WorkoutTypeName; km: string }>({ type: "easy", km: "" });
   const [note, setNote] = useState("");
   const [pending, startTransition] = useTransition();
+  /**
+   * Two presses to end a coaching relationship.
+   *
+   * `removeAthlete` has existed since the coaching work landed and was called
+   * from nowhere, so a coach could not take anybody off their roster — a
+   * mistyped code or a relationship that ended stayed on the board for ever.
+   *
+   * A confirm step rather than a browser dialog: this is destructive from the
+   * athlete's side too (they lose their coach without being asked), and a
+   * `confirm()` blocks the page and reads as an interruption rather than a
+   * decision.
+   */
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [removeError, setRemoveError] = useState("");
+  const router = useRouter();
+
+  const remove = () => {
+    setRemoveError("");
+    startTransition(async () => {
+      const result = await removeAthlete(athlete.id);
+      if (!result.ok) return setRemoveError(result.error);
+      router.push("/coach/athletes");
+      router.refresh();
+    });
+  };
 
   const open = (w: AthleteWorkout) => {
     setNote("");
@@ -59,9 +85,33 @@ export function CoachAthleteView({ detail, today }: { detail: AthleteDetail; tod
 
   // Fitness and fatigue over six weeks. Two lines, no axis furniture: the shape
   // is the message and the numbers are already in the metric row above.
+  /*
+   * Fitness and fatigue over six weeks. Two lines, no axis furniture: the shape
+   * is the message and the numbers are already in the metric row above.
+   *
+   * Three faults were hiding in the arithmetic:
+   *
+   * - With every `ctl`/`atl` null the section still rendered — an empty box, a
+   *   legend, and two `<path d="">`. `hasTrend` now decides whether there is
+   *   anything to draw at all.
+   * - With every value equal, `hi - lo || 1` put the flat line at y = 92 in a
+   *   100-tall viewBox: pinned to the very bottom edge rather than centred,
+   *   which reads as a collapse rather than as steadiness. The range is now
+   *   opened out around the value.
+   * - `started` was never reset after a null, so a gap in the data was bridged
+   *   with a straight line through it — a week with no snapshots was drawn as
+   *   if fitness had moved smoothly across it. `sparkline.ts` lifts the pen for
+   *   exactly this reason; this one did not.
+   */
   const values = trend.flatMap((t) => [t.ctl, t.atl]).filter((v): v is number => v !== null);
-  const lo = values.length ? Math.min(...values) : 0;
-  const hi = values.length ? Math.max(...values) : 1;
+  const hasTrend = values.length >= 2;
+  const rawLo = values.length ? Math.min(...values) : 0;
+  const rawHi = values.length ? Math.max(...values) : 1;
+  // A degenerate range is opened out rather than clamped to 1, so a flat line
+  // sits in the middle of the box.
+  const pad = rawHi - rawLo < 1 ? Math.max(1, Math.abs(rawHi) * 0.1) : 0;
+  const lo = rawLo - pad;
+  const hi = rawHi + pad;
   const span = hi - lo || 1;
   const px = (i: number) => 8 + (i / Math.max(1, trend.length - 1)) * 584;
   const py = (v: number) => 8 + (1 - (v - lo) / span) * 84;
@@ -70,7 +120,11 @@ export function CoachAthleteView({ detail, today }: { detail: AthleteDetail; tod
     let started = false;
     trend.forEach((t, i) => {
       const v = pick(t);
-      if (v === null) return;
+      if (v === null) {
+        // Lift the pen. The next point starts a new stroke.
+        started = false;
+        return;
+      }
       d += (started ? "L" : "M") + px(i).toFixed(1) + " " + py(v).toFixed(1);
       started = true;
     });
@@ -208,7 +262,8 @@ export function CoachAthleteView({ detail, today }: { detail: AthleteDetail; tod
         </section>
       )}
 
-      {trend.length > 1 && (
+      {/* placed last on the page, below; see the roster footer */}
+      {trend.length > 1 && hasTrend && (
         <section className="card" style={{ padding: "16px 20px" }}>
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
             <h2 style={{ margin: 0, fontSize: "13px", fontWeight: 600 }}>{COACH_COPY.trendTitle}</h2>
@@ -277,6 +332,48 @@ export function CoachAthleteView({ detail, today }: { detail: AthleteDetail; tod
             ))}
           </div>
         )}
+      </section>
+
+      <section className="card" style={{ padding: "14px 20px", display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: "220px" }}>
+          <h2 style={{ margin: 0, fontSize: "13px", fontWeight: 600 }}>{COACH_COPY.removeTitle}</h2>
+          <p style={{ margin: "3px 0 0", fontSize: "11.5px", color: "var(--color-muted)", lineHeight: 1.6 }}>
+            {COACH_COPY.removeBody}
+          </p>
+        </div>
+        {confirmRemove ? (
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button
+              className="btn btn-secondary"
+              type="button"
+              onClick={() => setConfirmRemove(false)}
+              style={{ padding: "6px 12px", fontSize: "12px" }}
+            >
+              {COACH_COPY.removeCancel}
+            </button>
+            <button
+              className="btn btn-secondary"
+              type="button"
+              onClick={remove}
+              disabled={pending}
+              style={{ padding: "6px 12px", fontSize: "12px", color: "var(--color-negative)", borderColor: "var(--color-negative)" }}
+            >
+              {pending ? COACH_COPY.removing : COACH_COPY.removeConfirm}
+            </button>
+          </div>
+        ) : (
+          <button
+            className="btn btn-secondary"
+            type="button"
+            onClick={() => setConfirmRemove(true)}
+            style={{ padding: "6px 12px", fontSize: "12px" }}
+          >
+            {COACH_COPY.remove}
+          </button>
+        )}
+        {removeError ? (
+          <p style={{ margin: 0, width: "100%", fontSize: "11.5px", color: "var(--color-negative)" }}>{removeError}</p>
+        ) : null}
       </section>
     </div>
   );

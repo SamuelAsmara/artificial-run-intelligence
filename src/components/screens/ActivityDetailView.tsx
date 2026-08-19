@@ -247,9 +247,12 @@ export function ActivityDetailView({
         <p style={{ margin: 0, fontSize: "14px", lineHeight: 1.6, textWrap: "pretty" }}>
           {data?.note?.text || copy.noNote}
         </p>
-        <div style={{ marginBlockStart: "auto", display: "flex", gap: "10px" }}>
-          <button className="btn btn-secondary" type="button">{copy.btnReason}</button>
-        </div>
+        {/*
+          "Show reasoning" used to sit here with no handler and no panel behind
+          it — there is no reasoning view on this screen to open. A button that
+          answers nothing when pressed reads as broken, not as unfinished. The
+          dashboard has the real one, next to the narrative it explains.
+        */}
       </section>
     </div>
   );

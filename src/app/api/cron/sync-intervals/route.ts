@@ -88,7 +88,11 @@ export async function POST(request: NextRequest) {
         .from("provider_connections")
         .update({
           last_synced_at: new Date().toISOString(),
-          status: result.warning ? "error" : "connected",
+          // A warning is not a broken connection — see the note on the same
+          // decision in actions/providers.ts. "Could not read recovery data"
+          // used to mark an account "Not connected" that had just imported a
+          // hundred runs successfully.
+          status: "connected",
           last_error: result.warning ?? null,
         })
         .eq("user_id", conn.user_id)

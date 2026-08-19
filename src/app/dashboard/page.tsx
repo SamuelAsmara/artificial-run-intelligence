@@ -8,13 +8,12 @@ import { createClient } from "@/lib/supabase/server";
 import { formatPace } from "@/lib/format/pace";
 import { paceShapeColor, paceShapeToPath } from "@/lib/dashboard/sparkline";
 import { getPersonalRecords } from "@/actions/activities";
+import { APP_LOCALE, APP_TIME_ZONE, todayIso } from "@/lib/time/week";
 import {
   calendarDots, raceCountdown, runStreak, weeklyVolume, weeklyVolumeSummary,
 } from "@/lib/dashboard/rail";
 
 export const metadata = { title: "Dashboard · ARI" };
-
-const MO = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 export default async function DashboardPage({
   searchParams,
@@ -49,12 +48,13 @@ export default async function DashboardPage({
 
   const latest = series[series.length - 1];
 
-  const [narrative, recentActivities, plan, derived, rail] = await Promise.all([
+  const [narrative, recentActivities, plan, derived, rail, avatar] = await Promise.all([
     getDashboardNarrative(),
     recentActivityRows(),
     getDashboardPlan(),
     streamDerived(),
     railData(),
+    athletePhoto(),
   ]);
 
   /*
@@ -82,15 +82,27 @@ export default async function DashboardPage({
     recentActivities,
     narrative: narrative ?? undefined,
     plan: plan ?? undefined,
+    today: todayIso(),
+    readinessAsOf: latest.date,
     athleteName: await athleteName(),
+    avatarUrl: avatar.url,
+    avatarPosition: avatar.position,
     personalRecords: derived.prs,
     cardiacDriftPct: derived.cardiacDrift,
     rail,
   };
 
+  /*
+   * `?coach=1` is not honoured on a real dashboard.
+   *
+   * The banner it raises reads "You are viewing Samuel Cohen's training data" —
+   * a name from the prototype, hard-coded in model.ts, shown to whoever typed
+   * the parameter. Coaches read an athlete through /coach/athletes/[id], which
+   * is scoped by the roster; this was a mock of that, and a real coach seeing a
+   * stranger's name on their own dashboard is worse than no banner at all.
+   */
   return (
     <DashboardView
-      coachView={sp.coach === "1"}
       readinessScore={readinessScore}
       acwrRisk={sp.risk === "1"}
       data={data}
@@ -106,6 +118,21 @@ async function athleteName(): Promise<string | null> {
   } = await supabase.auth.getUser();
   const meta = user?.user_metadata as { username?: string; full_name?: string } | undefined;
   return meta?.username ?? meta?.full_name ?? null;
+}
+
+/** The photo and framing the athlete saved in Settings, if any. */
+async function athletePhoto(): Promise<{ url: string | null; position: string | undefined }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { url: null, position: undefined };
+  const { data } = await supabase
+    .from("profiles")
+    .select("avatar_url, avatar_position")
+    .eq("id", user.id)
+    .maybeSingle();
+  return { url: data?.avatar_url ?? null, position: data?.avatar_position ?? undefined };
 }
 
 /**
@@ -245,13 +272,25 @@ async function recentActivityRows() {
 
   if (!data || data.length === 0) return undefined;
 
+  /*
+   * The date, in the athlete's timezone.
+   *
+   * `getMonth()`/`getDate()` read the server's clock, which on Vercel is UTC —
+   * so a run started at 01:00 on Tuesday in Tel Aviv was listed as Monday. The
+   * activity list was rewritten to use `APP_TIME_ZONE` for exactly this; the
+   * rail on the dashboard beside it still had the bug.
+   */
+  const label = new Intl.DateTimeFormat(APP_LOCALE, {
+    day: "2-digit", month: "short", timeZone: APP_TIME_ZONE,
+  });
+
   return data.map((a) => {
     const d = a.started_at ? new Date(a.started_at) : new Date();
     const km = (a.distance_m ?? 0) / 1000;
     const pace = km > 0 ? (a.duration_s ?? 0) / km : 0;
     return {
       id: a.id,
-      date: `${MO[d.getMonth()]} ${String(d.getDate()).padStart(2, "0")}`,
+      date: label.format(d).replace(/^(\d+) (\w+)$/, "$2 $1"),
       km: km.toFixed(1),
       pace: formatPace(pace),
       spark: paceShapeToPath(a.pace_shape),

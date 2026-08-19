@@ -82,7 +82,12 @@ export function CoachHomeView({ data, today }: { data: CoachWorkspace; today: st
         <Stat value={String(summary.total)} label={summary.total === 1 ? "Athlete" : "Athletes"} />
         <Stat value={String(cycles.length)} label={cycles.length === 1 ? "Cycle" : "Cycles"} divided />
         <Stat
-          value={`${weekSessions.filter((s) => s.done).length}/${weekSessions.length}`}
+          // "0/0" is not a fact about training, it is the absence of one.
+          value={
+            weekSessions.length === 0
+              ? "—"
+              : `${weekSessions.filter((s) => s.done).length}/${weekSessions.length}`
+          }
           label="Sessions this week"
           divided
         />
@@ -157,12 +162,16 @@ export function CoachHomeView({ data, today }: { data: CoachWorkspace; today: st
               </p>
             </section>
           ) : (
-            <CoachCalendar sessions={sessions} today={today} raceColors={preferences.raceColors} />
+            <CoachCalendar sessions={sessions} today={today} raceColors={preferences.raceColors} from={data.from} to={data.to} />
           )}
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          <Reminders reminders={reminders} today={today} />
+          <Reminders
+            reminders={reminders}
+            today={today}
+            athletes={athletes.map((a) => ({ id: a.id, name: a.name }))}
+          />
           <JoinCode code={code} />
         </div>
       </div>

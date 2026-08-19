@@ -26,6 +26,37 @@ export interface ActivityRow {
   distance_m: number | null;
   duration_s: number | null;
   avg_hr: number | null;
+  /**
+   * Heart-rate drift over the run, derived from its stream.
+   *
+   * Optional because it is not always there: only runs long enough to measure
+   * it have one, and a run whose stream has not been fetched yet has none.
+   */
+  cardiac_drift_pct?: number | null;
+}
+
+/**
+ * How far back a drift reading still says something about today.
+ *
+ * Drift is a fatigue and hydration signal from a specific run. Four days later
+ * it is a fact about that run, not about this morning — the same reasoning as
+ * `RECOVERY_STALE_DAYS` for sleep and HRV.
+ */
+const DRIFT_STALE_DAYS = 3;
+
+/** The most recent drift reading at or before `date`, if it is recent enough. */
+function driftAsOf(history: { date: string; cardiacDriftPct?: number | null }[], date: string): number | null {
+  let best: { date: string; value: number } | null = null;
+  for (const h of history) {
+    if (h.date > date) continue;
+    if (h.cardiacDriftPct == null) continue;
+    if (!best || h.date > best.date) best = { date: h.date, value: h.cardiacDriftPct };
+  }
+  if (!best) return null;
+  const days = Math.round(
+    (Date.parse(date + "T00:00:00Z") - Date.parse(best.date + "T00:00:00Z")) / 86_400_000,
+  );
+  return days <= DRIFT_STALE_DAYS ? best.value : null;
 }
 
 /**
@@ -102,6 +133,20 @@ export function buildSnapshots(
       date: (a.started_at as string).slice(0, 10),
     }));
 
+  /*
+   * Drift, kept separately from `history`.
+   *
+   * `HistoryActivity` is the threshold estimator's input and has no business
+   * growing a field only the readiness score reads. Same rows, one extra
+   * column, no coupling between two unrelated calculations.
+   */
+  const driftHistory = activities
+    .filter((a) => a.started_at && a.cardiac_drift_pct != null)
+    .map((a) => ({
+      date: (a.started_at as string).slice(0, 10),
+      cardiacDriftPct: a.cardiac_drift_pct as number,
+    }));
+
   const thresholds = estimateThresholds(history, {
     age: profile.age,
     sex: profile.sex,
@@ -153,7 +198,17 @@ export function buildSnapshots(
     const readiness = computeReadiness({
       pmc: point,
       loadRatio: ratio,
-      cardiacDriftPct: null, // needs per-activity streams — not wired yet
+      /*
+       * Wired, as of the audit.
+       *
+       * This was hard-coded null on the grounds that it "needs per-activity
+       * streams", which have been derived and stored in
+       * `activities.cardiac_drift_pct` since migration 0007 — and displayed on
+       * the dashboard. So the screen showed a drift number sitting next to a
+       * readiness score that demonstrably ignored it, and the reasoning panel
+       * scored the component at its neutral default for every athlete.
+       */
+      cardiacDriftPct: driftAsOf(driftHistory, point.date),
       sleepHours,
       hrvVsBaselinePct: hrvPct,
     });
@@ -167,7 +222,7 @@ export function buildSnapshots(
       loadRatio: ratio,
       sleepHours,
       hrvVsBaselinePct: hrvPct,
-      cardiacDriftPct: null, // needs per-activity streams — not wired yet
+      cardiacDriftPct: driftAsOf(driftHistory, point.date),
       restingHr: profile.restingHr ?? null,
       longestRecentM: longestRecent(history, point.date),
     });
@@ -178,7 +233,7 @@ export function buildSnapshots(
       atl: round1(point.atl),
       tsb: round1(point.tsb),
       acwr: ratio === null ? null : round2(ratio),
-      cardiac_drift: null,
+      cardiac_drift: driftAsOf(driftHistory, point.date),
       readiness_score: readiness.score,
       narrative: narrative.body,
     });

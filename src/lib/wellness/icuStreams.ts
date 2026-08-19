@@ -84,13 +84,28 @@ export async function fetchStreams(
   if (res.status === 401 || res.status === 403) {
     throw new IntervalsIcuError("intervals.icu rejected the API key.", res.status);
   }
+  /*
+   * A 5xx or a rate-limit is *not* "this run has no stream".
+   *
+   * Returning null for them made the caller record the activity as analysed —
+   * permanently, since the pending query only looks at rows below the current
+   * derivation version. A 429 during a 400-day backfill silently cost the
+   * athlete every personal best in that batch, with no way back but a code
+   * change. Throwing keeps the row in the queue for the next sync.
+   */
+  if (res.status === 429 || res.status >= 500) {
+    throw new IntervalsIcuError(
+      `intervals.icu is not answering right now (${res.status}).`,
+      res.status,
+    );
+  }
   if (!res.ok) return null;
 
   let body: unknown;
   try {
     body = await res.json();
   } catch {
-    return null;
+    throw new IntervalsIcuError("intervals.icu returned an unreadable stream.", res.status);
   }
   if (!Array.isArray(body)) return null;
 

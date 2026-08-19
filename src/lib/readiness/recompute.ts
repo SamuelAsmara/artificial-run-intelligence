@@ -30,7 +30,7 @@ export async function recomputeForUser(
 ): Promise<{ ok: true; data: RecomputeResult } | { ok: false; error: string }> {
   const { data: activities, error: actErr } = await supabase
     .from("activities")
-    .select("started_at, distance_m, duration_s, avg_hr")
+    .select("started_at, distance_m, duration_s, avg_hr, cardiac_drift_pct")
     .eq("user_id", userId)
     .order("started_at", { ascending: true });
 
@@ -75,7 +75,7 @@ export async function recomputeForUser(
   // and the profile screen is where that gets fixed.
   const { data: profile } = await supabase
     .from("profiles")
-    .select("age, sex")
+    .select("age, sex, lthr")
     .eq("id", userId)
     .maybeSingle();
 
@@ -86,6 +86,10 @@ export async function recomputeForUser(
       age: profile?.age ?? 34,
       sex: (profile?.sex as "male" | "female") ?? "male",
       restingHr,
+      // Yesterday's answer, so today's cannot swing on one hard week — see the
+      // slow-decay rule in lib/planning/thresholds.ts. Nothing supplied this
+      // before, because nothing wrote `profiles.lthr` in the first place.
+      previousLthr: profile?.lthr ?? undefined,
     },
     new Date(),
     days,
@@ -100,6 +104,33 @@ export async function recomputeForUser(
     { onConflict: "user_id,date" },
   );
   if (upsertErr) return { ok: false, error: `Could not store snapshots: ${upsertErr.message}` };
+
+  /*
+   * Write the thresholds back to the profile.
+   *
+   * `buildSnapshots` has always returned them and this function has always
+   * thrown them away, so `hr_max`, `lthr`, `threshold_speed_mps` and
+   * `thresholds_measured` were read in three places and written in none.
+   * Consequences: `thresholds_measured` was false for every athlete forever, so
+   * the activity page's zone strip printed its "provisional, estimated from
+   * your age" caveat permanently — even for someone with two years of hard
+   * running behind them — and `thresholds_updated_at` had no writer at all.
+   *
+   * It also closes a loop inside the estimator: `estimateThresholds` accepts a
+   * `previousLthr` so the threshold decays slowly rather than jumping around
+   * with one hard week, and nothing could ever supply one.
+   */
+  const t = result.thresholds;
+  await supabase
+    .from("profiles")
+    .update({
+      hr_max: Math.round(t.hrMax),
+      lthr: Math.round(t.lthr),
+      threshold_speed_mps: Number(t.thresholdSpeedMps.toFixed(3)),
+      thresholds_measured: t.measured,
+      thresholds_updated_at: new Date().toISOString(),
+    })
+    .eq("id", userId);
 
   return {
     ok: true,

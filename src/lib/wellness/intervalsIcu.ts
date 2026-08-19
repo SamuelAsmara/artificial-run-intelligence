@@ -91,8 +91,16 @@ export async function fetchWellness(
 
   const res = await fetch(url, {
     headers: { Authorization: authHeader(cfg.apiKey), Accept: "application/json" },
-    // wellness changes once a day; don't hammer them on every page view
-    next: { revalidate: 3600 },
+    /*
+     * No cache. This used to be `next: { revalidate: 3600 }` on the reasoning
+     * that wellness changes once a day — true of the data, false of the moment
+     * it arrives. The oldest/newest range is stable for a whole calendar day,
+     * so the cache key was too, and pressing "Sync now" at 08:05 after the
+     * watch uploaded at 08:00 replayed the 07:20 response: "Synced 84 nights",
+     * and not one figure on the dashboard moved. A button that says Sync now
+     * must actually go and look.
+     */
+    cache: "no-store",
   });
 
   if (res.status === 401 || res.status === 403) {
@@ -214,6 +222,17 @@ export interface IcuActivity {
   average_cadence?: number | null;
   average_watts?: number | null;
   icu_average_watts?: number | null;
+  /** running power, which intervals.icu reports separately from bike watts */
+  icu_weighted_avg_watts?: number | null;
+  /**
+   * When intervals.icu last modified this activity.
+   *
+   * The tell that an athlete cropped a run, corrected its type, or re-uploaded
+   * the file after we already analysed it — see migration 0015. Absent on older
+   * responses, which is why everything downstream treats null as "unknown"
+   * rather than "unchanged".
+   */
+  updated?: string | null;
   name?: string;
 }
 
@@ -260,6 +279,8 @@ export interface ActivityImport {
   avg_cadence: number | null;
   avg_power: number | null;
   started_at: string | null;
+  /** when the provider last modified it, if it says — see migration 0015 */
+  source_updated_at: string | null;
 }
 
 /**
@@ -279,9 +300,22 @@ export interface ActivityImport {
  * depends on the source. Preferring the device's keeps our number matching what
  * the athlete sees on their watch.
  */
+/**
+ * Average power, from whichever field this activity happens to carry it in.
+ *
+ * intervals.icu does not use one name. Bike files land in `average_watts`;
+ * running power arrives as `icu_average_watts` or `icu_weighted_avg_watts`
+ * depending on the source device and how the file was processed. Reading only
+ * the first two is why `avg_power` has been null on every imported run.
+ *
+ * Still cosmetic — nothing in the load model uses power, which is scored from
+ * heart rate and pace — so this is widened rather than made a hard requirement.
+ */
 function pickWatts(a: IcuActivity): number | null {
-  const w = a.average_watts ?? a.icu_average_watts;
-  return typeof w === "number" && w > 0 ? Math.round(w) : null;
+  for (const w of [a.average_watts, a.icu_average_watts, a.icu_weighted_avg_watts]) {
+    if (typeof w === "number" && w > 0) return Math.round(w);
+  }
+  return null;
 }
 
 export function toActivityImports(rows: IcuActivity[]): ActivityImport[] {
@@ -320,6 +354,7 @@ export function toActivityImports(rows: IcuActivity[]): ActivityImport[] {
           : null,
       avg_power: pickWatts(a),
       started_at: a.start_date_local ? new Date(a.start_date_local).toISOString() : null,
+      source_updated_at: a.updated ? new Date(a.updated).toISOString() : null,
     });
   }
 

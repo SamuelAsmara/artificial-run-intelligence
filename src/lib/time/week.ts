@@ -82,6 +82,51 @@ export const APP_TIME_ZONE = "Asia/Jerusalem";
 /** The locale used for the same reason. Day-month order, 24-hour clock. */
 export const APP_LOCALE = "en-GB";
 
+/**
+ * Now, expressed as a `Date` whose *local* fields are the wall clock in
+ * `APP_TIME_ZONE`.
+ *
+ * ## The problem this solves
+ *
+ * `isoDate`, `weekStart`, `dayOfWeek` and `addDays` all read `getFullYear()`,
+ * `getMonth()` and `getDate()` — the **runtime's** timezone. Vercel's Node
+ * runtime is UTC and nothing sets `TZ`, so in production every one of them was
+ * answering in UTC while `APP_TIME_ZONE` said Asia/Jerusalem. The test suite
+ * proved the intended behaviour under a timezone production never had, because
+ * `railTimezone.test.ts` sets `process.env.TZ` before it runs.
+ *
+ * The visible cost was three hours every night: between 00:00 and 03:00 Israel
+ * time the streak was short by a day, today's calendar dot landed on yesterday,
+ * and the plan strip labelled yesterday's session "Today".
+ *
+ * ## Why shift the Date rather than pass a timezone everywhere
+ *
+ * Because the alternative is threading a zone through a dozen pure functions
+ * and their tests. Reading the wall clock once here and handing the rest of the
+ * code a `Date` that already means the right day keeps every one of them
+ * unchanged — and they stay correct under any server timezone, including a
+ * developer's laptop, which is the property the `TZ` variable does not give.
+ *
+ * The returned `Date` is *not* the same instant as `now`. It is a carrier for
+ * calendar fields and must not be used for durations.
+ */
+export function zonedNow(now: Date = new Date()): Date {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: APP_TIME_ZONE,
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hour12: false,
+  }).formatToParts(now);
+
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
+  // Intl renders midnight as hour 24 in some engines under hourCycle h23/h24.
+  const hour = get("hour") % 24;
+  return new Date(get("year"), get("month") - 1, get("day"), hour, get("minute"), get("second"));
+}
+
+/** Today's calendar date in `APP_TIME_ZONE`, as `YYYY-MM-DD`. */
+export const todayIso = (now: Date = new Date()): string => isoDate(zonedNow(now));
+
 export function addDays(d: Date, n: number): Date {
   const out = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   out.setDate(out.getDate() + n);

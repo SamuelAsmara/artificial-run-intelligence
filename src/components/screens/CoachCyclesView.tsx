@@ -52,9 +52,24 @@ export function CoachCyclesView({ data, today }: { data: CoachWorkspace; today: 
         </span>
       </div>
 
-      {cycles.length === 0 ? (
+      {/*
+        The athletes with no goal race are the actionable half of this screen,
+        and they used to be rendered *inside* the `cycles.length > 0` branch. A
+        coach with five athletes, none of whom had picked a race, saw "No cycles
+        yet" and never the five people who needed one — precisely the case the
+        screen exists to surface.
+      */}
+      {cycles.length === 0 && withoutRace.length === 0 ? (
         <section className="card" style={{ padding: "34px 26px", textAlign: "center" }}>
           <p style={{ margin: 0, fontSize: "13px", color: "var(--color-muted)" }}>{COACH_COPY.cycleEmpty}</p>
+        </section>
+      ) : cycles.length === 0 ? (
+        <section className="card" style={{ padding: "16px 20px", borderColor: "var(--color-caution)" }}>
+          <h2 style={{ margin: "0 0 4px", fontSize: "13px", fontWeight: 600 }}>{COACH_COPY.noRaceGroup}</h2>
+          <p style={{ margin: "0 0 10px", fontSize: "11.5px", color: "var(--color-muted)" }}>
+            No plan can be generated until they pick a distance and a date.
+          </p>
+          <AthleteRows athletes={withoutRace} today={today} flaggedIds={flaggedIds} />
         </section>
       ) : (
         <>

@@ -1,0 +1,144 @@
+audit: close every finding from the pre-launch deep scan
+
+Two rounds. The first closed six release blockers; this commit also closes
+the six items that round left standing, plus nine smaller ones.
+
+SECURITY — the one that cannot be fixed from application code:
+
+  0001_init.sql gave coach_athletes an INSERT policy that checked only
+  coach_id. athlete_id was unconstrained, and every coach authorization
+  decision reduces to "is there a row in coach_athletes" — so one line in
+  a browser console granted any signed-in user full read access to any
+  other user's profile, activities, readiness history, goal race and
+  plan, plus UPDATE on their workouts. Migration 0013 constrains the
+  insert to athlete_id = auth.uid(): joining a coach is the athlete's act.
+
+  /coach/* also had no role gate. RLS held, so no data leaked, but any
+  athlete who typed the URL got the coaching product. One layout now
+  states the rule where a seventh route cannot forget it.
+
+FUNCTIONALITY — holes that made large parts of the product unreachable:
+
+  Nothing called generatePlanAction, so no plan could ever be built and
+  everything downstream of one was permanently empty. Nothing called
+  issueCoachCode either, so a new coach could not obtain a join code and
+  the athlete side sat waiting for a code that could not exist. Nothing
+  called removeAthlete, so a roster could only ever grow.
+
+  The coach's templates screen wrote to plan_templates and nothing read
+  it back: twenty minutes of tuning, "Saved", and no effect on anybody's
+  training. generatePlan now takes the structure — as proportions, not
+  week counts, so a 14-week template given to somebody racing in nine
+  becomes nine weeks that keep its shape. Wiring it surfaced a real
+  disagreement: the screen described a five-running-day week and the
+  generator built four. Settled in favour of the thing a coach can see.
+
+HONESTY — the product was describing a fictional athlete's training:
+
+  With no plan (which, per the above, was everyone) the dashboard's Next
+  session card announced "Intervals - 6 x 800 m", an Adjusted tag, and a
+  reason referring to a long run that never happened — two inches below
+  the same screen correctly saying there was no plan. ?coach=1 named
+  "Samuel Cohen" to whoever typed it.
+
+  Worse, and missed on the first pass: clicking any real planned session
+  drew the prototype's structure over it. An 18 km long run and a 5 km
+  recovery jog were both described as "Warm-up 10 min / 800 m rep @ 4:15
+  / 90 s jog", and the plan screen printed a duration computed from two
+  constants that ignored the target pace beside them — an athlete running
+  6:20/km was told their 10 km would take 56 minutes. sessionShape.ts
+  builds the bar from the session's own distance and pace; PURPOSE no
+  longer specifies a structure we never prescribed; and the caption no
+  longer claims to show a completed session "as executed", which nothing
+  reads back.
+
+PROVENANCE — migration 0014, for two bugs with one root:
+
+  An automatic reduction was permanent. The engine cuts to 80% when ACWR
+  crosses 1.5 and then skips anything not 'planned', which correctly
+  stops the cut compounding and also means there is no way back: ACWR
+  returns to 1.05 and the week stays reduced for ever, unmarked and
+  unexplained. And a coach's edit left status at 'planned' — exactly the
+  state the 03:00 job hunts for — so Thursday's 18 km became 14.4 km
+  overnight, silently.
+
+  origin says whose decision the numbers are; the engine may adjust what
+  it generated and may not overrule a person. planned_distance_original
+  is what it was, so a reduction can be undone when its reason passes.
+  adjusted_reason is why, in the athlete's own words — the plan screen
+  has had a slot for that line since the prototype and was filling it
+  with an invented sentence.
+
+FRESHNESS — migration 0015 and the sync path:
+
+  A stream fetch that failed — 429, 5xx, or a run intervals.icu had not
+  finished processing — was still stamped as derived, and the pending
+  query never looks at it again. A run synced ten minutes after it ended
+  lost its sparkline and its personal best for good.
+
+  A run edited on intervals.icu after import got its summary corrected
+  and kept pace_shape, best_efforts and cardiac_drift_pct derived from
+  the old file, permanently. source_updated_at turns "has this changed?"
+  into a comparison, and resets the derivation version so the existing
+  re-derivation path picks it up.
+
+  fetchWellness cached for an hour on a key stable for the whole day, so
+  "Sync now" replayed an old response and moved nothing. A failed sync
+  wrote status:"error" and called no revalidate, which in Next 16 means
+  the page does not re-render at all: the panel stayed green and said
+  Connected, and last_error had never been rendered anywhere. A partial
+  failure marked a working connection "Not connected".
+
+CORRECTNESS:
+
+  Every "today" was computed in UTC. APP_TIME_ZONE was used only for
+  Intl; isoDate, weekStart, addDays and dayOfWeek read the runtime's
+  zone, and Vercel is UTC. The existing timezone test sets process.env.TZ
+  and so proved the behaviour under a zone production never had. Three
+  hours every night the streak, the calendar dot and the plan strip were
+  a day out. zonedNow()/todayIso() read the wall clock once, leaving the
+  pure functions unchanged and correct under any server timezone.
+
+  estimateThresholds' output was computed and discarded, so hr_max, lthr,
+  threshold_speed_mps and thresholds_measured were read in three places
+  and written in none — every athlete's zone strip carried the
+  "provisional, estimated from your age" caveat permanently. Changing age
+  or sex invalidates every stored readiness snapshot and nothing
+  recomputed them. cardiacDriftPct was hard-coded null into the readiness
+  score and the narrative while the dashboard displayed it, so the screen
+  showed a figure the score beside it demonstrably ignored.
+
+RENDERING:
+
+  NaN bpm from averaging a display string that is an em dash without a
+  heart-rate strap; height:NaNpx bars from Math.max() of four zeroes; the
+  crooked chart (weeks with no easy run dropped and the survivors evenly
+  spaced, and the sparkline drawn into a 22px box computed for 24); a
+  flat line at the median of all runs labelled "weekly average"; the
+  coach's trend chart bridging gaps it should break and pinning a flat
+  line to the bottom edge; four dead buttons; the avatar you uploaded
+  never reaching the dashboard; a roster filter that said "Clear" and
+  left its values on screen; a calendar whose arrows walked out of the
+  fetched window into an empty year; "Nobody matches those filters" on a
+  roster with no filters set; five athletes with no goal race hidden
+  behind "No cycles yet".
+
+  Auth: Enter did nothing (the card was not a form), ?error= was never
+  displayed, the 8-character rule was enforced on sign-in, signing up
+  with an existing address reported success, signOut used global scope,
+  the middleware discarded refreshed cookies on redirect, and the
+  password reset screen did not exist.
+
+REMOVED:
+
+  getCoachHome — 150 lines of duplicate roster logic superseded by
+  getCoachWorkspace, with no call site and still a live "use server"
+  endpoint. The Strava cron, which iterated an empty table nightly and
+  held one of two Hobby cron slots; its routes stay. /upgrade from the
+  middleware, which guards a path that does not exist.
+
+550 tests pass, 33 of them new. tsc clean. next build passes with all
+routes dynamic.
+
+Migrations 0010, 0012, 0013, 0014 and 0015 must be run, in that order.
+0013 is the release blocker.

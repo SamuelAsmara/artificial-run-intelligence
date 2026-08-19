@@ -192,6 +192,17 @@ export interface Day {
   type: WorkoutType; name: string; tag: string; dist: number; pace: string;
   day: string; dateNum: number; mon: string;
   status: string; done: boolean; missed: boolean; today: boolean;
+  /**
+   * Why ARI reduced this session, in the athlete's own words.
+   *
+   * The plan screen has had a slot for this line since the prototype and filled
+   * it with an invented sentence about a long run that never happened. Written
+   * by the adjustment engine as of migration 0014; absent on the reference
+   * dataset and on anything the engine has not touched.
+   */
+  reason?: string | null;
+  /** true when a coach or the athlete set these numbers, not the generator */
+  byPerson?: boolean;
 }
 export interface Week { days: Day[]; label: string; range: string }
 
@@ -404,6 +415,16 @@ export const COPY = {
   planTitle: "Training plan", planMeta: "",
   legDone: "Completed", legPlanned: "Planned", legMissed: "Missed",
   nextTitle: "Next session · Intervals — 6 × 800 m",
+  /**
+   * What the same card says when there is no plan to read a session from.
+   *
+   * It has to say *something*: an empty box where the next session belongs
+   * reads as a loading failure. What it must not do is borrow the line above.
+   */
+  nextTitleEmpty: "No next session",
+  nextBodyEmpty:
+    "Once you have a training plan, the session ARI wants you to run next appears here — with its structure, its target pace, and the reason behind any change to it.",
+  nextCtaEmpty: "Build a plan",
   nextMeta: "Today · 9.6 km · ~49 min",
   adjTag: "Adjusted",
   nextReason: "Rep pace relaxed from 4:05 to 4:15 — fatigue is still elevated after Sunday’s long run.",

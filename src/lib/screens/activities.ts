@@ -55,7 +55,7 @@ function spark(fade: boolean, seed: number) {
     (2 + ((p - lo) / (hi - lo || 1)) * 18).toFixed(1)).join("");
 }
 
-let _d: { acts: Act[]; weekKm: number[]; wp: number[] } | null = null;
+let _d: { acts: Act[]; weekKm: number[]; wp: PacePoint[] } | null = null;
 
 export function buildActivities() {
   if (_d) return _d;
@@ -88,8 +88,24 @@ export function buildActivities() {
   }
   acts.reverse();
 
-  _d = { acts, weekKm: weekKm.map((k) => Math.round(k)), wp: [338, 334, 331, 326] };
+  _d = {
+    acts,
+    weekKm: weekKm.map((k) => Math.round(k)),
+    wp: [338, 334, 331, 326].map((v, i) => ({ t: i / 3, v })),
+  };
   return _d;
+}
+
+/**
+ * One point on the easy-pace trend, positioned rather than merely ordered.
+ *
+ * `t` runs 0 (oldest week drawn) to 1 (most recent), so a week with no easy run
+ * leaves a gap instead of being closed up as if it had never existed.
+ */
+export interface PacePoint {
+  t: number;
+  /** seconds per kilometre */
+  v: number;
 }
 
 export const ACT_COPY = {
@@ -98,6 +114,7 @@ export const ACT_COPY = {
   title: "Activities", subtitle: "Training history · last 4 weeks",
   volTitle: "Weekly distance", paceTitle: "Easy-run pace trend",
   paceSub: "faster ↑ · weekly average",
+  paceEmpty: "Two weeks of easy runs and the trend starts drawing itself here.",
   histTitle: "All runs",
   hDate: "Date", hType: "Session", hDist: "Dist", hTime: "Time",
   hPace: "Pace", hHr: "Avg HR", hSpark: "Pace shape",

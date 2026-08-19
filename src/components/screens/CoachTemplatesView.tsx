@@ -74,7 +74,7 @@ export function CoachTemplatesView({ templates }: { templates: CoachTemplate[] }
 
   return (
     <div style={{ maxWidth: "1280px", marginInline: "auto", padding: "16px 24px 40px", display: "flex", flexDirection: "column", gap: "12px" }}>
-      <CoachNav active="settings" />
+      <CoachNav active="templates" />
 
       <div>
         <h1 style={{ margin: 0, fontSize: "17px", fontWeight: 600 }}>{COACH_COPY.templatesTitle}</h1>
@@ -182,10 +182,24 @@ export function CoachTemplatesView({ templates }: { templates: CoachTemplate[] }
         );
       })}
 
+      {/*
+        This is now true.
+
+        For a while it was not: the screen wrote to `plan_templates` and nothing
+        read it back, so a coach could tune a structure, see "Saved", and change
+        nothing about anybody's training. `generatePlan` takes the template as
+        of the audit — proportions rather than week counts, so a 14-week
+        structure given to somebody racing in nine becomes nine weeks that keep
+        its shape.
+      */}
       <p className="num" style={{ margin: 0, fontSize: "10.5px", color: "var(--color-faint)", maxWidth: "70ch", lineHeight: 1.6 }}>
         Editing a template changes future plans only. Regenerating a plan an athlete is already
         running would discard weeks of their history, so their plan keeps the structure it was
         built with and your edit reaches the next athlete to start.
+      </p>
+      <p className="num" style={{ margin: 0, fontSize: "10.5px", color: "var(--color-faint)", maxWidth: "70ch", lineHeight: 1.6 }}>
+        The phase lengths are read as proportions, not as a fixed schedule — a 14-week structure
+        given to an athlete racing in nine weeks becomes nine weeks with the same shape.
       </p>
       <p className="num" style={{ margin: 0, fontSize: "10.5px", color: "var(--color-faint)" }}>
         Between {MIN_WEEKS} and {MAX_WEEKS} weeks. Phases must total the plan length; the week must

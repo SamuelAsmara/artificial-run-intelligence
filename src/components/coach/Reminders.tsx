@@ -11,9 +11,27 @@
 import { useState, useTransition } from "react";
 import { addReminder, completeReminder, type Reminder } from "@/actions/coach";
 
-export function Reminders({ reminders, today }: { reminders: Reminder[]; today: string }) {
+export function Reminders({
+  reminders,
+  today,
+  athletes,
+}: {
+  reminders: Reminder[];
+  today: string;
+  /** the roster, so a note can be attached to the person it is about */
+  athletes: { id: string; name: string }[];
+}) {
   const [body, setBody] = useState("");
   const [due, setDue] = useState("");
+  /*
+   * Who the note is about.
+   *
+   * `addReminder` has always taken an athlete id, validated it against the
+   * roster, and rendered the name on the note — and this component passed null
+   * every time, so none of that was reachable. "Ask about the calf" is a
+   * different note depending on whose calf it is.
+   */
+  const [athleteId, setAthleteId] = useState("");
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
 
@@ -22,10 +40,11 @@ export function Reminders({ reminders, today }: { reminders: Reminder[]; today: 
     if (!text) return;
     setError("");
     startTransition(async () => {
-      const result = await addReminder(text, due || null, null);
+      const result = await addReminder(text, due || null, athleteId || null);
       if (result.ok) {
         setBody("");
         setDue("");
+        setAthleteId("");
       } else setError(result.error);
     });
   };
@@ -103,6 +122,20 @@ export function Reminders({ reminders, today }: { reminders: Reminder[]; today: 
           maxLength={500}
           style={{ fontSize: "12px" }}
         />
+        {athletes.length > 0 && (
+          <select
+            className="field"
+            value={athleteId}
+            onChange={(e) => setAthleteId(e.target.value)}
+            style={{ fontSize: "11.5px" }}
+            aria-label="Who is this about?"
+          >
+            <option value="">Not about anyone in particular</option>
+            {athletes.map((a) => (
+              <option key={a.id} value={a.id}>{a.name}</option>
+            ))}
+          </select>
+        )}
         <div style={{ display: "flex", gap: "6px" }}>
           <input
             className="field"

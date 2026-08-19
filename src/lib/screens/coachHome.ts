@@ -42,6 +42,19 @@ export const COACH_COPY = {
   codeHint: "An athlete enters this in Settings to join you.",
   copyCode: "Copy",
   copied: "Copied",
+  rosterEmpty:
+    "No athletes yet. Share your join code — they enter it in Settings and appear here.",
+  rosterFiltered: "Nobody matches those filters.",
+  removeTitle: "Remove from roster",
+  removeBody:
+    "They keep their own training and history — you stop seeing it, and they stop having a coach. They can join you again with your code.",
+  remove: "Remove",
+  removeConfirm: "Yes, remove",
+  removeCancel: "Keep",
+  removing: "Removing…",
+  issueCode: "Create a code",
+  issuing: "Creating…",
+  codeHintNone: "You don't have a join code yet. Create one and share it with the athletes you coach.",
 
   athletesTitle: "Athletes",
   athletesSub: "Everyone you coach, and what their numbers say today.",

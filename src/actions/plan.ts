@@ -2,14 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { generatePlan, RaceTooSoonError } from "@/lib/planning/generatePlan";
+import { generatePlan, RaceTooSoonError, type PlanStructure } from "@/lib/planning/generatePlan";
+import { zonedNow } from "@/lib/time/week";
 import { runPlanAdjustment } from "@/lib/planning/runAdjustment";
 import { readCapacity } from "@/lib/planning/readCapacity";
 import { estimateThresholds, type HistoryActivity } from "@/lib/planning/thresholds";
 import { paceLabel } from "@/lib/planning/paces";
 import { buildRealPlan, type RealPlan } from "@/lib/dashboard/realPlan";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/database.types";
+import type { Database, RaceType } from "@/types/database.types";
 
 /**
  * The two profile fields that set an athlete's maximum-heart-rate estimate.
@@ -37,6 +38,54 @@ async function readDemographics(
 }
 
 type ActionResult<T> = { data: T; error?: undefined } | { data?: undefined; error: string };
+
+/**
+ * The plan structure to build this athlete's plan from.
+ *
+ * Preference order: the template their own coach wrote, then the built-in row
+ * for the distance, then nothing — in which case `generatePlan` uses its own
+ * table and behaves exactly as it always has.
+ *
+ * The athlete is allowed to read this. Migration 0008 says why: *"An athlete
+ * must be able to read the template their own plan was built from, or their
+ * plan screen cannot explain where its structure came from."* The policy was
+ * written and then nothing ever used it, because nothing read templates at all.
+ */
+async function readTemplate(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  raceType: RaceType,
+): Promise<PlanStructure | undefined> {
+  const { data: link } = await supabase
+    .from("coach_athletes")
+    .select("coach_id")
+    .eq("athlete_id", userId)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (link?.coach_id) {
+    const { data: own } = await supabase
+      .from("plan_templates")
+      .select("phase_structure, weekly_mix")
+      .eq("coach_id", link.coach_id)
+      .eq("race_type", raceType)
+      .maybeSingle();
+    if (own) {
+      return { phaseStructure: own.phase_structure, weeklyMix: own.weekly_mix };
+    }
+  }
+
+  const { data: builtIn } = await supabase
+    .from("plan_templates")
+    .select("phase_structure, weekly_mix")
+    .is("coach_id", null)
+    .eq("race_type", raceType)
+    .maybeSingle();
+
+  return builtIn
+    ? { phaseStructure: builtIn.phase_structure, weeklyMix: builtIn.weekly_mix }
+    : undefined;
+}
 
 /**
  * Server Action: בונה את מבנה ה-periodization הראשוני (plan_workouts).
@@ -99,13 +148,17 @@ export async function generatePlanAction(
   const demographics = await readDemographics(supabase, user.id);
   const thresholds = estimateThresholds(runs, demographics);
 
+  // The coach's structure, when this athlete has a coach who wrote one.
+  const template = await readTemplate(supabase, user.id, goalRace.race_type);
+
   let generated;
   try {
     generated = generatePlan(
       goalRace.race_type,
       new Date(goalRace.race_date),
-      new Date(),
+      zonedNow(),
       capacity,
+      template,
     );
   } catch (err) {
     if (err instanceof RaceTooSoonError) {
@@ -151,6 +204,62 @@ export async function generatePlanAction(
       achievable: generated.capacity?.achievable ?? true,
     },
   };
+}
+
+/**
+ * Build a plan for whichever race the athlete has set, from the Plan screen.
+ *
+ * ## Why this exists
+ *
+ * `saveGoalRace` in `actions/profile.ts` deliberately does not regenerate the
+ * plan — its docstring says "the Plan screen owns that decision and asks before
+ * it acts". That was true of the intent and false of the code: nothing in the
+ * entire UI called `generatePlanAction`, so the athlete set a race in Settings,
+ * came back to /plan, and read "No plan yet — set one in Settings" forever. A
+ * closed loop with no exit, and the single largest hole in the product.
+ *
+ * ## Why it refuses to overwrite
+ *
+ * Rebuilding discards every completed and coach-edited session in the existing
+ * plan. That is a destructive act and it is not what "build my plan" reads
+ * like, so this returns a plain refusal when a plan already exists rather than
+ * silently replacing weeks of work.
+ */
+export async function buildPlanForActiveRace(): Promise<
+  ActionResult<{ planId: string; notes: string[]; achievable: boolean }>
+> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Sign in first." };
+
+  const { data: race } = await supabase
+    .from("goal_races")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .order("race_date", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (!race) {
+    return { error: "Set a goal race — a distance and a date — in Settings first." };
+  }
+
+  const { data: existing } = await supabase
+    .from("training_plans")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("goal_race_id", race.id)
+    .limit(1)
+    .maybeSingle();
+
+  if (existing) {
+    return { error: "You already have a plan for this race." };
+  }
+
+  return generatePlanAction(race.id);
 }
 
 /**
@@ -201,7 +310,9 @@ export async function getDashboardPlan(): Promise<RealPlan | null> {
 
   const { data: rows } = await supabase
     .from("plan_workouts")
-    .select("week_number, day_date, workout_type, planned_distance, planned_pace, status")
+    .select(
+      "week_number, day_date, workout_type, planned_distance, planned_pace, status, origin, adjusted_reason",
+    )
     .eq("plan_id", plan.id)
     .order("day_date", { ascending: true });
 

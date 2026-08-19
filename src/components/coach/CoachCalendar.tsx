@@ -30,10 +30,16 @@ export function CoachCalendar({
   sessions,
   today,
   raceColors,
+  from,
+  to,
 }: {
   sessions: CalendarSession[];
   today: string;
   raceColors: Record<string, string>;
+  /** first day loaded, inclusive — see the note on `step` */
+  from: string;
+  /** last day loaded, inclusive */
+  to: string;
 }) {
   const [zoom, setZoom] = useState<Zoom>("month");
   const [cursor, setCursor] = useState(() => new Date(today + "T00:00:00"));
@@ -56,11 +62,38 @@ export function CoachCalendar({
     [year],
   );
 
-  const step = (delta: number) => {
+  /*
+   * Navigation stops at the edge of what was fetched.
+   *
+   * The page loads one calendar year of sessions and this cursor was free to
+   * walk anywhere, so pressing "›" in year view showed an entirely empty next
+   * year and paging into January showed an empty month. The sessions existed;
+   * they had simply never been asked for, and an empty grid is indistinguishable
+   * from "nobody is training". Refusing to leave the loaded window is honest;
+   * silently showing nothing is not.
+   */
+  const stepTo = (delta: number) => {
     const next = new Date(cursor);
     if (zoom === "year") next.setFullYear(next.getFullYear() + delta);
     else if (zoom === "month") next.setMonth(next.getMonth() + delta);
     else next.setDate(next.getDate() + delta * 7);
+    return next;
+  };
+
+  const inWindow = (d: Date) => {
+    // Year view is judged by the year; the other two by the day landed on.
+    if (zoom === "year") {
+      return d.getFullYear() >= Number(from.slice(0, 4)) && d.getFullYear() <= Number(to.slice(0, 4));
+    }
+    const iso = cursorIso(d);
+    return iso >= from && iso <= to;
+  };
+
+  const canStep = (delta: number) => inWindow(stepTo(delta));
+
+  const step = (delta: number) => {
+    const next = stepTo(delta);
+    if (!inWindow(next)) return;
     setCursor(next);
   };
 
@@ -70,13 +103,13 @@ export function CoachCalendar({
     <section className="card" style={{ padding: "16px 20px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <button className="btn btn-secondary" type="button" onClick={() => step(-1)} style={{ padding: "5px 10px" }} aria-label="Previous">
+          <button className="btn btn-secondary" type="button" onClick={() => step(-1)} disabled={!canStep(-1)} style={{ padding: "5px 10px" }} aria-label="Previous">
             ‹
           </button>
           <h2 className="num" style={{ margin: 0, fontSize: "14px", fontWeight: 600, minWidth: "168px", textAlign: "center" }}>
             {title}
           </h2>
-          <button className="btn btn-secondary" type="button" onClick={() => step(1)} style={{ padding: "5px 10px" }} aria-label="Next">
+          <button className="btn btn-secondary" type="button" onClick={() => step(1)} disabled={!canStep(1)} style={{ padding: "5px 10px" }} aria-label="Next">
             ›
           </button>
           <button
@@ -112,7 +145,7 @@ export function CoachCalendar({
 
       <div style={{ marginBlockStart: "14px" }}>
         {zoom === "month" && <MonthGrid view={month} />}
-        {zoom === "week" && <WeekGrid view={week} />}
+        {zoom === "week" && <WeekGrid view={week} raceColors={raceColors} />}
         {zoom === "year" && <YearGrid months={year} busiest={busiest} />}
       </div>
 
@@ -188,7 +221,13 @@ function MonthGrid({ view }: { view: ReturnType<typeof monthView> }) {
 
 /* ------------------------------------------------------------------ */
 
-function WeekGrid({ view }: { view: ReturnType<typeof weekView> }) {
+function WeekGrid({
+  view,
+  raceColors,
+}: {
+  view: ReturnType<typeof weekView>;
+  raceColors: Record<string, string>;
+}) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: "6px", overflowX: "auto" }}>
       {view.days.map((day) => (
@@ -227,7 +266,10 @@ function WeekGrid({ view }: { view: ReturnType<typeof weekView> }) {
                     padding: "4px 6px",
                     borderRadius: "4px",
                     background: "var(--color-elevated)",
-                    borderInlineStart: `3px solid ${colorFor(s.raceType)}`,
+                    // Month view and the legend honour the coach's overrides;
+                    // this one call did not, so recolouring "Marathon" in
+                    // Settings changed the calendar everywhere but here.
+                    borderInlineStart: `3px solid ${colorFor(s.raceType, raceColors)}`,
                     opacity: s.done ? 0.55 : 1,
                   }}
                 >

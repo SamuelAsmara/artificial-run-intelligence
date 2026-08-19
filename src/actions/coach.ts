@@ -18,7 +18,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import type { RaceType, WorkoutType } from "@/types/database.types";
+import type { RaceType, WorkoutOrigin, WorkoutStatus, WorkoutType } from "@/types/database.types";
 import {
   defaultTemplate, validateTemplate, RACE_TYPES,
   type CoachTemplate,
@@ -27,6 +27,7 @@ import type { CalendarSession } from "@/lib/coach/calendar";
 import {
   DEFAULT_PREFERENCES, targetPaceSeconds, type CoachPreferences,
 } from "@/lib/coach/preferences";
+import { todayIso } from "@/lib/time/week";
 import {
   flagsFor, rosterFlags, summariseRoster, weekBoard, weekDates,
   type AthleteRow, type BoardRow, type Flag, type PlannedSession,
@@ -35,18 +36,42 @@ import {
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string };
 
-const today = () => new Date().toISOString().slice(0, 10);
+/*
+ * Today, in the athlete's timezone rather than the server's.
+ *
+ * This was `new Date().toISOString().slice(0, 10)` — UTC. A coach opening the
+ * roster at 01:30 in Tel Aviv got yesterday: the week board showed last week,
+ * "no run in 5 days" read 6, and an athlete racing tomorrow was not flagged.
+ */
+const today = () => todayIso();
 
 /* ------------------------------------------------------------------ */
 /* Joining                                                             */
 /* ------------------------------------------------------------------ */
 
-/** This coach's join code, issued on first ask. */
+/**
+ * This user's join code, or null when they have never asked for one.
+ *
+ * Reading no longer mints. `my_coach_code()` used to create the code on first
+ * call, and the coach screens call it while rendering — so any signed-in user
+ * who opened /coach out of curiosity was permanently issued a bearer credential
+ * as a side effect of a page load. See migration 0013.
+ */
 export async function getMyCoachCode(): Promise<string | null> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("my_coach_code");
   if (error) return null;
   return data;
+}
+
+/** Mints a join code for this coach. Explicit, because the code is a credential. */
+export async function issueCoachCode(): Promise<Result<string>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("issue_coach_code");
+  if (error) return { ok: false, error: `Could not create a code: ${error.message}` };
+  revalidatePath("/coach");
+  revalidatePath("/coach/settings");
+  return { ok: true, data: data as string };
 }
 
 /**
@@ -92,25 +117,26 @@ export async function getMyCoach(): Promise<MyCoach | null> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data: link } = await supabase
-    .from("coach_athletes")
-    .select("coach_id, created_at")
-    .eq("athlete_id", user.id)
-    .eq("status", "active")
-    .maybeSingle();
+  /*
+   * Through `my_coach_name()`, not through `profiles`.
+   *
+   * `profiles_read` is `id = auth.uid() or is_coach_of(id)` — a coach may read
+   * their athletes, an athlete may not read their coach. So the direct query
+   * this replaced returned nothing, and the Settings screen has always shown
+   * the fallback string "Your coach" instead of a name. Silently: a null read
+   * is not an error. See migration 0013 for why the fix is a narrow function
+   * rather than a wider policy.
+   */
+  const { data, error } = await supabase.rpc("my_coach_name");
+  if (error) return null;
 
-  if (!link) return null;
-
-  const { data: coach } = await supabase
-    .from("profiles")
-    .select("full_name, email")
-    .eq("id", link.coach_id)
-    .maybeSingle();
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) return null;
 
   return {
-    id: link.coach_id,
-    name: coach?.full_name || coach?.email || "Your coach",
-    since: link.created_at,
+    id: row.coach_id as string,
+    name: (row.coach_name as string) || "Your coach",
+    since: row.since as string,
   };
 }
 
@@ -120,12 +146,18 @@ export async function leaveCoach(): Promise<Result<null>> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "You need to be signed in." };
 
-  const { error } = await supabase
+  // `.select()` so a delete the policy declined is not reported as done. Before
+  // migration 0013 the delete policy was coach-only, so this matched nothing,
+  // returned success, and the athlete stayed coached after pressing "Leave".
+  const { data, error } = await supabase
     .from("coach_athletes")
     .delete()
-    .eq("athlete_id", user.id);
+    .eq("athlete_id", user.id)
+    .select("id");
 
   if (error) return { ok: false, error: `Could not leave: ${error.message}` };
+  if (!data || data.length === 0) return { ok: false, error: "You are not linked to a coach." };
+
   revalidatePath("/settings");
   return { ok: true, data: null };
 }
@@ -136,14 +168,29 @@ export async function removeAthlete(athleteId: string): Promise<Result<null>> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "You need to be signed in." };
 
-  const { error } = await supabase
+  /*
+   * `.select()` on the delete, for the same reason `leaveCoach` has one.
+   *
+   * Postgres does not raise when RLS excludes a row from a DELETE — the
+   * statement matches nothing and reports success. Without asking for the
+   * deleted rows back, "Removed" would appear over a roster that still has them
+   * on it.
+   */
+  const { data, error } = await supabase
     .from("coach_athletes")
     .delete()
     .eq("coach_id", user.id)
-    .eq("athlete_id", athleteId);
+    .eq("athlete_id", athleteId)
+    .select("athlete_id");
 
   if (error) return { ok: false, error: `Could not remove: ${error.message}` };
+  if (!data || data.length === 0) {
+    return { ok: false, error: "They are not on your roster." };
+  }
+
   revalidatePath("/coach");
+  revalidatePath("/coach/athletes");
+  revalidatePath("/coach/cycles");
   return { ok: true, data: null };
 }
 
@@ -161,150 +208,18 @@ export interface CoachHome {
   code: string | null;
 }
 
-/**
- * Everything both coach screens need, in one pass.
+/*
+ * `getCoachHome` used to live here and has been removed.
  *
- * Written as a handful of set-based queries rather than a loop over athletes:
- * a coach with thirty athletes would otherwise cost thirty round trips per
- * screen, and the roster is exactly the place that habit shows up first.
+ * It was superseded by `getCoachWorkspace` below, which every coach screen
+ * calls, and then sat for weeks as a hundred and fifty lines of duplicate
+ * roster-and-flags query logic with no call site — a second implementation of
+ * the same rules, exercised by nothing, free to drift out of agreement with the
+ * one that runs. It was also still a `"use server"` export, which is to say a
+ * live public endpoint for code nobody was maintaining.
+ *
+ * `CoachHome` above is kept: it is the shape the architecture document names.
  */
-export async function getCoachHome(): Promise<CoachHome | null> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-
-  const day = today();
-  const week = weekDates(day);
-
-  const { data: links } = await supabase
-    .from("coach_athletes")
-    .select("athlete_id")
-    .eq("coach_id", user.id)
-    .eq("status", "active");
-
-  const ids = (links ?? []).map((l) => l.athlete_id);
-  const code = await getMyCoachCode();
-
-  if (ids.length === 0) {
-    return {
-      athletes: [], code, week,
-      summary: summariseRoster([], day),
-      flags: [], board: [],
-    };
-  }
-
-  const [{ data: profiles }, { data: snapshots }, { data: runs }, { data: races }, { data: plans }] =
-    await Promise.all([
-      supabase.from("profiles").select("id, full_name, email, avatar_url, age, sex").in("id", ids),
-      // Newest first; the first row seen per athlete is their current state.
-      supabase
-        .from("readiness_snapshots")
-        .select("user_id, date, readiness_score, tsb, acwr")
-        .in("user_id", ids)
-        .order("date", { ascending: false }),
-      supabase
-        .from("activities")
-        .select("user_id, started_at, distance_m")
-        .in("user_id", ids)
-        .gte("started_at", `${week[0]}T00:00:00Z`)
-        .order("started_at", { ascending: false }),
-      supabase
-        .from("goal_races")
-        .select("user_id, race_type, race_date, target_time")
-        .in("user_id", ids)
-        .eq("status", "active")
-        .order("race_date", { ascending: true }),
-      supabase
-        .from("training_plans")
-        .select("id, user_id")
-        .in("user_id", ids)
-        .eq("status", "active"),
-    ]);
-
-  // The most recent run of all time is a separate question from this week's
-  // runs, and "no run in nine days" is the flag that matters most.
-  const { data: lastRuns } = await supabase
-    .from("activities")
-    .select("user_id, started_at, distance_m")
-    .in("user_id", ids)
-    .order("started_at", { ascending: false });
-
-  const planIds = (plans ?? []).map((p) => p.id);
-  const planOwner = new Map((plans ?? []).map((p) => [p.id, p.user_id]));
-
-  const { data: sessions } = planIds.length
-    ? await supabase
-        .from("plan_workouts")
-        .select("plan_id, day_date, workout_type, planned_distance")
-        .in("plan_id", planIds)
-        .gte("day_date", week[0])
-        .lte("day_date", week[6])
-    : { data: [] };
-
-  const firstBy = <T extends { user_id: string }>(rows: T[] | null) => {
-    const seen = new Map<string, T>();
-    for (const r of rows ?? []) if (!seen.has(r.user_id)) seen.set(r.user_id, r);
-    return seen;
-  };
-
-  const latestSnapshot = firstBy(snapshots);
-  const latestRun = firstBy(lastRuns);
-  const raceBy = firstBy(races);
-
-  const planned: PlannedSession[] = (sessions ?? []).map((s) => ({
-    athleteId: planOwner.get(s.plan_id) as string,
-    date: s.day_date,
-    workoutType: s.workout_type,
-    distanceM: s.planned_distance,
-  }));
-
-  const ran: RunRecord[] = (runs ?? [])
-    .filter((r) => r.started_at)
-    .map((r) => ({
-      athleteId: r.user_id,
-      date: (r.started_at as string).slice(0, 10),
-      distanceM: r.distance_m ?? 0,
-    }));
-
-  const ranKeys = new Set(ran.map((r) => `${r.athleteId}|${r.date}`));
-
-  const athletes: AthleteRow[] = (profiles ?? []).map((p) => {
-    const snap = latestSnapshot.get(p.id);
-    const last = latestRun.get(p.id);
-    const race = raceBy.get(p.id);
-
-    const missedThisWeek = planned.filter(
-      (s) =>
-        s.athleteId === p.id &&
-        s.workoutType !== "rest" &&
-        s.date < day &&
-        !ranKeys.has(`${p.id}|${s.date}`),
-    ).length;
-
-    return {
-      id: p.id,
-      name: p.full_name || p.email || "Athlete",
-      avatarUrl: p.avatar_url,
-      readiness: snap?.readiness_score ?? null,
-      form: snap?.tsb ?? null,
-      loadRatio: snap?.acwr ?? null,
-      lastRunAt: last?.started_at ?? null,
-      lastRunM: last?.distance_m ?? null,
-      raceType: (race?.race_type as RaceType) ?? null,
-      raceDate: race?.race_date ?? null,
-      missedThisWeek,
-    };
-  });
-
-  return {
-    athletes,
-    code,
-    week,
-    summary: summariseRoster(athletes, day),
-    flags: rosterFlags(athletes, day),
-    board: weekBoard(athletes, planned, ran, day),
-  };
-}
 
 /* ------------------------------------------------------------------ */
 /* Plan templates                                                      */
@@ -361,21 +276,49 @@ export async function saveCoachTemplate(t: CoachTemplate): Promise<Result<null>>
   const invalid = validateTemplate(t);
   if (invalid) return { ok: false, error: invalid };
 
-  const { error } = await supabase.from("plan_templates").upsert(
-    {
-      ...(t.id ? { id: t.id } : {}),
-      coach_id: user.id,
-      race_type: t.raceType,
-      // The column still exists and is still keyed on by the generator; a
-      // coach's template covers every level and the generator scales volume.
-      level: "experienced",
-      name: t.name.trim() || defaultTemplate(t.raceType).name,
-      weeks: t.weeks,
-      phase_structure: t.phaseStructure,
-      weekly_mix: t.weeklyMix,
-    },
-    { onConflict: "coach_id,race_type" },
-  );
+  // The distance has to be one of the four. `validateTemplate` checks weeks and
+  // the weekly mix but not this, and it arrives from the browser.
+  if (!RACE_TYPES.includes(t.raceType)) {
+    return { ok: false, error: "That is not a distance ARI plans for." };
+  }
+
+  const fields = {
+    coach_id: user.id,
+    race_type: t.raceType,
+    // The column still exists and is still keyed on by the generator; a
+    // coach's template covers every level and the generator scales volume.
+    level: "experienced" as const,
+    name: t.name.trim() || defaultTemplate(t.raceType).name,
+    weeks: t.weeks,
+    phase_structure: t.phaseStructure,
+    weekly_mix: t.weeklyMix,
+  };
+
+  /*
+   * Read, then insert or update — deliberately not an upsert.
+   *
+   * The uniqueness this relies on is a *partial* index (migration 0008: `on
+   * (coach_id, race_type) where coach_id is not null`), and Postgres will only
+   * infer a partial index for ON CONFLICT when the statement carries a WHERE
+   * clause implying the predicate. PostgREST emits none, so the upsert raised
+   * 42P10 and a coach's methodology screen silently never saved. The row is
+   * already scoped to `auth.uid()`, so the read-then-write is not a race worth
+   * a lock: the worst case is two tabs saving the same coach's template and the
+   * later one winning, which is what the coach expects anyway.
+   *
+   * The id is no longer taken from the caller either. It had no business
+   * arriving from the browser even though RLS would have refused a foreign one.
+   */
+  const { data: existing } = await supabase
+    .from("plan_templates")
+    .select("id")
+    .eq("coach_id", user.id)
+    .eq("race_type", t.raceType)
+    .maybeSingle();
+
+  const { error } = existing
+    ? await supabase.from("plan_templates").update(fields).eq("id", existing.id)
+    : await supabase.from("plan_templates").insert(fields);
 
   if (error) return { ok: false, error: `Could not save: ${error.message}` };
 
@@ -618,6 +561,11 @@ export async function updateWorkout(
     workout_type?: WorkoutType;
     planned_distance?: number | null;
     planned_pace?: string | null;
+    origin?: WorkoutOrigin;
+    status?: WorkoutStatus;
+    planned_distance_original?: number | null;
+    adjusted_reason?: string | null;
+    adjusted_at?: string | null;
   } = {};
   if (patch.workoutType !== undefined) fields.workout_type = patch.workoutType;
   if (patch.plannedDistanceM !== undefined) fields.planned_distance = patch.plannedDistanceM;
@@ -665,6 +613,24 @@ export async function updateWorkout(
    * coach made came back `error === null`, showed "Saved", and changed nothing.
    * Asking for the changed rows back turns that silence into an answer.
    */
+  /*
+   * Record that a person decided this, and clear whatever the engine had done.
+   *
+   * Without `origin` the edit left `status` at 'planned' — precisely the state
+   * the 03:00 adjustment job hunts for — so a coach who set Thursday to 18 km
+   * at 20:00 found 14.4 km there in the morning, with nothing on screen saying
+   * so. Migration 0014 puts provenance where status was doing a job it was
+   * never suited to.
+   *
+   * The stored pre-adjustment distance goes too: it describes a reduction of a
+   * number that no longer exists, and restoring it later would undo the coach.
+   */
+  fields.origin = plan.user_id === user.id ? "athlete" : "coach";
+  fields.status = "planned";
+  fields.planned_distance_original = null;
+  fields.adjusted_reason = null;
+  fields.adjusted_at = null;
+
   const { data: changed, error } = await supabase
     .from("plan_workouts")
     .update(fields)
@@ -677,6 +643,10 @@ export async function updateWorkout(
   }
 
   revalidatePath("/coach");
+  revalidatePath("/coach/athletes");
+  // The athlete is looking at the same row on their own two screens.
+  revalidatePath("/plan");
+  revalidatePath("/dashboard");
   return { ok: true, data: null };
 }
 
@@ -814,6 +784,21 @@ export async function addReminder(
   const text = body.trim();
   if (text.length === 0) return { ok: false, error: "A note needs some words." };
   if (text.length > 500) return { ok: false, error: "That note is too long." };
+
+  // A note may name one of your athletes and nobody else. The RLS policy only
+  // constrains who owns the note, so without this an arbitrary user id could be
+  // attached to one — harmless in itself, but it is a membership oracle and the
+  // kind of thing that stops being harmless when a later feature reads it back.
+  if (athleteId) {
+    const { data: link } = await supabase
+      .from("coach_athletes")
+      .select("athlete_id")
+      .eq("coach_id", user.id)
+      .eq("athlete_id", athleteId)
+      .eq("status", "active")
+      .maybeSingle();
+    if (!link) return { ok: false, error: "That athlete is not on your roster." };
+  }
 
   const { error } = await supabase.from("coach_reminders").insert({
     coach_id: user.id,

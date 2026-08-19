@@ -83,13 +83,41 @@ export default async function ActivitiesPage() {
     easyByWeek.set(weeksAgo, bucket);
   }
 
-  const weekly = [...easyByWeek.entries()]
+  /*
+   * One point per calendar week, positioned by *when* it happened.
+   *
+   * Two faults lived here. The `Map` only contains weeks that had an easy run,
+   * and the chart spaced whatever survived evenly — so weeks 11, 8, 3 and 0
+   * were drawn as if they were consecutive, and a three-month gap looked like a
+   * steady four-week trend. Each point now carries its own x position, so a gap
+   * is drawn as a gap.
+   *
+   * The second: week 0 is *this* week, still in progress. A single Monday easy
+   * run set the last vertex of a trend line and made it swing. The current week
+   * joins the chart when it is over.
+   */
+  const wp = [...easyByWeek.entries()]
+    .filter(([weeksAgo]) => weeksAgo > 0)
     .sort((a, b) => b[0] - a[0]) // oldest week first
-    .map(([, v]) => v.sum / v.n);
-
-  const wp = weekly.length >= 2 ? weekly : [medianPace, medianPace];
+    .map(([weeksAgo, v]) => ({ t: (11 - weeksAgo) / 10, v: v.sum / v.n }));
 
   const pb10k = prs.find((r) => r.key === "10k")?.time ?? null;
 
-  return <ActivitiesView data={{ acts, weekKm: weekKm.map((k) => Math.round(k)), wp, pb10k }} />;
+  /*
+   * Heart rate, averaged over the runs that actually have one.
+   *
+   * The view used to do `+a.hr` over every row, and `a.hr` is a display string
+   * that is an em dash when the strap was not worn. `+"—"` is NaN, so a single
+   * strapless run turned the whole tile into "NaN bpm".
+   */
+  const withHr = rows.filter((r) => r.avgHr !== null);
+  const avgHr = withHr.length
+    ? Math.round(withHr.reduce((sum, r) => sum + (r.avgHr as number), 0) / withHr.length)
+    : null;
+
+  return (
+    <ActivitiesView
+      data={{ acts, weekKm: weekKm.map((k) => Math.round(k)), wp, pb10k, avgHr }}
+    />
+  );
 }

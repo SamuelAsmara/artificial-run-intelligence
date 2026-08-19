@@ -11,7 +11,7 @@ import { COACH_COPY } from "@/lib/screens/coachHome";
 export function CoachNav({
   active,
 }: {
-  active: "home" | "cycles" | "athletes" | "mine" | "settings";
+  active: "home" | "cycles" | "athletes" | "templates" | "mine" | "settings";
 }) {
   const link = (key: string, href: string, label: string) => (
     <a
@@ -38,6 +38,12 @@ export function CoachNav({
         {link("home", "/coach", COACH_COPY.navHome)}
         {link("cycles", "/coach/cycles", COACH_COPY.navCycles)}
         {link("athletes", "/coach/athletes", COACH_COPY.navAthletes)}
+        {/*
+          Templates were reachable only through a button on the settings page,
+          which is a strange place for the thing that decides what every plan
+          looks like — and easy to lose once you have left it.
+        */}
+        {link("templates", "/coach/templates", COACH_COPY.navTemplates)}
         {/*
           The coach's own training. Almost every running coach runs, and a
           single-role account forces a choice nobody should have to make — so

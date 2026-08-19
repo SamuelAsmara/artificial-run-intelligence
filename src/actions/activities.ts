@@ -229,16 +229,31 @@ export async function getActivityDetail(id: string): Promise<ActivityDetail | nu
     streamsNote = "Second-by-second detail is only available for runs from intervals.icu.";
   }
 
+  /*
+   * Everything below describes the run's owner, so it is keyed on `row.user_id`
+   * and not on whoever is looking.
+   *
+   * These three used to be passed `user.id`. That was harmless while only the
+   * owner could open the page — and became wrong the moment coaches could. A
+   * coach opening an athlete's long run saw her own avatar and initials over
+   * his run, every kilometre labelled Z2/Z3/Z4 against *her* lactate threshold
+   * presented as measured, and "planned vs actual" comparing his run to
+   * whatever she had scheduled that day. Confidently wrong on every figure, and
+   * a zone chart computed from the wrong person's threshold is precisely the
+   * kind of thing a coach would act on.
+   */
+  const ownerId = row.user_id;
+
   const comparison = await comparePlannedFor(
     supabase,
-    user.id,
+    ownerId,
     (row.started_at as string).slice(0, 10),
     { distanceM: row.distance_m ?? 0, durationS: seconds },
   );
 
   const [physiology, plannedType] = await Promise.all([
-    heartRateAnchors(supabase, user.id),
-    plannedTypeFor(supabase, user.id, (row.started_at as string).slice(0, 10)),
+    heartRateAnchors(supabase, ownerId),
+    plannedTypeFor(supabase, ownerId, (row.started_at as string).slice(0, 10)),
   ]);
 
   // Everything the header reports comes from the stream when there is one, so

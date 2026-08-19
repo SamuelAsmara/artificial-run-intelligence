@@ -1,5 +1,5 @@
 import { ACWR_INJURY_RISK_THRESHOLD, calculateACWR, type DailyLoad } from "./acwr";
-import type { WorkoutStatus } from "@/types/database.types";
+import type { WorkoutOrigin, WorkoutStatus } from "@/types/database.types";
 
 /**
  * מנוע ההתאמה הדינמית — מסמך תכנון טכני §6.
@@ -14,11 +14,29 @@ export interface WorkoutForAdjustment {
   weekNumber: number;
   status: WorkoutStatus;
   plannedDistance: number | null;
+  /**
+   * Whose decision this session's numbers are — see migration 0014.
+   *
+   * Anything a person set is out of the engine's reach. Optional so existing
+   * callers and tests keep working; absent means "generated", which is what
+   * every row was before the column existed.
+   */
+  origin?: WorkoutOrigin;
+  /** what it was before an automatic reduction, if one is in force */
+  plannedDistanceOriginal?: number | null;
 }
 
 export interface AdjustmentDecision {
   workoutId: string;
-  action: "reduce_intensity" | "shift_week" | "none";
+  /**
+   * `restore` puts an automatic reduction back.
+   *
+   * Without it a cut was permanent: the engine skips anything whose status is
+   * not 'planned', which correctly stops a reduction compounding night after
+   * night, and also meant there was no way back once ACWR came down. The week
+   * stayed at 80% for ever, unmarked and unexplained.
+   */
+  action: "reduce_intensity" | "shift_week" | "restore" | "none";
   /** מקדם הפחתה (0-1) כאשר action === 'reduce_intensity' */
   reductionFactor?: number;
   reason: string;
@@ -45,7 +63,42 @@ export function decideAdjustments(
   const missedThisWeek = upcomingWeekWorkouts.filter((w) => w.status === "missed").length;
   const missedTooMany = missedThisWeek > MISSED_WORKOUTS_THRESHOLD_PER_WEEK;
 
+  const needsRestraint = highAcwr || cumulativeHighDriftRate >= 0.4;
+
   for (const workout of upcomingWeekWorkouts) {
+    /*
+     * A person set this. Leave it alone.
+     *
+     * `updateWorkout` leaves `status` at 'planned', which is exactly the state
+     * this loop is hunting for, so a coach's Thursday 18 km became 14.4 km
+     * overnight with nothing on screen to say why. Provenance, not status, is
+     * what says "this was a decision".
+     */
+    if (workout.origin === "coach" || workout.origin === "athlete") {
+      decisions.push({ workoutId: workout.id, action: "none", reason: "אימון שנקבע ידנית — המנוע לא נוגע בו" });
+      continue;
+    }
+
+    /*
+     * An earlier reduction whose reason has passed.
+     *
+     * This is the only branch that looks at an already-adjusted session, and it
+     * only ever puts distance back — so it cannot deepen a cut, and it cannot
+     * fight with the reduction branch below, which requires 'planned'.
+     */
+    if (workout.status === "adjusted" && workout.plannedDistanceOriginal != null) {
+      decisions.push(
+        needsRestraint
+          ? { workoutId: workout.id, action: "none", reason: "ההתאמה עדיין בתוקף" }
+          : {
+              workoutId: workout.id,
+              action: "restore",
+              reason: "העומס חזר לטווח הבטוח — מחזירים את האימון למרחק המקורי",
+            },
+      );
+      continue;
+    }
+
     if (workout.status !== "planned") {
       decisions.push({ workoutId: workout.id, action: "none", reason: "אימון לא ממתין להתאמה" });
       continue;

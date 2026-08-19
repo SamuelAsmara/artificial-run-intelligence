@@ -47,6 +47,104 @@ export interface GeneratedPlan {
 
 const MIN_WEEKS_FOR_FULL_PLAN = 4;
 
+/**
+ * A coach's structure, as the templates screen stores it.
+ *
+ * Only the two fields the generator can act on. `weeks` is deliberately not
+ * here: the template's nominal length is a preference, and the race date is a
+ * fact — a 14-week half-marathon template handed to somebody racing in nine
+ * weeks has to become nine weeks, keeping the coach's *proportions*.
+ */
+export interface PlanStructure {
+  /** e.g. { base: 6, build: 5, peak: 2, taper: 1 } */
+  phaseStructure: Record<string, number>;
+  /** e.g. { easy: 3, long: 1, interval: 1, rest: 2 } — seven days */
+  weeklyMix: Record<string, number>;
+}
+
+/**
+ * Where each kind of session prefers to sit in the week, best first.
+ *
+ * Sunday is offset 0, so Friday is 5 and Saturday is 6 — the Israeli weekend,
+ * for the same reason `lib/time/week` starts the week on Sunday.
+ *
+ * The long run wants Friday. Rest wants Saturday, then the day after the hard
+ * session. Intervals want mid-week with easy days either side. These are
+ * preferences, not rules: whatever is still free gets filled in order, so any
+ * mix that adds to seven produces a coherent week.
+ */
+const DAY_PREFERENCE: Record<string, number[]> = {
+  long: [5, 6, 4, 0, 3, 2, 1],
+  rest: [6, 1, 3, 0, 2, 4, 5],
+  interval: [2, 4, 0, 3, 5, 1, 6],
+  easy: [0, 4, 2, 3, 1, 5, 6],
+};
+
+/** Relative volume share of one session of each kind, before normalising. */
+const SESSION_SHARE: Record<string, number> = {
+  long: 0.4, interval: 0.25, easy: 0.2, rest: 0,
+};
+
+const TO_DB_TYPE: Record<string, WorkoutType> = {
+  easy: "easy", long: "long", interval: "interval", rest: "rest",
+};
+
+/**
+ * Lay a weekly mix out across seven days.
+ *
+ * The default pattern below is what this returns for `{easy:3, long:1,
+ * interval:1, rest:2}`, which is why wiring a coach's template in changed
+ * nothing for anybody who had not written one.
+ */
+export function weekPatternFrom(
+  mix: Record<string, number>,
+): { offset: number; type: WorkoutType; share: number }[] {
+  const taken = new Set<number>();
+  const placed: { offset: number; type: WorkoutType; share: number }[] = [];
+
+  // Long first — it is the week's anchor and the hardest to move. Then rest, so
+  // the recovery days land where they were wanted rather than on leftovers.
+  for (const kind of ["long", "rest", "interval", "easy"]) {
+    const count = Math.max(0, Math.trunc(mix[kind] ?? 0));
+    const preference = DAY_PREFERENCE[kind] ?? [0, 1, 2, 3, 4, 5, 6];
+    let placedOfKind = 0;
+    for (const offset of preference) {
+      if (placedOfKind >= count) break;
+      if (taken.has(offset)) continue;
+      taken.add(offset);
+      placed.push({ offset, type: TO_DB_TYPE[kind] ?? "easy", share: SESSION_SHARE[kind] ?? 0.2 });
+      placedOfKind++;
+    }
+  }
+
+  // A mix that does not add to seven is caught by `validateTemplate` before it
+  // is stored, but a row written before that check existed must still produce a
+  // whole week rather than a partial one.
+  for (let offset = 0; offset < 7; offset++) {
+    if (!taken.has(offset)) placed.push({ offset, type: "rest", share: 0 });
+  }
+
+  const total = placed.reduce((sum, w) => sum + w.share, 0);
+  return total > 0
+    ? placed.map((w) => ({ ...w, share: w.share / total }))
+    : placed;
+}
+
+/**
+ * The coach's phase proportions, rescaled to the weeks actually available.
+ *
+ * Returns null for a structure that says nothing usable, so the caller keeps the
+ * built-in per-race table rather than dividing by zero.
+ */
+function ratiosFrom(structure: Record<string, number>): [number, number, number, number] | null {
+  const values = (["base", "build", "peak", "taper"] as const).map((k) =>
+    Math.max(0, Number(structure[k] ?? 0)),
+  );
+  const total = values.reduce((a, b) => a + b, 0);
+  if (total <= 0) return null;
+  return values.map((v) => v / total) as [number, number, number, number];
+}
+
 // יחס בסיסי לחלוקת שבועות לפי סוג מרוץ (base/build/peak/taper)
 const PHASE_RATIOS: Record<RaceType, [number, number, number, number]> = {
   "5k": [0.3, 0.35, 0.2, 0.15],
@@ -87,6 +185,15 @@ export function generatePlan(
    * every real caller should pass this.
    */
   athlete?: AthleteCapacity,
+  /**
+   * The coach's template, when the athlete has a coach who wrote one.
+   *
+   * The templates screen has been saving these to `plan_templates` and nothing
+   * read them back — a coach could spend twenty minutes tuning a structure, see
+   * "Saved", and change nothing, ever. Optional, and omitting it reproduces the
+   * built-in structure exactly, which is what every existing test asserts.
+   */
+  template?: PlanStructure,
 ): GeneratedPlan {
   const totalWeeks = Math.max(1, differenceInCalendarWeeks(raceDate, today, WEEK_OPTS));
 
@@ -94,7 +201,16 @@ export function generatePlan(
     throw new RaceTooSoonError(totalWeeks);
   }
 
-  const [baseRatio, buildRatio, peakRatio, taperRatio] = PHASE_RATIOS[raceType];
+  /*
+   * The coach's proportions when there are any, ours otherwise.
+   *
+   * Proportions rather than week counts: the template's nominal length is a
+   * preference and the race date is a fact. A 14-week half-marathon template
+   * given to somebody racing in nine weeks becomes nine weeks that keep the
+   * coach's shape, instead of a plan that ends five weeks after the race.
+   */
+  const [baseRatio, buildRatio, peakRatio, taperRatio] =
+    (template ? ratiosFrom(template.phaseStructure) : null) ?? PHASE_RATIOS[raceType];
 
   const baseWeeks = Math.max(1, Math.round(totalWeeks * baseRatio));
   const buildWeeks = Math.max(1, Math.round(totalWeeks * buildRatio));
@@ -154,15 +270,29 @@ export function generatePlan(
    * the Israeli weekend rather than the European one — the same reason
    * `lib/time/week` starts the week on Sunday in the first place.
    */
-  const weekWorkoutPattern: { offset: number; type: WorkoutType; share: number }[] = [
-    { offset: 0, type: "easy", share: 0.2 },
-    { offset: 2, type: "interval", share: 0.25 },
-    { offset: 4, type: "easy", share: 0.15 },
-    { offset: 5, type: "long", share: 0.4 },
-    { offset: 1, type: "rest", share: 0 },
-    { offset: 3, type: "rest", share: 0 },
-    { offset: 6, type: "rest", share: 0 },
-  ];
+  /*
+   * The hard-coded week below and the template screen's default disagree.
+   *
+   * `DEFAULT_MIX` in lib/coach/templates.ts is three easy days, a long run, an
+   * interval session and two rest days — five running days, and what the coach
+   * has always been shown. This pattern is two easy, one interval, one long and
+   * *three* rest — four. The screen described a plan nobody was building.
+   *
+   * Passing a template settles it in favour of the thing a coach can see and
+   * change. This stays as the answer when no template exists at all, so a plan
+   * built before `plan_templates` was seeded still comes out the same.
+   */
+  const weekWorkoutPattern: { offset: number; type: WorkoutType; share: number }[] = template
+    ? weekPatternFrom(template.weeklyMix)
+    : [
+        { offset: 0, type: "easy", share: 0.2 },
+        { offset: 2, type: "interval", share: 0.25 },
+        { offset: 4, type: "easy", share: 0.15 },
+        { offset: 5, type: "long", share: 0.4 },
+        { offset: 1, type: "rest", share: 0 },
+        { offset: 3, type: "rest", share: 0 },
+        { offset: 6, type: "rest", share: 0 },
+      ];
 
   for (let week = 1; week <= totalWeeks; week++) {
     const phase = phaseForWeek(week);

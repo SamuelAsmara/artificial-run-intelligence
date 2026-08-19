@@ -30,7 +30,7 @@
 import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { LOGIN_COPY } from "@/lib/screens/login";
+import { LOGIN_COPY, MIN_PASSWORD } from "@/lib/screens/login";
 
 const copy = LOGIN_COPY;
 
@@ -45,9 +45,26 @@ const copy = LOGIN_COPY;
 const HERO_BLUR =
   "data:image/webp;base64,UklGRqoAAABXRUJQVlA4IJ4AAAAQBACdASoYAA8APu1iqU2ppaOiMAgBMB2JQBOmUABQsz+HJvCykLb3+AD+2pKML0+25TV0bGpX+iQj+6gzj9OKKkn7NiCgZV/tcXrPnzQHjafWuU8A+Uej2FpwVKAilS00KmX+2oDYKWJcPgogasrNlqSClsoWBmOmpkFQeMlk2p42TJv+dyLNjLQ0uNArH/KYAQAkNxYxqP1oQmAAAA==";
 
+/**
+ * What the `?error=` codes our own auth routes emit mean in English.
+ *
+ * `/auth/callback` and `/auth/confirm` bounce failures back here with a code in
+ * the query string. Until now nothing on this screen read it, so an expired
+ * confirmation link landed the athlete on a clean sign-in card with no hint
+ * that anything had gone wrong — they retype the password they never set and
+ * conclude the product is broken.
+ */
+const AUTH_ERRORS: Record<string, string> = {
+  "missing-code": "That link is incomplete. Ask for a new one below.",
+  "link-expired": "That link has expired or was already used. Request a new one.",
+  "missing-token": "That link is incomplete. Ask for a new one below.",
+  "verify-failed": "That link has expired or was already used. Request a new one.",
+};
+
 export function LoginView({ initialMode = "login" }: { initialMode?: "login" | "signup" }) {
   const router = useRouter();
   const params = useSearchParams();
+  const urlError = params.get("error");
 
   const [mode, setMode] = useState<"login" | "signup">(initialMode);
   const [role, setRole] = useState<"athlete" | "coach">("athlete");
@@ -55,7 +72,9 @@ export function LoginView({ initialMode = "login" }: { initialMode?: "login" | "
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [reveal, setReveal] = useState(false);
-  const [err, setErr] = useState("");
+  const [err, setErr] = useState(
+    urlError ? (AUTH_ERRORS[urlError] ?? "That link didn't work. Request a new one.") : "",
+  );
   const [notice, setNotice] = useState("");
   /** Which provider the athlete just tried that we have not built yet. */
   const [notYet, setNotYet] = useState("");
@@ -84,10 +103,30 @@ export function LoginView({ initialMode = "login" }: { initialMode?: "login" | "
     setNotYet(`${provider} sign-in isn't ready yet — use your email for now.`);
   };
 
-  const submit = () => {
+  /**
+   * Where to land after a successful sign-in.
+   *
+   * The middleware appends `?redirectTo=/activities/<id>` when it bounces a
+   * signed-out visitor. Only same-origin paths are honoured: an absolute URL
+   * here would turn our own sign-in screen into an open redirect.
+   */
+  const redirectTarget = () => {
+    const target = params.get("redirectTo");
+    return target && target.startsWith("/") && !target.startsWith("//") ? target : "/dashboard";
+  };
+
+  const submit = (event?: React.FormEvent) => {
+    event?.preventDefault();
     if (isSignup && !username.trim()) return setErr("Tell ARI what to call you.");
     if (!email.includes("@")) return setErr("That doesn't look like an email address.");
-    if (pass.length < 8) return setErr("Use at least 8 characters.");
+    /*
+     * The eight-character rule is a rule about *choosing* a password, not about
+     * typing one you already have. Enforcing it on sign-in refused to even try
+     * for anyone whose account predates the rule, and told them their own
+     * password was invalid — a lie the server never got a chance to correct.
+     */
+    if (isSignup && pass.length < MIN_PASSWORD) return setErr(`Use at least ${MIN_PASSWORD} characters.`);
+    if (!isSignup && !pass) return setErr("Enter your password.");
 
     setErr("");
     setNotice("");
@@ -100,9 +139,33 @@ export function LoginView({ initialMode = "login" }: { initialMode?: "login" | "
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
           password: pass,
-          options: { data: { username: username.trim(), role } },
+          options: {
+            data: { username: username.trim(), role },
+            /*
+             * Without this the confirmation link goes wherever the Supabase
+             * dashboard's "Site URL" points, which is one global setting shared
+             * by localhost and production. Naming the callback explicitly means
+             * a signup started here finishes here — on whichever origin "here"
+             * happens to be — and `next` carries the deep link through.
+             */
+            emailRedirectTo: `${window.location.origin}/auth/callback${
+              redirectTarget() === "/dashboard" ? "" : `?next=${encodeURIComponent(redirectTarget())}`
+            }`,
+          },
         });
         if (error) return setErr(error.message);
+        /*
+         * Signing up with an address that already exists is not an error.
+         *
+         * Supabase deliberately returns a success shaped exactly like a fresh
+         * signup — otherwise this form would be an oracle for "does this person
+         * have an account here". The tell is that `identities` comes back empty.
+         * We keep the ambiguity in the copy (no confirmation that the address is
+         * taken) while pointing them at the door they actually need.
+         */
+        if (data.user && (data.user.identities?.length ?? 0) === 0) {
+          return setNotice(copy.maybeExisting);
+        }
         // With email confirmation on, there is no session yet — saying "welcome"
         // and landing on a signed-out dashboard would be the wrong story.
         if (!data.session) return setNotice(copy.confirmSent);
@@ -123,8 +186,7 @@ export function LoginView({ initialMode = "login" }: { initialMode?: "login" | "
        * the door. Only same-origin paths are honoured: an absolute URL here
        * would be an open redirect.
        */
-      const target = params.get("redirectTo");
-      router.push(target && target.startsWith("/") && !target.startsWith("//") ? target : "/dashboard");
+      router.push(redirectTarget());
       router.refresh();
     });
   };
@@ -132,9 +194,18 @@ export function LoginView({ initialMode = "login" }: { initialMode?: "login" | "
   const forgot = () => {
     if (!email.includes("@")) return setErr("Enter your email address first.");
     setErr("");
+    setNotYet("");
     startTransition(async () => {
       const supabase = createClient();
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+      /*
+       * The recovery link has to land on a page that collects a new password.
+       * Without `redirectTo` it lands on the Site URL — the dashboard — where
+       * the recovery session silently expires and the athlete is no closer to
+       * getting in. `/auth/reset` is that page.
+       */
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/auth/reset`,
+      });
       if (error) return setErr(error.message);
       setNotice(copy.resetSent);
     });
@@ -227,7 +298,16 @@ export function LoginView({ initialMode = "login" }: { initialMode?: "login" | "
             })}
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "13px" }}>
+          {/*
+            A real <form>, not a div of inputs.
+
+            Typing an email and a password and pressing Enter is how everybody
+            signs in to everything. With the controls loose in a div, Enter did
+            nothing at all — the athlete's first interaction with ARI was a key
+            press the page ignored. Submitting through the form also gives the
+            browser its password-manager hooks for free.
+          */}
+          <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: "13px" }}>
             {isSignup ? (
               <FieldRow label={copy.fUser} htmlFor="a-user" icon={<IconUser />}>
                 <input
@@ -266,6 +346,7 @@ export function LoginView({ initialMode = "login" }: { initialMode?: "login" | "
                 className="afield" id="a-pass" type={reveal ? "text" : "password"} value={pass}
                 autoComplete={isSignup ? "new-password" : "current-password"}
                 onChange={(e) => setPass(e.target.value)} placeholder={copy.fPassPh}
+                minLength={isSignup ? MIN_PASSWORD : undefined}
               />
             </FieldRow>
 
@@ -321,7 +402,7 @@ export function LoginView({ initialMode = "login" }: { initialMode?: "login" | "
             ) : null}
 
             <button
-              type="button" onClick={submit} disabled={pending}
+              type="submit" disabled={pending}
               style={{
                 width: "100%", height: "42px", borderRadius: "100px", border: "none",
                 cursor: pending ? "progress" : "pointer",
@@ -349,7 +430,7 @@ export function LoginView({ initialMode = "login" }: { initialMode?: "login" | "
               <SocialButton label={copy.google} icon={<IconGoogle />} onClick={() => setNotSoon(copy.google)} />
               <SocialButton label={copy.apple} icon={<IconApple />} onClick={() => setNotSoon(copy.apple)} />
             </div>
-          </div>
+          </form>
         </div>
       </div>
     </div>

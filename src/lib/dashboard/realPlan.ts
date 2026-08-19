@@ -23,7 +23,7 @@ import type { WorkoutType as DbWorkoutType } from "@/types/database.types";
 import type { Day, Week } from "./model";
 import { describeSession, paceLabel } from "@/lib/planning/paces";
 import { isoWeekNumber } from "./rail";
-import { isoDate } from "@/lib/time/week";
+import { isoDate, zonedNow } from "@/lib/time/week";
 
 /** The dashboard's own workout vocabulary, which is not the database's. */
 type ViewWorkoutType = "easy" | "tempo" | "int" | "long" | "rest";
@@ -53,6 +53,8 @@ export interface PlanWorkoutRow {
   planned_distance: number | null;
   planned_pace: string | null;
   status: string | null;
+  origin?: string | null;
+  adjusted_reason?: string | null;
 }
 
 export interface CompletedRun {
@@ -95,7 +97,7 @@ export function buildRealPlan(
   rows: PlanWorkoutRow[],
   completed: CompletedRun[],
   thresholdSpeedMps: number | null,
-  today: Date = new Date(),
+  today: Date = zonedNow(),
 ): RealPlan {
   const todayIso = iso(today);
   const ranDates = new Set(completed.filter((c) => c.distanceM > 0).map((c) => c.date));
@@ -155,6 +157,8 @@ export function buildRealPlan(
         done,
         missed,
         today: isToday,
+        reason: row.adjusted_reason ?? null,
+        byPerson: row.origin === "coach" || row.origin === "athlete",
       };
     });
 
@@ -296,7 +300,7 @@ export function realSessionSegments(
 }
 
 /** "Today", "Tomorrow", or "Sat 23 Aug". */
-export function relativeDay(dateIso: string, today: Date = new Date()): string {
+export function relativeDay(dateIso: string, today: Date = zonedNow()): string {
   const todayIso = iso(today);
   const tomorrowIso = iso(new Date(today.getTime() + DAY));
   if (dateIso === todayIso) return "Today";
