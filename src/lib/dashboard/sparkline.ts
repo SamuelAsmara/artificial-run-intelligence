@@ -107,13 +107,21 @@ export function paceShapeToPath(shape: (number | null)[] | null | undefined): st
 export function paceShapeColor(shape: (number | null)[] | null | undefined): string {
   if (!shape || shape.length < 6) return "var(--color-muted)";
 
-  const values = shape.filter((v): v is number => typeof v === "number" && v > 0);
-  if (values.length < 6) return "var(--color-muted)";
+  // Split the *run*, then drop the gaps — not the other way round. Filtering
+  // first meant that if the GPS dropped out mostly in one half, "first half"
+  // and "second half" covered unequal stretches of the run and the comparison
+  // was between two different things.
+  const mid = Math.floor(shape.length / 2);
+  const usable = (part: (number | null)[]) =>
+    part.filter((v): v is number => typeof v === "number" && v > 0);
 
-  const half = Math.floor(values.length / 2);
+  const firstHalf = usable(shape.slice(0, mid));
+  const secondHalf = usable(shape.slice(mid));
+  if (firstHalf.length < 3 || secondHalf.length < 3) return "var(--color-muted)";
+
   const mean = (a: number[]) => a.reduce((s, v) => s + v, 0) / a.length;
-  const first = mean(values.slice(0, half));
-  const second = mean(values.slice(half));
+  const first = mean(firstHalf);
+  const second = mean(secondHalf);
 
   return second > first * 1.05 ? "var(--color-caution)" : "var(--color-muted)";
 }

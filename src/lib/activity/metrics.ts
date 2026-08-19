@@ -392,7 +392,13 @@ export interface RangeSummary {
   paceSec: number | null;
   gapSec: number | null;
   speedKmh: number | null;
-  climbM: number;
+  /**
+   * Total ascent in metres, or null when there was no elevation stream to
+   * measure it from. Not 0 — "this run was flat" and "we never looked" are
+   * different statements, and a hilly run imported from a source with no
+   * stream was being told it had zero ascent.
+   */
+  climbM: number | null;
   avgHr: number | null;
   maxHr: number | null;
   avgCadence: number | null;

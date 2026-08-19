@@ -35,7 +35,6 @@ import {
   apiKeyHint,
   fetchActivities,
   fetchWellness,
-  icuConfigFromEnv,
   normaliseAthleteId,
   toActivityImports,
   toRecoverySignals,
@@ -65,7 +64,6 @@ export interface ProviderConnectionView {
    */
   lastActivityAt?: string | null;
   /** true when the credentials come from .env rather than from this athlete */
-  fromEnvironment?: boolean;
 }
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -115,21 +113,17 @@ export async function getIntervalsIcuConnection(): Promise<ProviderConnectionVie
     };
   }
 
-  // Fall back to the environment so the developer's own setup keeps working
-  // after this migration. Flagged so the UI can say where it came from.
-  const env = icuConfigFromEnv();
-  if (!env) return null;
-  return {
-    provider: "intervals_icu",
-    lastActivityAt,
-    externalId: env.athleteId,
-    apiKeyHint: apiKeyHint(env.apiKey),
-    status: "connected",
-    lastError: null,
-    lastSyncedAt: null,
-    connectedAt: new Date(0).toISOString(),
-    fromEnvironment: true,
-  };
+  /*
+   * No environment fallback. This used to return the server's own athlete id
+   * and the last four characters of the server's own API key, with a
+   * `fromEnvironment: true` flag that nothing ever read — so every user with no
+   * connection of their own saw the operator's account rendered on their
+   * Settings page, indistinguishable from a real one.
+   *
+   * Not connected is not a state to paper over. It is the state that makes the
+   * "Connect" button mean something.
+   */
+  return null;
 }
 
 /* ------------------------------------------------------------------ */

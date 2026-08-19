@@ -259,7 +259,12 @@ export function CoachAthleteView({ detail, today }: { detail: AthleteDetail; tod
         ) : (
           <div style={{ display: "flex", flexDirection: "column", marginBlockStart: "8px" }}>
             {recentRuns.map((r) => (
-              <div key={r.id} style={{ display: "grid", gridTemplateColumns: "96px 1fr auto auto", alignItems: "center", gap: "12px", padding: "7px 0", borderBlockEnd: "1px solid var(--color-line)" }}>
+              <a
+                key={r.id}
+                className="dc-hover-bg"
+                href={`/activities/${r.id}?coach=1`}
+                style={{ display: "grid", gridTemplateColumns: "96px 1fr auto auto", alignItems: "center", gap: "12px", padding: "7px 0", borderBlockEnd: "1px solid var(--color-line)" }}
+              >
                 <span className="num" style={{ fontSize: "11px", color: "var(--color-faint)" }}>
                   {r.startedAt ? r.startedAt.slice(0, 10) : "—"}
                 </span>
@@ -268,7 +273,7 @@ export function CoachAthleteView({ detail, today }: { detail: AthleteDetail; tod
                 <span className="num" style={{ fontSize: "11.5px", color: "var(--color-faint)", minWidth: "54px", textAlign: "end" }}>
                   {r.avgHr ? `${r.avgHr} bpm` : "—"}
                 </span>
-              </div>
+              </a>
             ))}
           </div>
         )}

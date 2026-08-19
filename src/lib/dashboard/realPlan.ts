@@ -23,6 +23,7 @@ import type { WorkoutType as DbWorkoutType } from "@/types/database.types";
 import type { Day, Week } from "./model";
 import { describeSession, paceLabel } from "@/lib/planning/paces";
 import { isoWeekNumber } from "./rail";
+import { isoDate } from "@/lib/time/week";
 
 /** The dashboard's own workout vocabulary, which is not the database's. */
 type ViewWorkoutType = "easy" | "tempo" | "int" | "long" | "rest";
@@ -81,7 +82,14 @@ export interface NextSession {
 }
 
 const DAY = 86_400_000;
-const iso = (d: Date) => d.toISOString().slice(0, 10);
+/**
+ * Local calendar date, not UTC — see `isoDate` in lib/time/week.
+ *
+ * `relativeDay` runs in the browser, so this is the *athlete's* timezone. With
+ * the UTC version an Israeli athlete opening the app at 01:00 was shown
+ * yesterday's session labelled "Today", and today's labelled "Tomorrow".
+ */
+const iso = isoDate;
 
 export function buildRealPlan(
   rows: PlanWorkoutRow[],

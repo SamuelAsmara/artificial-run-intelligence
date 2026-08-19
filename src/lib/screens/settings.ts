@@ -27,12 +27,18 @@ import type { RaceType } from "@/types/database.types";
  * The design labels distances "5K / 10K / Half / Marathon"; the database calls
  * them "5k / 10k / half / full". Both are right for their audience, so the
  * mapping lives here rather than leaking either name into the other's world.
+ *
+ * There is deliberately no `defaultTarget`. Each option used to carry one —
+ * 22:00, 47:00, 1:45:00, 3:45:00 — which the screen wrote into the field as
+ * soon as a distance was tapped. Press Save and a goal time nobody had chosen
+ * was stored, shown back as "Required pace", and used to generate a plan. A
+ * goal is the one number on this screen that has to come from the athlete.
  */
-export const RACE_OPTIONS: { value: RaceType; label: string; km: number; defaultTarget: string }[] = [
-  { value: "5k", label: "5K", km: 5, defaultTarget: "22:00" },
-  { value: "10k", label: "10K", km: 10, defaultTarget: "47:00" },
-  { value: "half", label: "Half", km: 21.0975, defaultTarget: "1:45:00" },
-  { value: "full", label: "Marathon", km: 42.195, defaultTarget: "3:45:00" },
+export const RACE_OPTIONS: { value: RaceType; label: string; km: number }[] = [
+  { value: "5k", label: "5K", km: 5 },
+  { value: "10k", label: "10K", km: 10 },
+  { value: "half", label: "Half", km: 21.0975 },
+  { value: "full", label: "Marathon", km: 42.195 },
 ];
 
 export const raceLabel = (value: RaceType | null): string =>

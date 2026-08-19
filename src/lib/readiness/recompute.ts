@@ -42,7 +42,11 @@ export async function recomputeForUser(
   const { data: cached } = await supabase
     .from("recovery_signals")
     .select("date, sleep_hours, resting_hr, hrv, source")
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    // Explicitly ordered. The `.slice(-30)` below meant "the last thirty" and
+    // the query made no promise about order, so it was taking whichever thirty
+    // Postgres happened to return last.
+    .order("date", { ascending: true });
 
   const recovery: RecoverySignal[] = (cached ?? []).map((r) => ({
     date: r.date,
@@ -52,12 +56,18 @@ export async function recomputeForUser(
     source: r.source as RecoverySignal["source"],
   }));
 
-  const recentRestingHrs = recovery
-    .filter((r) => r.restingHr != null)
-    .slice(-30)
-    .map((r) => r.restingHr as number);
-  const restingHr = recentRestingHrs.length
-    ? Math.round(recentRestingHrs.reduce((s, v) => s + v, 0) / recentRestingHrs.length)
+  /*
+   * The most recent resting heart rate, not a thirty-day mean.
+   *
+   * The narrative renders this as a point reading — "resting heart rate is 52"
+   * — so a mean was answering a different question from the one being asked.
+   * It also destroyed the signal that matters most: an athlete whose mean is 52
+   * and whose reading this morning is 61 is getting ill, and averaging is
+   * precisely how that disappears.
+   */
+  const withRestingHr = recovery.filter((r) => r.restingHr != null);
+  const restingHr = withRestingHr.length
+    ? Math.round(withRestingHr[withRestingHr.length - 1].restingHr as number)
     : undefined;
 
   // Age and sex feed the maximum-heart-rate estimate, so read them rather than

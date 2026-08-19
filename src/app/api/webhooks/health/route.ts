@@ -29,9 +29,34 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  /*
+   * Disabled unless explicitly switched on, and this is the honest state of it.
+   *
+   * The route authenticates with one secret shared by every installation of the
+   * bridging app, then writes recovery data for whichever `?userId=` it is
+   * handed, using the service-role client — so RLS cannot help. Any athlete who
+   * can read the secret out of their own copy of the app can write sleep, HRV
+   * and resting-heart-rate rows into anybody else's account, and those feed
+   * straight into that person's readiness score and dashboard narrative.
+   *
+   * Fixing it properly means a per-user token: a secret issued to one athlete,
+   * stored against their row, that identifies them rather than being presented
+   * alongside a claim about who they are. That is a schema change and a real
+   * piece of work. Until then the route is off by default rather than
+   * quietly exploitable — nothing currently calls it.
+   */
+  if (process.env.HEALTH_WEBHOOK_ENABLED !== "true") {
+    return NextResponse.json({ error: "not enabled" }, { status: 404 });
+  }
+
   const userId = request.nextUrl.searchParams.get("userId");
   if (!userId) {
     return NextResponse.json({ error: "missing userId" }, { status: 400 });
+  }
+
+  // A malformed id would otherwise reach Postgres as a cast error.
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+    return NextResponse.json({ error: "invalid userId" }, { status: 400 });
   }
 
   const body = await request.json().catch(() => null);

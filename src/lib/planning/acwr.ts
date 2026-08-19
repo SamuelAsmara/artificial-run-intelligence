@@ -62,6 +62,26 @@ export function loadRatio(series: DatedLoad[]): LoadRatioResult {
     chronic = load * lc + (1 - lc) * chronic;
   }
 
+  /*
+   * Both averages start from zero, so early in a series they are biased low —
+   * and the two are biased by *different* amounts, because they decay at
+   * different rates. At exactly 28 days the acute mean has reached 99.97% of
+   * its true value and the chronic one only 86.5%, so the ratio of the two came
+   * out around 1.16 for an athlete running an identical load every single day.
+   * The screen told them they were training 16% above their usual level for
+   * more than a month, and the number quietly drifted back to 1.0 as the
+   * denominator warmed up.
+   *
+   * Dividing each by how far it has converged removes the bias exactly. It is
+   * the same correction Adam applies to its moment estimates, and for the same
+   * reason.
+   */
+  const n = series.length;
+  const acuteWarmup = 1 - Math.pow(1 - la, n);
+  const chronicWarmup = 1 - Math.pow(1 - lc, n);
+  if (acuteWarmup > 0) acute /= acuteWarmup;
+  if (chronicWarmup > 0) chronic /= chronicWarmup;
+
   // A runner returning from two weeks off has chronic ≈ 0, which makes the
   // ratio explode. Suppress rather than alarm.
   const enoughHistory = series.length >= CHRONIC_DAYS && chronic > 1;

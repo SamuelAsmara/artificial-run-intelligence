@@ -60,6 +60,8 @@ export interface ActivityDetailData {
   driftOnsetM: number | null;
   cardiacDriftPct: number | null;
   lthr: number | null;
+  /** how that threshold was arrived at — see the note under the split strip */
+  lthrBasis?: "stated" | "observed" | "formula" | null;
   hrMax: number | null;
   bestEfforts: Record<string, number> | null;
   calories: number | null;
@@ -198,7 +200,15 @@ export function ActivityDetailView({
         </div>
 
         {segments.length > 0 && geo ? (
-          <SegmentStrip segments={segments} fastest={fastest} lthr={data?.lthr ?? null} totalM={geo.totalM} />
+          <>
+            <SegmentStrip segments={segments} fastest={fastest} lthr={data?.lthr ?? null} totalM={geo.totalM} />
+            {data?.lthrBasis === "formula" ? (
+              <p className="num" style={{ margin: "6px 0 0", fontSize: "10.5px", color: "var(--color-faint)" }}>
+                Zone labels are based on a threshold estimated from your age, not measured. Add
+                your lactate threshold heart rate in Settings to make them yours.
+              </p>
+            ) : null}
+          </>
         ) : null}
 
         {geo ? (
@@ -220,7 +230,8 @@ export function ActivityDetailView({
         {selected && sel ? (
           <p className="num" style={{ margin: "8px 0 0", fontSize: "11px", color: "var(--color-accent)" }}>
             Selection · {(selected.distanceM / 1000).toFixed(2)} km · {fmtLong(selected.durationS)} ·
-            {" "}summary above reflects this range — {copy.clearSel}
+            {" "}pace, heart rate and climb above reflect this range; drift and calories are
+            {" "}whole-run figures — {copy.clearSel}
           </p>
         ) : null}
       </section>
@@ -443,7 +454,7 @@ function HeaderCard({
     { k: copy.kPace, v: shown?.paceSec ? formatPace(shown.paceSec) : DASH, sub: "/km" },
     { k: copy.kGap, v: shown?.gapSec ? formatPace(shown.gapSec) : DASH, sub: "/km" },
     { k: copy.kSpeed, v: shown?.speedKmh ? shown.speedKmh.toFixed(1) : DASH, sub: "km/h" },
-    { k: copy.kClimb, v: shown ? String(shown.climbM) : DASH, sub: "m" },
+    { k: copy.kClimb, v: shown && shown.climbM !== null ? String(shown.climbM) : DASH, sub: "m" },
   ];
 
   const hrRows = [
@@ -457,8 +468,18 @@ function HeaderCard({
 
   const moreRows = [
     { k: copy.kCadence, v: shown?.avgCadence ? String(shown.avgCadence) : DASH, sub: "spm" },
-    { k: copy.kDrift, v: drift === null ? DASH : `${drift > 0 ? "+" : ""}${drift.toFixed(1)}%`, c: driftColor },
-    { k: copy.kCalories, v: calories ? String(calories) : DASH, sub: "kcal" },
+    /*
+     * These two are whole-run figures and stay whole-run figures.
+     *
+     * Cardiac drift is a comparison of a run's two halves — it is not defined
+     * for an arbitrary slice — and calories come from the device for the run as
+     * a whole. Selecting the first two kilometres of a fifteen-kilometre run
+     * used to leave 980 kcal and +7.4% sitting beside a 2.0 km distance, under
+     * a caption promising the summary reflected the selection. Dashed while a
+     * selection is open, because "not for this range" is the truth.
+     */
+    { k: copy.kDrift, v: selection ? DASH : drift === null ? DASH : `${drift > 0 ? "+" : ""}${drift.toFixed(1)}%`, c: selection ? undefined : driftColor },
+    { k: copy.kCalories, v: selection ? DASH : calories ? String(calories) : DASH, sub: "kcal" },
     { k: "Power", v: shown?.avgPower ? String(shown.avgPower) : DASH, sub: "W" },
   ];
 

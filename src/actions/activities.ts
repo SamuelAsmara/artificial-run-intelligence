@@ -23,6 +23,17 @@ import type { ChartStreams } from "@/lib/activity/resample";
 import { driftOnset, readableSegments, summarise, fastestSegment, type RangeSummary, type Segment } from "@/lib/activity/metrics";
 import { buildActivityNote, type ActivityNote } from "@/lib/activity/buildActivityNote";
 import { effectiveHrMax, estimateLthr, observedHrMax } from "@/lib/activity/zones";
+import { personalRecords, type PersonalRecord } from "@/lib/dashboard/personalRecords";
+import { APP_LOCALE, APP_TIME_ZONE } from "@/lib/time/week";
+
+/**
+ * How far back a record search reads.
+ *
+ * Records are all-time by definition, so this is a safety bound rather than a
+ * window: 400 activities is more than two years of five-a-week running, and an
+ * athlete past that is a problem worth having.
+ */
+const PR_SCAN_LIMIT = 400;
 
 export interface ActivityListItem {
   id: string;
@@ -40,12 +51,21 @@ export interface ActivityListItem {
   cardiacDriftPct: number | null;
 }
 
-const MO = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-
-const label = (isoDate: string) => {
-  const d = new Date(isoDate);
-  return `${MO[d.getMonth()]} ${String(d.getDate()).padStart(2, "0")}`;
-};
+/**
+ * "Aug 18", in the athlete's timezone rather than the server's.
+ *
+ * These run inside server actions, so `getMonth()`/`getDate()` were reading UTC
+ * on Vercel — an hour or three behind, which is a whole day for any run started
+ * before about 03:00 local.
+ */
+const label = (iso: string) =>
+  new Intl.DateTimeFormat(APP_LOCALE, {
+    day: "2-digit",
+    month: "short",
+    timeZone: APP_TIME_ZONE,
+  })
+    .format(new Date(iso))
+    .replace(/^(\d+) (\w+)$/, "$2 $1");
 
 export async function getActivities(limit = 60): Promise<ActivityListItem[]> {
   const supabase = await createClient();
@@ -110,6 +130,8 @@ export interface ActivityDetail {
 
   /** threshold and maximum heart rate, for the zone labels */
   lthr: number | null;
+  /** how `lthr` was arrived at, so the zone labels can be honest about it */
+  lthrBasis: "stated" | "observed" | "formula" | null;
   hrMax: number | null;
 
   bestEfforts: Record<string, number> | null;
@@ -143,14 +165,37 @@ export async function getActivityDetail(id: string): Promise<ActivityDetail | nu
 
   const { data: row } = await supabase
     .from("activities")
-    .select("id, source, external_id, started_at, distance_m, duration_s, avg_hr, max_hr, calories, avg_cadence, avg_power, cardiac_drift_pct, drift_onset_m, best_efforts")
-    // The id alone would be enough for Postgres, but scoping to the user means
-    // a guessed id returns nothing rather than relying on RLS as the only guard.
-    .eq("user_id", user.id)
+    .select("user_id, id, source, external_id, started_at, distance_m, duration_s, avg_hr, max_hr, calories, avg_cadence, avg_power, cardiac_drift_pct, drift_onset_m, best_efforts")
     .eq("id", id)
     .maybeSingle();
 
   if (!row || !row.started_at) return null;
+
+  /*
+   * The owner, or their coach.
+   *
+   * This used to scope the query to `user.id`, which meant a coach opening one
+   * of their athlete's runs got a 404 — while the page carried a "Coach view —
+   * you are viewing this athlete's run" banner that nothing could ever reach.
+   * The banner is now true. The check is explicit rather than left to RLS,
+   * which is the rule everywhere else in this file.
+   */
+  const isOwner = row.user_id === user.id;
+  let coaching = false;
+
+  if (!isOwner) {
+    const { data: link } = await supabase
+      .from("coach_athletes")
+      .select("athlete_id")
+      .eq("coach_id", user.id)
+      .eq("athlete_id", row.user_id)
+      .eq("status", "active")
+      .maybeSingle();
+    coaching = !!link;
+  }
+
+  // Same answer as a missing row: a stranger must not learn that the id exists.
+  if (!isOwner && !coaching) return null;
 
   const started = new Date(row.started_at);
   const km = (row.distance_m ?? 0) / 1000;
@@ -160,9 +205,15 @@ export async function getActivityDetail(id: string): Promise<ActivityDetail | nu
   let streamsNote: string | null = null;
 
   if (row.source === "intervals_icu") {
-    const cfg = await icuConfigForCurrentUser();
+    // The stream belongs to whoever ran it, so it needs their credentials. A
+    // coach reading an athlete's run has none of their own that would work —
+    // and `provider_connections` has no coach policy, deliberately, so this
+    // returns null for them rather than reaching for the athlete's key.
+    const cfg = isOwner ? await icuConfigForCurrentUser() : null;
     if (!cfg) {
-      streamsNote = "Connect intervals.icu to see this run second by second.";
+      streamsNote = isOwner
+        ? "Connect intervals.icu to see this run second by second."
+        : "Second-by-second detail is only visible to the athlete themselves.";
     } else {
       try {
         const raw = await fetchStreams(cfg, row.external_id);
@@ -220,7 +271,8 @@ export async function getActivityDetail(id: string): Promise<ActivityDetail | nu
         paceSec: km > 0 && seconds > 0 ? seconds / km : null,
         gapSec: null,
         speedKmh: seconds > 0 ? km / (seconds / 3600) : null,
-        climbM: 0,
+        // No stream, so no elevation was measured — see RangeSummary.climbM.
+        climbM: null,
         avgHr: row.avg_hr,
         maxHr: row.max_hr,
         avgCadence: row.avg_cadence,
@@ -243,10 +295,13 @@ export async function getActivityDetail(id: string): Promise<ActivityDetail | nu
     id: row.id,
     movingS: seconds,
     dateLabel: label(row.started_at),
-    fullDate: started.toLocaleDateString(undefined, {
+    fullDate: new Intl.DateTimeFormat(APP_LOCALE, {
       weekday: "long", day: "2-digit", month: "2-digit", year: "2-digit",
-    }),
-    clock: started.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+      timeZone: APP_TIME_ZONE,
+    }).format(started),
+    clock: new Intl.DateTimeFormat(APP_LOCALE, {
+      hour: "2-digit", minute: "2-digit", hour12: false, timeZone: APP_TIME_ZONE,
+    }).format(started),
     runType: plannedType ?? "Run",
     athlete: {
       name,
@@ -260,6 +315,7 @@ export async function getActivityDetail(id: string): Promise<ActivityDetail | nu
     driftOnsetM: onset,
     cardiacDriftPct: row.cardiac_drift_pct,
     lthr: physiology.lthr,
+    lthrBasis: physiology.lthrBasis,
     hrMax: physiology.hrMax,
     calories: row.calories,
     bestEfforts: row.best_efforts,
@@ -311,12 +367,31 @@ async function heartRateAnchors(
     age: profile?.age ?? null,
   });
 
+  /*
+   * Where the threshold came from, so the screen can say.
+   *
+   * The per-kilometre strip labels each split "Z3", "Z4" and so on, and those
+   * labels are only as good as the threshold behind them. A stated LTHR is the
+   * athlete's own number; a threshold derived from an observed maximum is a
+   * measurement; one derived from `220 - age` is a population average that
+   * `lib/activity/zones.ts` argues at length is not good enough to label a zone
+   * with. All three used to look identical on screen.
+   */
+  const lthrBasis: "stated" | "observed" | "formula" | null = profile?.lthr
+    ? "stated"
+    : hrMax === null
+      ? null
+      : observed !== null
+        ? "observed"
+        : "formula";
+
   return {
     fullName: profile?.full_name ?? null,
     avatarUrl: profile?.avatar_url ?? null,
     avatarPosition: profile?.avatar_position ?? "50% 30%",
     hrMax,
     lthr: profile?.lthr ?? (hrMax ? estimateLthr(hrMax) : null),
+    lthrBasis,
   };
 }
 
@@ -391,4 +466,39 @@ async function comparePlannedFor(
     },
     actual,
   );
+}
+
+/* ------------------------------------------------------------------ */
+/* Personal records                                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The athlete's records, computed once and read by every screen that shows one.
+ *
+ * This exists because the dashboard and the activity list disagreed. The
+ * dashboard reduced `best_efforts` across 400 activities; the list printed the
+ * string "47:12". Two screens, two different 10 km bests, one of them invented.
+ *
+ * A record is a claim about the athlete's whole history, so the query is not
+ * bounded by whatever the list happens to be showing. Any screen wanting a
+ * record calls this — there is no second implementation to drift from.
+ */
+export async function getPersonalRecords(): Promise<PersonalRecord[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return personalRecords([]);
+
+  const { data } = await supabase
+    .from("activities")
+    .select("started_at, best_efforts")
+    .eq("user_id", user.id)
+    .not("best_efforts", "is", null)
+    .order("started_at", { ascending: false })
+    .limit(PR_SCAN_LIMIT);
+
+  // A record set in the last month is worth calling out.
+  const monthAgo = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
+  return personalRecords(data ?? [], monthAgo);
 }

@@ -1,5 +1,6 @@
 import { ActivitiesView } from "@/components/screens/ActivitiesView";
-import { getActivities } from "@/actions/activities";
+import { EmptyActivities } from "@/components/screens/EmptyActivities";
+import { getActivities, getPersonalRecords } from "@/actions/activities";
 import { paceShapeColor, paceShapeToPath } from "@/lib/dashboard/sparkline";
 import type { Act } from "@/lib/screens/activities";
 
@@ -24,8 +25,9 @@ const NAMES: Record<string, string> = {
 };
 
 export default async function ActivitiesPage() {
-  const rows = await getActivities(60);
-  if (rows.length === 0) return <ActivitiesView />;
+  const [rows, prs] = await Promise.all([getActivities(60), getPersonalRecords()]);
+  // No runs means no runs — not a month of somebody else's.
+  if (rows.length === 0) return <EmptyActivities />;
 
   const paces = rows
     .filter((r) => r.distanceKm > 0 && r.durationSec > 0)
@@ -63,5 +65,7 @@ export default async function ActivitiesPage() {
   const easyPaces = acts.filter((a) => a.type === "easy").map((a) => a.paceSec).reverse();
   const wp = easyPaces.length >= 2 ? easyPaces : [medianPace, medianPace];
 
-  return <ActivitiesView data={{ acts, weekKm: weekKm.map((k) => Math.round(k)), wp }} />;
+  const pb10k = prs.find((r) => r.key === "10k")?.time ?? null;
+
+  return <ActivitiesView data={{ acts, weekKm: weekKm.map((k) => Math.round(k)), wp, pb10k }} />;
 }

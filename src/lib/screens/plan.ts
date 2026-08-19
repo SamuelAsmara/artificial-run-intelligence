@@ -4,6 +4,8 @@
  * Maps to plan_workouts + goal_races.
  */
 
+import type { Week as ModelWeek } from "@/lib/dashboard/model";
+
 export type WType = "easy" | "tempo" | "int" | "long" | "rest";
 
 const NAMES: Record<WType, string> = {
@@ -110,3 +112,71 @@ export const PLAN_COPY = {
   raceTag: "Race day", raceLine: "Sun Oct 11, 2026 · Marathon · 42.2 km",
   raceTarget: "Target 3:45:00 · 5:20/km",
 };
+
+/* ------------------------------------------------------------------ */
+/* Real plans                                                          */
+/* ------------------------------------------------------------------ */
+
+
+/** Full month names, for any month rather than only July to October. */
+export const MONTHS_LONG = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+/**
+ * Turns the athlete's real plan into the shape this screen renders.
+ *
+ * The screen was a direct port of the prototype, which meant `planWeeks()` —
+ * twelve weeks of invented distances, paces, Done/Missed history and a "today"
+ * frozen on 11 August 2026 — was what every signed-in athlete saw when they
+ * clicked Plan. The data to do this properly already existed and was already
+ * being used by the dashboard.
+ *
+ * `phase` is left blank rather than guessed. The generator knows its phases but
+ * does not store them per week, and labelling a week "Peak" because of where it
+ * sits in the list would be a claim we cannot support.
+ */
+export function realPlanWeeks(weeks: ModelWeek[]): PlanWeek[] {
+  return weeks.map((wk, i) => {
+    const days: PlanDay[] = wk.days.map((d) => ({
+      type: (["easy", "tempo", "int", "long", "rest"] as WType[]).includes(d.type as WType)
+        ? (d.type as WType)
+        : "easy",
+      name: d.name,
+      dist: d.dist,
+      pace: d.pace,
+      day: d.day,
+      dateNum: d.dateNum,
+      mon: d.mon,
+      monIdx: Math.max(0, MO.indexOf(d.mon)),
+      status: d.status,
+      done: d.done,
+      missed: d.missed,
+      today: d.today,
+    }));
+
+    const first = days[0];
+    const last = days[days.length - 1];
+
+    return {
+      days,
+      km: Math.round(days.reduce((s, d) => s + d.dist, 0)),
+      phase: "",
+      monIdx: first?.monIdx ?? 0,
+      monName: first ? MO[first.monIdx] : "",
+      label: wk.label || `Week ${i + 1}`,
+      range:
+        first && last
+          ? `${first.mon} ${first.dateNum} – ${last.mon === first.mon ? "" : last.mon + " "}${last.dateNum}`
+          : "",
+    };
+  });
+}
+
+export const PLAN_EMPTY = {
+  title: "No plan yet",
+  body:
+    "A training plan needs a goal race — the distance and the date. Set one in Settings and ARI will build the weeks between now and then from what you are already running.",
+  cta: "Go to Settings",
+} as const;

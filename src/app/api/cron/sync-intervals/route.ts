@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { importFromIcu } from "@/lib/providers/syncIcu";
@@ -37,9 +38,22 @@ import { runPlanAdjustment } from "@/lib/planning/runAdjustment";
 /** Runs longer than the default; a full batch does real network work. */
 export const maxDuration = 300;
 
+/** Constant-time check of the scheduler's bearer token. */
+function authorised(request: NextRequest): boolean {
+  const expected = process.env.CRON_SECRET;
+  if (!expected) return false;
+
+  const provided = request.headers.get("authorization");
+  if (!provided) return false;
+
+  const a = Buffer.from(provided);
+  const b = Buffer.from(`Bearer ${expected}`);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+
 export async function POST(request: NextRequest) {
-  const authHeader = request.headers.get("authorization");
-  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!authorised(request)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

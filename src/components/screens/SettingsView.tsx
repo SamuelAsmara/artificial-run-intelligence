@@ -35,6 +35,7 @@ import { useMemo, useState, useTransition } from "react";
 import { AvatarEditor } from "@/components/settings/AvatarEditor";
 import { AccountSecurity } from "@/components/settings/AccountSecurity";
 import { CoachLink } from "@/components/settings/CoachLink";
+import { APP_LOCALE, APP_TIME_ZONE } from "@/lib/time/week";
 import type { MyCoach } from "@/actions/coach";
 import { saveAthleteProfile, type AthleteProfileView } from "@/actions/profile";
 import {
@@ -361,11 +362,23 @@ function ProfileEditor({
               options={RACE_OPTIONS.map((r) => ({ key: r.value, label: r.label }))}
               selected={draft.raceType ?? ""}
               onPick={(key) => {
-                const option = RACE_OPTIONS.find((r) => r.value === key);
+                const previous = draft.raceType;
                 set("raceType", key as RaceType);
-                // A target time carried over from another distance is always
-                // wrong, so offer that distance's default instead of keeping it.
-                if (option && !draft.targetTime) set("targetTime", option.defaultTarget);
+                /*
+                 * Changing distance clears the target time.
+                 *
+                 * The guard here used to be `if (option && !draft.targetTime)`,
+                 * which does the opposite of what the comment beside it said:
+                 * an existing time was *kept*. An athlete with a 22:00 five-km
+                 * target who switched to Marathon was shown a required pace of
+                 * 0:31 /km, and could save 22:00 as a marathon goal.
+                 *
+                 * Nor is a default offered any more. The previous behaviour
+                 * wrote 3:45:00 into the field the moment "Marathon" was
+                 * tapped, and pressing Save stored it — so a number nobody
+                 * chose became the athlete's goal and drove their plan.
+                 */
+                if (previous && previous !== key) set("targetTime", "");
               }}
             />
           </div>
@@ -421,12 +434,21 @@ function ProfileEditor({
 function ConnectionsCard({ connection }: { connection: ProviderConnectionView | null }) {
   const [selected, setSelected] = useState("intervals_icu");
 
-  // A dot means "your data reaches us from here". intervals.icu earns one when
-  // it is connected; Garmin, Suunto and Strava inherit it, because when the
-  // aggregator is live so are they.
+  /*
+   * A dot means "your data reaches us from here", and only intervals.icu can
+   * earn one.
+   *
+   * Garmin, Suunto and Strava used to inherit it on the theory that if the
+   * aggregator is live so are they. Nothing checks that. `getIntervalsIcuConnection`
+   * returns no information about what feeds intervals.icu, so an athlete who
+   * uploads files by hand was shown three green dots claiming connections they
+   * do not have. Those tiles still open the intervals.icu panel — which is the
+   * truthful answer to "is my Garmin connected?" — they simply no longer assert
+   * it on the tile itself.
+   */
   const icuLive = connection?.status === "connected";
   const connected = useMemo(
-    () => new Set(icuLive ? ["intervals_icu", "garmin", "suunto", "strava"] : []),
+    () => new Set(icuLive ? ["intervals_icu"] : []),
     [icuLive],
   );
 
@@ -796,8 +818,26 @@ function Avatar({ src, position, size }: { src: string | null; position: string;
 const titleCase = (s: string | null | undefined) =>
   s ? s.charAt(0).toUpperCase() + s.slice(1) : DASH;
 
+/*
+ * Formatted in a fixed timezone and locale.
+ *
+ * This is a client component, so it is server-rendered first: bare
+ * `toLocaleDateString()` used the server's locale and UTC during SSR and the
+ * browser's on hydration, which is a React hydration mismatch and a visible
+ * flip — plus an off-by-one day for anything synced late in the evening.
+ * Pinning both makes the two renders identical.
+ */
 const dateOnly = (iso: string | null | undefined) =>
-  iso ? new Date(iso).toLocaleDateString() : DASH;
+  iso
+    ? new Intl.DateTimeFormat(APP_LOCALE, {
+        day: "2-digit", month: "2-digit", year: "numeric", timeZone: APP_TIME_ZONE,
+      }).format(new Date(iso))
+    : DASH;
 
 const dateTime = (iso: string | null | undefined) =>
-  iso ? new Date(iso).toLocaleString() : copy.never;
+  iso
+    ? new Intl.DateTimeFormat(APP_LOCALE, {
+        day: "2-digit", month: "2-digit", year: "numeric",
+        hour: "2-digit", minute: "2-digit", hour12: false, timeZone: APP_TIME_ZONE,
+      }).format(new Date(iso))
+    : copy.never;

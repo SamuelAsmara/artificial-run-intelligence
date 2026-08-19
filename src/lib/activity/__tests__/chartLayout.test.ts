@@ -192,3 +192,26 @@ describe("timeTicks", () => {
     expect(timeTicks([0, 0], [0, 0], () => 0, formatMinSec)).toEqual([]);
   });
 });
+
+describe("distanceTicks finish label", () => {
+  const x = (m: number) => m / 10;
+
+  it("does not print the same label twice at the finish", () => {
+    // 10.04 km: the 1 km step lands on 10.0, and the finish rounds to "10" too.
+    const ticks = distanceTicks(10_040, x);
+    const labels = ticks.map((t) => t.label);
+    expect(new Set(labels).size).toBe(labels.length);
+    expect(labels[labels.length - 1]).toBe("10");
+  });
+
+  it("still labels the finish when it differs from the last step", () => {
+    const ticks = distanceTicks(10_600, x);
+    expect(ticks[ticks.length - 1].label).toBe("11");
+    expect(ticks[ticks.length - 1].x).toBe(x(10_600));
+  });
+
+  it("keeps a finish tick on a short run", () => {
+    const ticks = distanceTicks(5_000, x);
+    expect(ticks[ticks.length - 1].label).toBe("5.0");
+  });
+});

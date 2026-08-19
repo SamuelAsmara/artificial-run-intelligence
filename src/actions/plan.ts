@@ -8,6 +8,33 @@ import { readCapacity } from "@/lib/planning/readCapacity";
 import { estimateThresholds, type HistoryActivity } from "@/lib/planning/thresholds";
 import { paceLabel } from "@/lib/planning/paces";
 import { buildRealPlan, type RealPlan } from "@/lib/dashboard/realPlan";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/database.types";
+
+/**
+ * The two profile fields that set an athlete's maximum-heart-rate estimate.
+ *
+ * The defaults are the population figures the formula falls back to, and they
+ * are a real approximation rather than a placeholder: a 55-year-old woman
+ * treated as a 34-year-old man gets a maximum heart rate about fifteen beats
+ * too high, a threshold to match, and every prescribed pace shifted with it.
+ * The profile screen is where an athlete corrects this.
+ */
+async function readDemographics(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+): Promise<{ age: number; sex: "male" | "female" }> {
+  const { data } = await supabase
+    .from("profiles")
+    .select("age, sex")
+    .eq("id", userId)
+    .maybeSingle();
+
+  return {
+    age: data?.age ?? 34,
+    sex: (data?.sex as "male" | "female" | null) ?? "male",
+  };
+}
 
 type ActionResult<T> = { data: T; error?: undefined } | { data?: undefined; error: string };
 
@@ -65,8 +92,12 @@ export async function generatePlanAction(
   const capacity = readCapacity(runs.map((r) => ({ date: r.date, distanceM: r.distanceM })));
 
   // Learned from the athlete's own efforts; used only to prescribe paces.
-  // TODO: read age and sex from `profiles` once migration 0002 is applied.
-  const thresholds = estimateThresholds(runs, { age: 34, sex: "male" });
+  // Age and sex set the maximum-heart-rate estimate, which sets the threshold,
+  // which sets every prescribed pace — so they are read rather than assumed.
+  // The readiness pipeline already did this; the plan did not, and the two then
+  // produced different paces for the same athlete on the same day.
+  const demographics = await readDemographics(supabase, user.id);
+  const thresholds = estimateThresholds(runs, demographics);
 
   let generated;
   try {
@@ -210,8 +241,45 @@ export async function getDashboardPlan(): Promise<RealPlan | null> {
     }));
 
   const thresholdSpeedMps = history.length
-    ? estimateThresholds(history, { age: 34, sex: "male" }).thresholdSpeedMps
+    ? estimateThresholds(history, await readDemographics(supabase, user.id)).thresholdSpeedMps
     : null;
 
   return buildRealPlan(rows, completed, thresholdSpeedMps);
+}
+
+/**
+ * Everything the /plan screen shows: the athlete's plan and the race it is for.
+ *
+ * Both may be null, and the screen says so rather than falling back to the
+ * prototype's twelve invented weeks — which is what it did until now, for every
+ * signed-in athlete, with no `?demo=1` gate and no empty state.
+ */
+export async function getPlanScreen(): Promise<{
+  plan: RealPlan | null;
+  race: { raceType: string; raceDate: string; targetTime: string | null } | null;
+}> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { plan: null, race: null };
+
+  const [plan, { data: race }] = await Promise.all([
+    getDashboardPlan(),
+    supabase
+      .from("goal_races")
+      .select("race_type, race_date, target_time")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .order("race_date", { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  return {
+    plan,
+    race: race
+      ? { raceType: race.race_type, raceDate: race.race_date, targetTime: race.target_time }
+      : null,
+  };
 }

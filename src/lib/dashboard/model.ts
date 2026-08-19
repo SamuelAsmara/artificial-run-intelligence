@@ -40,6 +40,23 @@ const DN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export interface Pmc {
   C: number[]; A: number[]; T: number[];
+  /**
+   * How many points the chart actually has.
+   *
+   * The ported markup hard-coded 84 because the prototype's series was always
+   * that long. A real athlete with three weeks of history has 21, and every
+   * index built from the constant read off the end of the array — which is how
+   * the Form tile came to render `NaN`.
+   */
+  n: number;
+  /**
+   * ISO date per point, when the series came from real snapshots.
+   *
+   * Empty for the demo series, whose points are not real days. The hover
+   * tooltip used to derive its date by counting back from a hard-coded
+   * 11 August 2026, so it was wrong for everybody on every other day.
+   */
+  D: string[];
   x0: number; x1: number; yT: number; yB: number; mn: number; mx: number;
   ctlPath: string; atlPath: string; tsbPath: string;
   ctlArea: string; tsbArea: string;
@@ -71,8 +88,10 @@ function demoSeries(): { C: number[]; A: number[]; T: number[] } {
   return { C, A, T };
 }
 
-export function buildPmc(series?: { C: number[]; A: number[]; T: number[] }): Pmc {
-  const { C, A, T } = series && series.C.length > 1 ? series : demoSeries();
+export function buildPmc(series?: { C: number[]; A: number[]; T: number[]; D?: string[] }): Pmc {
+  const real = series && series.C.length > 1;
+  const { C, A, T } = real ? series : demoSeries();
+  const D = real && series.D && series.D.length === C.length ? series.D : [];
   const n = C.length;
 
   const allV = [...C, ...A, ...T];
@@ -124,7 +143,7 @@ export function buildPmc(series?: { C: number[]; A: number[]; T: number[] }): Pm
   }));
 
   return {
-    C, A, T, x0, x1, yT, yB, mn, mx,
+    C, A, T, n, D, x0, x1, yT, yB, mn, mx,
     ctlPath: sm(C), atlPath: sm(A), tsbPath: sm(T), ctlArea, tsbArea,
     pmcGrid, pmcWeeks,
     pmcEnds: ends.map((e) => ({ y: e.y.toFixed(1), text: e.text, color: e.color })),
@@ -294,34 +313,45 @@ function calDots() {
  * @param realToday  today's date, so the highlight follows the calendar rather
  *                   than the fixed date the prototype was drawn on
  * @param raceDate   the athlete's goal race, highlighted the same way
+ * @param cy         the year being shown. The grid used to be laid out for 2026
+ *                   whatever the athlete's actual year, so in March 2027 — a
+ *                   Monday, where 2026's March started on a Sunday — every dot
+ *                   sat one column away from its real weekday, under a heading
+ *                   that said "March 2026".
  */
 export function calendar(
   cm: number,
   realDots?: Record<number, string>,
   realToday?: Date,
   raceDate?: Date | null,
+  cy: number = 2026,
 ) {
   const dots = realDots ?? calDots();
-  const startDow = new Date(2026, cm, 1).getDay();
-  const dim = new Date(2026, cm + 1, 0).getDate();
+  const startDow = new Date(cy, cm, 1).getDay();
+  const dim = new Date(cy, cm + 1, 0).getDate();
   const cells: { n: string; color: string; bg: string; dot: string }[] = [];
   for (let i = 0; i < startDow; i++)
     cells.push({ n: "", color: "transparent", bg: "transparent", dot: "transparent" });
   for (let n = 1; n <= dim; n++) {
     const today = realToday
-      ? realToday.getMonth() === cm && realToday.getDate() === n
+      ? realToday.getFullYear() === cy && realToday.getMonth() === cm && realToday.getDate() === n
       : cm === 7 && n === 11;
     const race = raceDate !== undefined
-      ? !!raceDate && raceDate.getMonth() === cm && raceDate.getDate() === n
+      ? !!raceDate && raceDate.getFullYear() === cy && raceDate.getMonth() === cm && raceDate.getDate() === n
       : cm === 9 && n === 11;
     cells.push({
       n: String(n),
       color: today ? "var(--color-accent-ink)" : race ? "var(--color-accent)" : "var(--color-muted)",
       bg: today ? "var(--color-accent)" : race ? "var(--color-accent-soft)" : "transparent",
-      dot: today ? "var(--color-accent-ink)" : race ? "var(--color-accent)" : dots[cm * 100 + n] || "transparent",
+      // Real dots are keyed by year; the reference set is not.
+      dot: today
+        ? "var(--color-accent-ink)"
+        : race
+          ? "var(--color-accent)"
+          : (realDots ? dots[cy * 10_000 + cm * 100 + n] : dots[cm * 100 + n]) || "transparent",
     });
   }
-  return { calLabel: MO_LONG[cm] + " 2026", calCells: cells };
+  return { calLabel: `${MO_LONG[cm]} ${cy}`, calCells: cells };
 }
 
 export const calHead = [{ t: "S" }, { t: "M" }, { t: "T" }, { t: "W" }, { t: "T" }, { t: "F" }, { t: "S" }];

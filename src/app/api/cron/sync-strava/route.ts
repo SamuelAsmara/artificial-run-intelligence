@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { listRecentActivities, refreshStravaToken } from "@/lib/strava/api";
@@ -12,9 +13,30 @@ import { runPlanAdjustment } from "@/lib/planning/runAdjustment";
  * כשל בסנכרון משתמש בודד נרשם ללוג וממשיך — לא מפיל את כל ה-batch
  * (מסמך תכנון טכני §8).
  */
+/**
+ * Constant-time check of the scheduler's bearer token.
+ *
+ * The previous version compared against `` `Bearer ${process.env.CRON_SECRET}` ``
+ * with no presence check, so on any deployment where the variable was never set
+ * the expected value became the literal string "Bearer undefined" — and anyone
+ * who sent exactly that drove the whole service-role batch. A missing secret
+ * now denies everything, which is the only safe reading of "not configured".
+ */
+function authorised(request: NextRequest): boolean {
+  const expected = process.env.CRON_SECRET;
+  if (!expected) return false;
+
+  const provided = request.headers.get("authorization");
+  if (!provided) return false;
+
+  const a = Buffer.from(provided);
+  const b = Buffer.from(`Bearer ${expected}`);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+
 export async function POST(request: NextRequest) {
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!authorised(request)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

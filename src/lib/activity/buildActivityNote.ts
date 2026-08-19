@@ -85,12 +85,21 @@ function fastestSentence({ segments }: ActivityNoteInput): string | null {
   if (i === -1 || segments.length < 3) return null;
 
   const seg = segments[i];
+  /*
+   * Segments are not always single kilometres — a long run groups them, and a
+   * short tail is absorbed into the one before it. So the label may read "6-10"
+   * or "10 · 1.42 km", and "kilometre 6-10" is not a sentence. Only a plain
+   * number gets the word "kilometre".
+   */
+  const plainKm = /^\d+$/.test(seg.label.trim());
   const where =
     i === segments.length - 1
       ? "your closing kilometre"
       : i === 0
         ? "your opening kilometre"
-        : `kilometre ${seg.label}`;
+        : plainKm
+          ? `kilometre ${seg.label}`
+          : `the stretch marked ${seg.label}`;
 
   return `The quickest stretch was ${where}, at ${formatMinSec(seg.paceSec)}/km.`;
 }

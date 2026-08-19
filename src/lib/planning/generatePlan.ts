@@ -1,4 +1,16 @@
 import { addDays, differenceInCalendarWeeks, startOfWeek } from "date-fns";
+import { isoDate, WEEK_STARTS_ON } from "@/lib/time/week";
+
+/**
+ * The plan's weeks must be the same seven days as everything else's.
+ *
+ * This file used `weekStartsOn: 1` while `lib/time/week` — which the coach's
+ * board, the dashboard's volume bars and the plan strip all read — is Sunday.
+ * The two agreed Monday to Saturday and disagreed every Sunday, so on Sundays
+ * the plan strip and the race card printed different week numbers for the same
+ * day, on the same screen.
+ */
+const WEEK_OPTS = { weekStartsOn: WEEK_STARTS_ON as 0 | 1 } as const;
 import type { RaceType, WorkoutType } from "@/types/database.types";
 import {
   planCapacity, weekLongRunM, weekVolumeFraction,
@@ -76,7 +88,7 @@ export function generatePlan(
    */
   athlete?: AthleteCapacity,
 ): GeneratedPlan {
-  const totalWeeks = Math.max(1, differenceInCalendarWeeks(raceDate, today, { weekStartsOn: 1 }));
+  const totalWeeks = Math.max(1, differenceInCalendarWeeks(raceDate, today, WEEK_OPTS));
 
   if (totalWeeks < MIN_WEEKS_FOR_FULL_PLAN) {
     throw new RaceTooSoonError(totalWeeks);
@@ -130,9 +142,18 @@ export function generatePlan(
     ? Math.min(0.95, Math.max(0.4, athlete!.currentWeeklyM / capacity.peakWeeklyM))
     : 0.5;
 
-  const planStart = startOfWeek(today, { weekStartsOn: 1 });
+  const planStart = startOfWeek(today, WEEK_OPTS);
   const workouts: PlannedWorkout[] = [];
 
+  /*
+   * Offsets are from the start of the week, which is Sunday.
+   *
+   *   Sun easy · Mon rest · Tue interval · Wed rest · Thu easy · Fri long · Sat rest
+   *
+   * The long run lands on Friday and the full rest day on Saturday, which is
+   * the Israeli weekend rather than the European one — the same reason
+   * `lib/time/week` starts the week on Sunday in the first place.
+   */
   const weekWorkoutPattern: { offset: number; type: WorkoutType; share: number }[] = [
     { offset: 0, type: "easy", share: 0.2 },
     { offset: 2, type: "interval", share: 0.25 },
@@ -180,7 +201,9 @@ export function generatePlan(
 
       workouts.push({
         weekNumber: week,
-        dayDate: addDays(weekStart, offset).toISOString().slice(0, 10),
+        // Local calendar date — a UTC one is yesterday for an athlete in Israel
+        // for the first two or three hours of every day.
+        dayDate: isoDate(addDays(weekStart, offset)),
         workoutType: type,
         phase,
         plannedDistance,

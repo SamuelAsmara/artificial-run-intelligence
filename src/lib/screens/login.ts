@@ -4,39 +4,13 @@
  * Ported from the Figma design (file M0S7O3aLOXUcphFoXpry8C, node 2:4), with
  * the copy rewritten — see the note on `headline` for why.
  *
- * `qrPath` and `TARGET_BY_RACE` are still here because CoachView imports them;
- * they belong to the old prototype and will move when that screen is rebuilt.
+ * This file used to also export `qrPath` — a deterministic fake QR code — and
+ * `TARGET_BY_RACE`, a table of invented goal times (a 47-minute 10K, a 3:45
+ * marathon). Both belonged to the old prototype's coach screen, which has since
+ * been rebuilt on real data, and neither had any remaining importer. Removed
+ * rather than left lying about: a fabricated constant with no call sites is a
+ * fabrication waiting for somebody to import it.
  */
-
-/** Deterministic fake QR for the coach-code modal. */
-export function qrPath(): string {
-  let a = 99;
-  const rnd = () => {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-  let d = "";
-  const c = 8;
-  const eye = (x: number, y: number) => {
-    d += "M" + x + " " + y + "h" + c * 3 + "v" + c * 3 + "h-" + c * 3 + "z";
-  };
-  eye(8, 8); eye(8, 64); eye(64, 8);
-  for (let i = 0; i < 11; i++) {
-    for (let j = 0; j < 11; j++) {
-      const x = 8 + i * c, y = 8 + j * c;
-      if ((i < 4 && j < 4) || (i < 4 && j > 6) || (i > 6 && j < 4)) continue;
-      if (rnd() > 0.5) d += "M" + x + " " + y + "h" + (c - 2) + "v" + (c - 2) + "h-" + (c - 2) + "z";
-    }
-  }
-  return d;
-}
-
-export const TARGET_BY_RACE: Record<string, string> = {
-  "5K": "22:00", "10K": "47:00", Half: "1:45:00", Marathon: "3:45:00",
-};
 
 export const LOGIN_COPY = {
   brand: "ARI",

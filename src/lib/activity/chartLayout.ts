@@ -163,8 +163,15 @@ export function distanceTicks(totalM: number, x: (m: number) => number): Tick[] 
       major: Number.isInteger(rounded),
     });
   }
-  // The finish always gets a tick, whatever the step landed on.
-  out.push({ x: x(totalM), label: km.toFixed(km < 10 ? 1 : 0), major: true });
+  /*
+   * The finish always gets a tick, whatever the step landed on — unless the
+   * step has just placed one on top of it. A 10.04 km run used to emit "10" at
+   * 10.0 km and "10" again a few pixels later at the finish.
+   */
+  const finishLabel = km.toFixed(km < 10 ? 1 : 0);
+  const last = out[out.length - 1];
+  if (last && last.label === finishLabel) out.pop();
+  out.push({ x: x(totalM), label: finishLabel, major: true });
   return out;
 }
 

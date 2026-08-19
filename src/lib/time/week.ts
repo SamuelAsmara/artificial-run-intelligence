@@ -45,10 +45,48 @@ export function weekStart(d: Date): Date {
   return out;
 }
 
-const isoDate = (d: Date): string => {
+/**
+ * The calendar date a `Date` falls on, in the runtime's own timezone.
+ *
+ * Not `toISOString().slice(0, 10)`, which is UTC. In Israel — two or three
+ * hours ahead — local midnight is still *yesterday* in UTC, so the two answers
+ * differ every single day between midnight and the offset. Anything comparing a
+ * date key against a stored `YYYY-MM-DD` has to use this one.
+ */
+export const isoDate = (d: Date): string => {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
+
+/**
+ * `n` calendar days from `d`, at local midnight.
+ *
+ * Stepping by 86,400,000 ms is wrong twice a year: across a DST boundary a
+ * "week" of milliseconds lands an hour early or late, and floor-dividing by it
+ * then puts the result in the wrong week entirely.
+ */
+/**
+ * The timezone the app presents dates and times in.
+ *
+ * Fixed rather than "whatever the server is", which on Vercel is UTC. A run
+ * started at 01:00 on Tuesday in Tel Aviv is 22:00 on Monday in UTC, so the
+ * activity list headed it "Aug 17" and the detail page said "Monday, 10:00 PM"
+ * for a run the athlete did on Tuesday morning.
+ *
+ * Same trade as `WEEK_STARTS_ON`: right for the athletes this is built for,
+ * and the thing to revisit if that changes. It is deliberately one constant so
+ * revisiting it is one edit.
+ */
+export const APP_TIME_ZONE = "Asia/Jerusalem";
+
+/** The locale used for the same reason. Day-month order, 24-hour clock. */
+export const APP_LOCALE = "en-GB";
+
+export function addDays(d: Date, n: number): Date {
+  const out = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  out.setDate(out.getDate() + n);
+  return out;
+}
 
 /** The seven ISO dates of the week containing `date`, first day first. */
 export function weekDates(date: string): string[] {

@@ -589,6 +589,18 @@ export async function getAthleteDetail(athleteId: string): Promise<AthleteDetail
  * the provenance model that would let the engine know not to touch a
  * hand-edited session (`origin`, `locked_by`) is documented as the next step
  * rather than half-built here.
+ *
+ * ## Why the ownership check is here and not left to RLS
+ *
+ * This is a `"use server"` file, so this function is a public endpoint: anyone
+ * signed in can call it with any workout id they can guess or observe. The
+ * first version went straight to `update ... where id = $1`, which trusted that
+ * id completely. Whether that was exploitable came down to how the UPDATE
+ * policy on `plan_workouts` happens to be phrased — and "we are safe as long as
+ * a policy we did not read is written the stricter of two common ways" is not a
+ * position to be in. So the workout is resolved to its plan, the plan to its
+ * owner, and the owner has to be the caller or somebody the caller actively
+ * coaches. RLS stays as the second lock.
  */
 export async function updateWorkout(
   workoutId: string,
@@ -607,6 +619,37 @@ export async function updateWorkout(
   if (patch.plannedDistanceM !== undefined) fields.planned_distance = patch.plannedDistanceM;
   if (patch.plannedPace !== undefined) fields.planned_pace = patch.plannedPace;
   if (Object.keys(fields).length === 0) return { ok: true, data: null };
+
+  // Whose session is this?
+  const { data: workout } = await supabase
+    .from("plan_workouts")
+    .select("plan_id")
+    .eq("id", workoutId)
+    .maybeSingle();
+
+  if (!workout) return { ok: false, error: "That session no longer exists." };
+
+  const { data: plan } = await supabase
+    .from("training_plans")
+    .select("user_id")
+    .eq("id", workout.plan_id)
+    .maybeSingle();
+
+  if (!plan) return { ok: false, error: "That session no longer exists." };
+
+  if (plan.user_id !== user.id) {
+    const { data: link } = await supabase
+      .from("coach_athletes")
+      .select("athlete_id")
+      .eq("coach_id", user.id)
+      .eq("athlete_id", plan.user_id)
+      .eq("status", "active")
+      .maybeSingle();
+
+    // Deliberately the same message as a missing row. Telling a stranger that
+    // the id exists but is not theirs turns this into a way to enumerate plans.
+    if (!link) return { ok: false, error: "That session no longer exists." };
+  }
 
   const { error } = await supabase.from("plan_workouts").update(fields).eq("id", workoutId);
   if (error) return { ok: false, error: `Could not save: ${error.message}` };

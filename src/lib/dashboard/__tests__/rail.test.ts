@@ -74,7 +74,9 @@ describe("calendarDots", () => {
     { date: "2026-08-19", isRest: false },
     { date: "2026-08-21", isRest: false },
   ];
-  const key = (m: number, d: number) => m * 100 + d;
+  // Keys carry the year, so a calendar paged back twelve months cannot show
+  // last year's dots as this year's.
+  const key = (m: number, d: number, y = 2026) => y * 10_000 + m * 100 + d;
 
   it("marks a planned day done when a run was recorded", () => {
     const dots = calendarDots(planned, [run("2026-08-17", 6)], TODAY);
@@ -104,6 +106,17 @@ describe("calendarDots", () => {
   it("lets a completed run override a rest day", () => {
     const dots = calendarDots(planned, [run("2026-08-18", 4)], TODAY);
     expect(dots[key(7, 18)]).toBe(calendarDotColor("done"));
+  });
+  it("keeps the same calendar day in different years apart", () => {
+    // A run on 17 Aug 2025 must not satisfy a session planned for 17 Aug 2026.
+    const dots = calendarDots(
+      [{ date: "2026-08-17", isRest: false }],
+      [run("2025-08-17", 6)],
+      TODAY,
+    );
+    expect(dots[key(7, 17, 2025)]).toBe(calendarDotColor("done"));
+    expect(dots[key(7, 17, 2026)]).toBe(calendarDotColor("missed"));
+    expect(Object.keys(dots)).toHaveLength(2);
   });
 });
 
@@ -229,5 +242,41 @@ describe("interrupted weeks", () => {
   it("never drops a week, however empty", () => {
     const bars = weeklyVolume([run("2026-08-19", 20)], TODAY);
     expect(bars).toHaveLength(VOLUME_WEEKS);
+  });
+});
+
+describe("weeklyVolumeSummary like-for-like comparison", () => {
+  // Sunday-start weeks. Mon 17 Aug 2026 is day 1 of the week beginning Sun 16.
+  const MONDAY = new Date(2026, 7, 17, 10, 0, 0);
+
+  it("compares against the same point last week, not the whole of it", () => {
+    const runs = [
+      // last week, Sun-Sat, 60 km in total but only 8 by the Monday
+      run("2026-08-09", 8),
+      run("2026-08-13", 26),
+      run("2026-08-15", 26),
+      // this week so far
+      run("2026-08-17", 8),
+    ];
+    const { km, changePct, partialWeek } = weeklyVolumeSummary(runs, MONDAY);
+    expect(km).toBe(8);
+    expect(partialWeek).toBe(true);
+    // 8 km against last Monday's 8 km, not against the full 60.
+    expect(changePct).toBe(0);
+  });
+
+  it("still reports a real increase", () => {
+    const runs = [run("2026-08-09", 5), run("2026-08-16", 5), run("2026-08-17", 10)];
+    const { changePct } = weeklyVolumeSummary(runs, MONDAY);
+    expect(changePct).toBe(200); // 15 km against 5
+  });
+
+  it("says nothing when there is no comparable week", () => {
+    expect(weeklyVolumeSummary([run("2026-08-17", 10)], MONDAY).changePct).toBeNull();
+  });
+
+  it("stops calling the week partial once it is over", () => {
+    const SATURDAY = new Date(2026, 7, 22, 20, 0, 0);
+    expect(weeklyVolumeSummary([run("2026-08-17", 10)], SATURDAY).partialWeek).toBe(false);
   });
 });

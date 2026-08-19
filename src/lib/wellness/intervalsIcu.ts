@@ -371,6 +371,11 @@ export function hrvVsBaselinePct(
 
   const latest = sorted[0];
   if (!latest) return null;
+  // A baseline comparison against a reading from months ago is not a
+  // comparison — see RECOVERY_STALE_DAYS.
+  if (Math.round((Date.parse(asOf) - Date.parse(latest.date)) / 86_400_000) > RECOVERY_STALE_DAYS) {
+    return null;
+  }
 
   const baselineWindow = sorted.slice(0, 8).slice(1); // the 7 nights before it
   const valid = baselineWindow.filter((s) => s.hrv != null);
@@ -382,7 +387,29 @@ export function hrvVsBaselinePct(
   return ((latest.hrv as number) / baseline) * 100;
 }
 
-/** Most recent night's sleep, in hours, or null if it wasn't recorded. */
+/**
+ * How stale a recovery reading may be before it stops counting.
+ *
+ * A watch missed for a night or two should carry forward — sleep does not
+ * become unknowable because somebody forgot to charge something. Beyond that it
+ * is not a measurement of anything current. Without this bound an athlete who
+ * stopped wearing their watch in April had April's 6.2 hours resolved in
+ * August, narrated as "you slept 6.2 hours last night", and — worse — it
+ * switched the readiness model into its with-recovery weighting on the strength
+ * of a four-month-old number.
+ */
+export const RECOVERY_STALE_DAYS = 3;
+
+const daysApart = (from: string, to: string) =>
+  Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000);
+
+/**
+ * Most recent night's sleep, in hours.
+ *
+ * Null when it was not recorded, and null when the most recent record is older
+ * than `RECOVERY_STALE_DAYS` — silence is the honest answer, and every consumer
+ * already handles it.
+ */
 export function latestSleepHours(
   signals: RecoverySignal[],
   asOf: string,
@@ -390,5 +417,10 @@ export function latestSleepHours(
   const sorted = [...signals]
     .filter((s) => s.sleepHours != null && s.date <= asOf)
     .sort((a, b) => (a.date < b.date ? 1 : -1));
-  return sorted[0]?.sleepHours ?? null;
+
+  const latest = sorted[0];
+  if (!latest) return null;
+  if (daysApart(latest.date, asOf) > RECOVERY_STALE_DAYS) return null;
+
+  return latest.sleepHours ?? null;
 }

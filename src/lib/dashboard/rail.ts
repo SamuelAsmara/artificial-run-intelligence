@@ -9,14 +9,23 @@
  * Deliberately free of database calls so it can be tested.
  */
 
-import { weekNumber, weekStart, weekYear } from "@/lib/time/week";
+import { addDays, isoDate, weekNumber, weekStart, weekYear } from "@/lib/time/week";
 import {
   calendarDotColor, volumeBarAppearance, volumeBarHeight, volumeBarTitle,
   type DayState, type WeekPosition,
 } from "./presentation";
 
 const DAY = 86_400_000;
-const iso = (d: Date) => d.toISOString().slice(0, 10);
+
+/**
+ * Local calendar date, not UTC.
+ *
+ * This used to be `toISOString().slice(0, 10)` while the cursor beside it was
+ * built with `setHours(0,0,0,0)` — local midnight. In Asia/Jerusalem those
+ * disagree by a day, every day, so the streak was reported one short and the
+ * calendar highlighted yesterday.
+ */
+const iso = isoDate;
 
 /**
  * ISO 8601 week number.
@@ -90,16 +99,28 @@ export interface VolumeBar {
  * rather than leaving a silent notch in the strip.
  */
 export function weeklyVolume(runs: RunRow[], asOf: Date = new Date()): VolumeBar[] {
-  const currentMonday = weekStart(asOf);
-  const firstMonday = new Date(currentMonday.getTime() - (VOLUME_WEEKS - 1) * 7 * DAY);
+  const currentStart = weekStart(asOf);
+
+  // The twelve week-starts, stepped by calendar rather than by milliseconds,
+  // and indexed by date string. Floor-dividing a millisecond difference by a
+  // week used to shift every bar before a DST change into the wrong week and
+  // invent an empty one — which the strip then labelled "no running" for a week
+  // the athlete had run 13 km in.
+  const starts: Date[] = [];
+  const indexOfStart = new Map<string, number>();
+  for (let i = 0; i < VOLUME_WEEKS; i++) {
+    const start = addDays(currentStart, -(VOLUME_WEEKS - 1 - i) * 7);
+    starts.push(start);
+    indexOfStart.set(iso(start), i);
+  }
 
   const totals = new Array<number>(VOLUME_WEEKS).fill(0);
 
   for (const run of runs) {
     if (!run.date || !(run.distanceM > 0)) continue;
     const runDate = new Date(run.date + "T00:00:00");
-    const index = Math.floor((weekStart(runDate).getTime() - firstMonday.getTime()) / (7 * DAY));
-    if (index >= 0 && index < VOLUME_WEEKS) totals[index] += run.distanceM / 1000;
+    const index = indexOfStart.get(iso(weekStart(runDate)));
+    if (index !== undefined) totals[index] += run.distanceM / 1000;
   }
 
   const max = Math.max(...totals, 1);
@@ -111,9 +132,11 @@ export function weeklyVolume(runs: RunRow[], asOf: Date = new Date()): VolumeBar
   return totals.map((km, i) => {
     const position: WeekPosition = i < VOLUME_WEEKS - 1 ? "past" : "current";
     const { bg, border } = volumeBarAppearance(position);
-    const monday = new Date(firstMonday.getTime() + i * 7 * DAY);
-    const isoWeek = isoWeekNumber(monday);
+    const isoWeek = isoWeekNumber(starts[i]);
     const interrupted = firstActive >= 0 && i > firstActive && km === 0;
+    // Before the first recorded run we know nothing, which is not the same as
+    // a completed week of zero kilometres — the tooltip used to say "0 km · done".
+    const beforeHistory = firstActive < 0 || i < firstActive;
 
     return {
       weekNumber: i + 1,
@@ -124,24 +147,50 @@ export function weeklyVolume(runs: RunRow[], asOf: Date = new Date()): VolumeBar
       border,
       title: interrupted
         ? `Week ${isoWeek} · no running`
-        : volumeBarTitle(isoWeek, km, position),
+        : beforeHistory && km === 0
+          ? `Week ${isoWeek} · no data`
+          : volumeBarTitle(isoWeek, km, position),
       interrupted,
     };
   });
 }
 
-/** This week's distance in km, and the change against last week in percent. */
+/**
+ * This week's distance in km, and the change against the same point last week.
+ *
+ * The comparison is deliberately like-for-like. Comparing a week that is two
+ * days old against a finished one told a 60 km-a-week athlete they were down
+ * 87% every Monday, in caution amber, and back to normal by Saturday — a
+ * number that says more about the day of the week than about the athlete.
+ * Last week is therefore counted only up to the same weekday.
+ */
 export function weeklyVolumeSummary(
   runs: RunRow[],
   asOf: Date = new Date(),
-): { km: number; changePct: number | null } {
+): { km: number; changePct: number | null; partialWeek: boolean } {
   const bars = weeklyVolume(runs, asOf);
   const thisWeek = bars[bars.length - 1]?.km ?? 0;
-  const lastWeek = bars[bars.length - 2]?.km ?? 0;
+
+  const start = weekStart(asOf);
+  const dayOfWeek = Math.round((addDays(asOf, 0).getTime() - start.getTime()) / DAY);
+  const partialWeek = dayOfWeek < 6;
+
+  // The same slice of last week: its start, up to and including the same day.
+  const lastStart = addDays(start, -7);
+  const lastCutoff = addDays(lastStart, dayOfWeek);
+  let lastWeek = 0;
+  for (const run of runs) {
+    if (!run.date || !(run.distanceM > 0)) continue;
+    if (run.date >= isoDate(lastStart) && run.date <= isoDate(lastCutoff)) {
+      lastWeek += run.distanceM / 1000;
+    }
+  }
+
   return {
     km: Math.round(thisWeek),
     // A change against a week of nothing is not a percentage anyone can read.
     changePct: lastWeek > 0 ? Math.round(((thisWeek - lastWeek) / lastWeek) * 100) : null,
+    partialWeek,
   };
 }
 
@@ -167,9 +216,12 @@ export function calendarDots(
   const ran = new Set(runs.filter((r) => r.distanceM > 0).map((r) => r.date));
   const out: Record<number, string> = {};
 
+  // Year included. The key used to be month*100+day, which is the same number
+  // for 3 January 2026 and 3 January 2027 — so a calendar paged back a year
+  // showed last year's dots as this year's.
   const key = (dateIso: string) => {
     const d = new Date(dateIso + "T00:00:00");
-    return d.getMonth() * 100 + d.getDate();
+    return d.getFullYear() * 10_000 + d.getMonth() * 100 + d.getDate();
   };
 
   for (const p of planned) {
@@ -205,19 +257,18 @@ export function runStreak(runs: RunRow[], asOf: Date = new Date()): number {
   const ran = new Set(runs.filter((r) => r.distanceM > 0).map((r) => r.date));
   if (ran.size === 0) return 0;
 
-  const today = new Date(asOf);
-  today.setHours(0, 0, 0, 0);
+  const today = addDays(asOf, 0);
 
-  let cursor = new Date(today);
+  let cursor = today;
   if (!ran.has(iso(cursor))) {
-    cursor = new Date(today.getTime() - DAY);
+    cursor = addDays(today, -1);
     if (!ran.has(iso(cursor))) return 0;
   }
 
   let streak = 0;
   while (ran.has(iso(cursor))) {
     streak++;
-    cursor = new Date(cursor.getTime() - DAY);
+    cursor = addDays(cursor, -1);
   }
   return streak;
 }

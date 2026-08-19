@@ -7,7 +7,7 @@ import { computeReadiness } from "@/lib/planning/readiness";
 import { createClient } from "@/lib/supabase/server";
 import { formatPace } from "@/lib/format/pace";
 import { paceShapeColor, paceShapeToPath } from "@/lib/dashboard/sparkline";
-import { personalRecords } from "@/lib/dashboard/personalRecords";
+import { getPersonalRecords } from "@/actions/activities";
 import {
   calendarDots, raceCountdown, runStreak, weeklyVolume, weeklyVolumeSummary,
 } from "@/lib/dashboard/rail";
@@ -57,17 +57,32 @@ export default async function DashboardPage({
     railData(),
   ]);
 
+  /*
+   * The score, or nothing.
+   *
+   * `?score=` is a demo affordance and used to be trusted as a number, so
+   * `?score=abc` produced NaN and rendered a ring with `strokeDasharray="NaN"`.
+   * And a snapshot whose score is null fell through to the component's default
+   * of 82 — a confident "Ready to load" for an athlete we have no score for.
+   */
+  const override = Number(sp.score);
+  const readinessScore = Number.isFinite(override) && override >= 0 && override <= 100
+    ? override
+    : latest.readiness_score ?? undefined;
+
   const data: DashboardData = {
     isReal: true,
     pmcSeries: {
       C: series.map((s) => Number(s.ctl ?? 0)),
       A: series.map((s) => Number(s.atl ?? 0)),
       T: series.map((s) => Number(s.tsb ?? 0)),
+      D: series.map((s) => s.date),
     },
     loadRatio: latest.acwr ?? null,
     recentActivities,
     narrative: narrative ?? undefined,
     plan: plan ?? undefined,
+    athleteName: await athleteName(),
     personalRecords: derived.prs,
     cardiacDriftPct: derived.cardiacDrift,
     rail,
@@ -76,7 +91,7 @@ export default async function DashboardPage({
   return (
     <DashboardView
       coachView={sp.coach === "1"}
-      readinessScore={sp.score ? Number(sp.score) : latest.readiness_score ?? undefined}
+      readinessScore={readinessScore}
       acwrRisk={sp.risk === "1"}
       data={data}
     />
@@ -116,9 +131,8 @@ async function streamDerived() {
 
   const rows = data ?? [];
 
-  // A record set in the last month is worth calling out.
-  const monthAgo = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
-  const prs = personalRecords(rows, monthAgo);
+  // One implementation, shared with the activity list. See getPersonalRecords.
+  const prs = await getPersonalRecords();
 
   // The latest run long and steady enough to have produced a reading.
   const drift = rows.find((r) => r.cardiac_drift_pct !== null)?.cardiac_drift_pct;
@@ -151,7 +165,7 @@ async function railData() {
       .gte("started_at", from),
     supabase
       .from("goal_races")
-      .select("race_type, race_date")
+      .select("race_type, race_date, target_time")
       .eq("user_id", user.id)
       .eq("status", "active")
       .order("race_date", { ascending: true })
@@ -166,7 +180,11 @@ async function railData() {
       distanceM: r.distance_m ?? 0,
     }));
 
-  if (runs.length === 0) return undefined;
+  // Deliberately no early return for an empty `runs`. It used to bail here,
+  // and because the readiness snapshots keep decaying for months afterwards the
+  // dashboard still rendered as "real" — with the prototype's volume bars,
+  // calendar dots, "6 day streak" and marathon countdown standing in for an
+  // athlete who had not run since spring. An empty rail is the truthful answer.
 
   // Planned sessions drive the calendar's "planned" and "missed" dots.
   const { data: plan } = await supabase
@@ -205,6 +223,8 @@ async function railData() {
     race: race
       ? raceCountdown(race.race_type, race.race_date, planStart, totalWeeks)
       : null,
+    /** the athlete's own goal time, or null when they never set one */
+    raceTarget: race?.target_time ?? null,
   };
 }
 

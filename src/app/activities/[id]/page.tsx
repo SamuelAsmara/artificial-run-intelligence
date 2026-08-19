@@ -9,13 +9,22 @@ export default async function ActivityPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ coach?: string }>;
+  searchParams: Promise<{ coach?: string; demo?: string }>;
 }) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
 
-  // The reference run stays reachable at /activities/demo so the walkthrough
-  // has something to show before anything is synced.
-  if (id === "demo") return <ActivityDetailView coachView={sp.coach === "1"} />;
+  /*
+   * The reference run needs the same gate the reference dashboard has.
+   *
+   * It was reachable at /activities/demo by any signed-in athlete, and its only
+   * tell was the string "Reference run" where the date usually goes — splits,
+   * heart rates up to 181, power and cadence all invented and presented exactly
+   * as a real run is. `?demo=1` is how the rest of the app marks this.
+   */
+  if (id === "demo") {
+    if (sp.demo !== "1") notFound();
+    return <ActivityDetailView coachView={sp.coach === "1"} />;
+  }
 
   const detail = await getActivityDetail(id);
   // A run that does not exist, or belongs to someone else, is a 404 rather than

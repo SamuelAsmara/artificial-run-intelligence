@@ -20,8 +20,20 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-/** The stored image is square and modest — it is only ever shown small. */
-const OUTPUT_PX = 400;
+/**
+ * The longest side of the stored image.
+ *
+ * Deliberately *not* a square. The previous version centre-cropped to 400×400,
+ * and every place the avatar is shown renders it in a square box with
+ * `object-fit: cover` — so with matching aspect ratios there was no overflow
+ * for `object-position` to move, and the "drag to reframe" control did
+ * precisely nothing while still storing a position that could never matter.
+ *
+ * Keeping the original proportions is what makes the framing real: a portrait
+ * photo overflows a square box vertically, and dragging chooses which part of
+ * it you see.
+ */
+const OUTPUT_PX = 512;
 /** JPEG quality. 0.82 is the point where further loss starts to show on skin. */
 const OUTPUT_QUALITY = 0.82;
 
@@ -29,22 +41,27 @@ const PREVIEW_PX = 132;
 
 export const DEFAULT_POSITION = "50% 30%";
 
-/** Downscales and re-encodes a chosen file, entirely in the browser. */
+/**
+ * Downscales and re-encodes a chosen file, entirely in the browser.
+ *
+ * Proportions are preserved — see OUTPUT_PX. A very wide or very tall image is
+ * still bounded on its longest side, so the stored data URL stays small.
+ */
 async function toDataUrl(file: File): Promise<string> {
   const bitmap = await createImageBitmap(file);
 
-  // Cover the square: scale so the shorter side fills, then centre-crop.
-  const side = Math.min(bitmap.width, bitmap.height);
-  const sx = (bitmap.width - side) / 2;
-  const sy = (bitmap.height - side) / 2;
+  const longest = Math.max(bitmap.width, bitmap.height);
+  const scale = longest > OUTPUT_PX ? OUTPUT_PX / longest : 1;
+  const width = Math.max(1, Math.round(bitmap.width * scale));
+  const height = Math.max(1, Math.round(bitmap.height * scale));
 
   const canvas = document.createElement("canvas");
-  canvas.width = OUTPUT_PX;
-  canvas.height = OUTPUT_PX;
+  canvas.width = width;
+  canvas.height = height;
 
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Could not read that image.");
-  ctx.drawImage(bitmap, sx, sy, side, side, 0, 0, OUTPUT_PX, OUTPUT_PX);
+  ctx.drawImage(bitmap, 0, 0, bitmap.width, bitmap.height, 0, 0, width, height);
   bitmap.close?.();
 
   return canvas.toDataURL("image/jpeg", OUTPUT_QUALITY);

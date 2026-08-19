@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateACWR, isHighInjuryRisk, ACWR_INJURY_RISK_THRESHOLD } from "../acwr";
+import { calculateACWR, isHighInjuryRisk, ACWR_INJURY_RISK_THRESHOLD, loadRatio } from "../acwr";
 
 // מסמך אפיון בדיקות §1: calculateACWR — בהינתן היסטוריית עומס 28 יום,
 // מחזיר יחס Acute:Chronic נכון חשבונית.
@@ -42,5 +42,50 @@ describe("calculateACWR", () => {
     ];
     const result = calculateACWR(loads, asOf);
     expect(result.acute).toBeCloseTo(1000 / 7, 5);
+  });
+});
+
+describe("loadRatio warm-up bias", () => {
+  const steady = (days: number, load = 60) =>
+    Array.from({ length: days }, (_, i) => ({
+      date: new Date(Date.UTC(2026, 0, 1 + i)).toISOString().slice(0, 10),
+      load,
+    }));
+
+  /**
+   * The bug: both averages start at zero and converge at different speeds, so
+   * an athlete running exactly the same load every day was told they were
+   * ramping — hardest right at the moment the ratio first became visible.
+   */
+  it("reports ~1.0 for a perfectly steady athlete as soon as it answers at all", () => {
+    for (const days of [28, 30, 35, 42, 60, 84]) {
+      const { ratio } = loadRatio(steady(days));
+      expect(ratio).not.toBeNull();
+      expect(ratio as number).toBeGreaterThan(0.98);
+      expect(ratio as number).toBeLessThan(1.02);
+    }
+  });
+
+  it("still sees a genuine ramp", () => {
+    // four steady weeks, then a week at double
+    const series = [...steady(28, 50), ...steady(7, 100).map((d, i) => ({
+      date: new Date(Date.UTC(2026, 0, 29 + i)).toISOString().slice(0, 10),
+      load: 100,
+    }))];
+    const { ratio } = loadRatio(series);
+    expect(ratio as number).toBeGreaterThan(1.3);
+  });
+
+  it("still sees a genuine drop", () => {
+    const series = [...steady(28, 80), ...Array.from({ length: 7 }, (_, i) => ({
+      date: new Date(Date.UTC(2026, 0, 29 + i)).toISOString().slice(0, 10),
+      load: 20,
+    }))];
+    const { ratio } = loadRatio(series);
+    expect(ratio as number).toBeLessThan(0.8);
+  });
+
+  it("still withholds an answer before four weeks", () => {
+    expect(loadRatio(steady(20)).ratio).toBeNull();
   });
 });

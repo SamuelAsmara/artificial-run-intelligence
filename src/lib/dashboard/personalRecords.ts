@@ -28,7 +28,12 @@ export interface PersonalRecord {
   time: string | null;
   /** ISO date of the run it came from */
   date: string | null;
-  /** true when the most recent activity set it */
+  /**
+   * True when the run that set this record was on or after `newSince` — thirty
+   * days ago, as the dashboard calls it. Not "the most recent activity set it",
+   * which is what this comment used to claim and what the tests correctly do
+   * not assert.
+   */
   isNew: boolean;
 }
 

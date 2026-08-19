@@ -112,3 +112,44 @@ describe("latestSleepHours", () => {
     expect(latestSleepHours([], "2026-08-17")).toBeNull();
   });
 });
+
+describe("recovery staleness", () => {
+  const night = (date: string, sleepHours: number, hrv: number) => ({
+    date, sleepHours, restingHr: 50, hrv, source: "derived" as const,
+  });
+
+  it("carries a reading forward for a couple of days", () => {
+    const signals = [night("2026-08-16", 7.1, 60)];
+    expect(latestSleepHours(signals, "2026-08-18")).toBe(7.1);
+  });
+
+  /**
+   * The bug: a watch put away in April was still answering "how did you sleep
+   * last night?" in August, and the answer changed the readiness weighting.
+   */
+  it("refuses to report a months-old night as last night", () => {
+    const signals = [night("2026-04-02", 6.2, 58)];
+    expect(latestSleepHours(signals, "2026-08-18")).toBeNull();
+  });
+
+  it("refuses a stale HRV baseline too", () => {
+    const signals = [
+      night("2026-04-02", 6.2, 58),
+      night("2026-04-01", 6.4, 60),
+      night("2026-03-31", 6.6, 62),
+      night("2026-03-30", 6.5, 61),
+    ];
+    expect(hrvVsBaselinePct(signals, "2026-08-18")).toBeNull();
+  });
+
+  it("still answers when the readings are current", () => {
+    const signals = [
+      night("2026-08-18", 7.0, 66),
+      night("2026-08-17", 7.2, 60),
+      night("2026-08-16", 6.8, 62),
+      night("2026-08-15", 7.4, 58),
+    ];
+    expect(latestSleepHours(signals, "2026-08-18")).toBe(7.0);
+    expect(hrvVsBaselinePct(signals, "2026-08-18")).not.toBeNull();
+  });
+});

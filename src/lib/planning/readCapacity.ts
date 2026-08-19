@@ -24,7 +24,10 @@ export interface ActivityForCapacity {
 }
 
 const DAY = 86_400_000;
-const iso = (d: Date) => d.toISOString().slice(0, 10);
+import { isoDate } from "@/lib/time/week";
+
+/** Local calendar date — see `isoDate`. */
+const iso = isoDate;
 
 export const WEEKLY_VOLUME_WINDOW_DAYS = 28;
 export const LONGEST_RUN_WINDOW_DAYS = 30;

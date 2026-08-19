@@ -28,7 +28,7 @@
  */
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { LOGIN_COPY } from "@/lib/screens/login";
 
@@ -47,6 +47,7 @@ const HERO_BLUR =
 
 export function LoginView({ initialMode = "login" }: { initialMode?: "login" | "signup" }) {
   const router = useRouter();
+  const params = useSearchParams();
 
   const [mode, setMode] = useState<"login" | "signup">(initialMode);
   const [role, setRole] = useState<"athlete" | "coach">("athlete");
@@ -113,7 +114,17 @@ export function LoginView({ initialMode = "login" }: { initialMode?: "login" | "
         if (error) return setErr(error.message);
       }
 
-      router.push("/dashboard");
+      /*
+       * Back to wherever they were headed.
+       *
+       * The middleware appends `?redirectTo=/activities/<id>` when it bounces a
+       * signed-out visitor, and this used to ignore it and always land on the
+       * dashboard — so anyone following a shared link lost their destination at
+       * the door. Only same-origin paths are honoured: an absolute URL here
+       * would be an open redirect.
+       */
+      const target = params.get("redirectTo");
+      router.push(target && target.startsWith("/") && !target.startsWith("//") ? target : "/dashboard");
       router.refresh();
     });
   };

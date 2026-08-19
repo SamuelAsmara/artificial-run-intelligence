@@ -235,8 +235,21 @@ async function saveGoalRace(
     return { ok: true, data: null };
   }
 
-  // No race yet. A row needs a date, so without one there is nothing to store —
-  // the athlete picks a distance now and sets the date when they build a plan.
+  /*
+   * No race yet, and one of the two required fields is missing.
+   *
+   * This used to return `ok` and drop the input on the floor: the athlete
+   * picked "Marathon", typed a target, left the date blank, saw a green
+   * "Saved", and the summary still read "Training for —". Nothing told them
+   * why. A save that silently discards what you typed is worse than one that
+   * fails, because you only find out later and cannot tell what happened.
+   */
+  if (raceType && !raceDate) {
+    return { ok: false, error: "A goal race needs a date as well as a distance." };
+  }
+  if (!raceType && raceDate) {
+    return { ok: false, error: "A goal race needs a distance as well as a date." };
+  }
   if (!raceType || !raceDate) return { ok: true, data: null };
 
   const { error: insErr } = await supabase.from("goal_races").insert({

@@ -94,14 +94,16 @@ export async function getDashboardNarrative(): Promise<Narrative | null> {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data: snap } = await supabase
+  // Eight rows, not one: the eighth is a week back, which is what the fitness
+  // ramp is measured against. See the `rampRate` note below.
+  const { data: snaps } = await supabase
     .from("readiness_snapshots")
     .select("date, ctl, atl, tsb, acwr, readiness_score")
     .eq("user_id", user.id)
     .order("date", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(8);
 
+  const snap = snaps?.[0];
   if (!snap) return null;
 
   const asOf = snap.date;
@@ -126,11 +128,12 @@ export async function getDashboardNarrative(): Promise<Narrative | null> {
   const sleepHours = latestSleepHours(recovery, asOf);
   const hrvPct = hrvVsBaselinePct(recovery, asOf);
 
-  const restingHrs = recovery
-    .map((r) => r.restingHr)
-    .filter((v): v is number => v != null);
-  const restingHr = restingHrs.length
-    ? Math.round(restingHrs.reduce((s, v) => s + v, 0) / restingHrs.length)
+  // The most recent reading, not a thirty-day mean — the narrative renders this
+  // as "resting heart rate is 52", which is a claim about today. Averaging is
+  // exactly what hides the morning it jumps nine beats.
+  const withRestingHr = recovery.filter((r) => r.restingHr != null);
+  const restingHr = withRestingHr.length
+    ? Math.round(withRestingHr[0].restingHr as number)
     : null;
 
   // the previous 30 days of runs, for "your longest run in the last month"
@@ -145,11 +148,32 @@ export async function getDashboardNarrative(): Promise<Narrative | null> {
 
   const longestRecentM = recentRuns?.[0]?.distance_m ?? null;
 
+  /*
+   * The weekly fitness ramp, recovered from the stored series.
+   *
+   * This used to be hard-coded to 0 with a comment saying the narrative would
+   * read that as "maintaining" — and the file's own docstring claimed the
+   * rebuild was exact. It was not. `whatStandsOut` has branches for fitness
+   * climbing faster than the usual 5–8 points a week, and for a collapse during
+   * a lay-off; with the ramp pinned at zero neither could ever fire. The
+   * narrative *written* by the nightly pipeline said "fitness is climbing at
+   * 9.2 points a week, faster than the usual guidance"; the narrative the
+   * dashboard *displayed* silently dropped that sentence.
+   *
+   * CTL is stored per day, so the ramp is simply the difference over the last
+   * seven of them.
+   */
+  const weekAgo = snaps && snaps.length >= 8 ? snaps[7] : null;
+  const rampRate =
+    weekAgo && weekAgo.ctl !== null && snap.ctl !== null
+      ? Number(snap.ctl) - Number(weekAgo.ctl)
+      : 0;
+
   const pmc = {
     ctl: Number(snap.ctl ?? 0),
     atl: Number(snap.atl ?? 0),
     tsb: Number(snap.tsb ?? 0),
-    rampRate: 0, // not stored per day; the narrative treats 0 as "maintaining"
+    rampRate,
   };
   const loadRatio = snap.acwr === null ? null : Number(snap.acwr);
 
