@@ -8,14 +8,18 @@
  * the page to change Thursday will not change Thursday.
  */
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { CoachNav } from "@/components/coach/CoachNav";
 import { useRouter } from "next/navigation";
 import { removeAthlete, updateWorkout, type AthleteDetail, type AthleteWorkout } from "@/actions/coach";
 import { formatDuration } from "@/lib/format/pace";
 import { RACE_LABEL } from "@/lib/coach/templates";
+import { Avatar } from "@/components/ui/Avatar";
 import {
-  COACH_COPY, formColor, initials, KIND_LABEL, loadColor,
+  addDays, APP_LOCALE, APP_TIME_ZONE, isoDate, weekDates, WEEKDAYS, weekStart,
+} from "@/lib/time/week";
+import {
+  COACH_COPY, formColor, KIND_LABEL, loadColor,
   raceLabel, readinessColor, sinceLabel, toneColor, untilLabel,
 } from "@/lib/screens/coachHome";
 
@@ -138,79 +142,198 @@ export function CoachAthleteView({ detail, today }: { detail: AthleteDetail; tod
     </div>
   );
 
-  const past = workouts.filter((w) => w.date < today);
-  const ahead = workouts.filter((w) => w.date >= today);
+  /*
+   * The plan, one week at a time.
+   *
+   * It used to be two flat lists — every upcoming session as a full row with a
+   * Change button, then every past one underneath. On a fourteen-week plan that
+   * is ninety-eight rows, all expanded, and finding Thursday meant scrolling.
+   *
+   * A week of seven squares is the vocabulary the athlete already sees on their
+   * dashboard and plan screen, so coach and athlete are looking at the same
+   * shape. One session opens at a time, underneath the day it belongs to.
+   */
+  const weeks = useMemo(() => {
+    if (workouts.length === 0) return [] as { start: string; days: (AthleteWorkout | null)[] }[];
+    const byDate = new Map(workouts.map((w) => [w.date, w]));
+    const sorted = [...workouts].map((w) => w.date).sort();
+    const first = weekStart(new Date(`${sorted[0]}T00:00:00`));
+    const lastDay = new Date(`${sorted[sorted.length - 1]}T00:00:00`);
 
-  const workoutRow = (w: AthleteWorkout) => {
-    const isEditing = editing === w.id;
-    const ran = w.actualM !== null && w.actualM > 0;
-    const missed = w.date < today && w.workoutType !== "rest" && !ran;
+    const out: { start: string; days: (AthleteWorkout | null)[] }[] = [];
+    for (let cursor = first; cursor <= lastDay; cursor = addDays(cursor, 7)) {
+      const start = isoDate(cursor);
+      out.push({
+        start,
+        days: weekDates(start).map((d) => byDate.get(d) ?? null),
+      });
+    }
+    return out;
+  }, [workouts]);
+
+  /** The week containing today, or the last one the plan has. */
+  const currentWeek = useMemo(() => {
+    const i = weeks.findIndex((w) => weekDates(w.start).includes(today));
+    return i >= 0 ? i : Math.max(0, weeks.length - 1);
+  }, [weeks, today]);
+
+  const [weekView, setWeekView] = useState<number | null>(null);
+  const shownWeek = weekView ?? currentWeek;
+  const week = weeks[shownWeek];
+
+  const stepWeek = (delta: number) => {
+    setWeekView(Math.min(weeks.length - 1, Math.max(0, shownWeek + delta)));
+    setEditing(null);
+    setNote("");
+  };
+
+  /** "10 – 16 August", for the strip's header. */
+  const weekLabel = (start: string) => {
+    const days = weekDates(start);
+    const fmt = (iso: string, withMonth: boolean) =>
+      new Date(`${iso}T00:00:00`).toLocaleDateString(APP_LOCALE, {
+        day: "numeric",
+        ...(withMonth ? { month: "long" as const } : {}),
+        timeZone: APP_TIME_ZONE,
+      });
+    const sameMonth = days[0].slice(0, 7) === days[6].slice(0, 7);
+    return `${fmt(days[0], !sameMonth)} – ${fmt(days[6], true)}`;
+  };
+
+  /** One day in the week strip. */
+  const daySquare = (w: AthleteWorkout | null, iso: string, index: number) => {
+    const isToday = iso === today;
+    const ran = !!w && w.actualM !== null && w.actualM > 0;
+    const missed = !!w && iso < today && w.workoutType !== "rest" && !ran;
+    const selected = !!w && editing === w.id;
+
+    const label = !w
+      ? "—"
+      : w.workoutType === "rest"
+        ? "Rest"
+        : `${w.workoutType[0].toUpperCase()}${w.workoutType.slice(1)}`;
 
     return (
-      <div
-        key={w.id}
+      <button
+        key={iso}
+        type="button"
+        className="dc-hover-border"
+        disabled={!w}
+        onClick={() => (w ? (selected ? setEditing(null) : open(w)) : undefined)}
         style={{
-          padding: "9px 12px",
+          textAlign: "start",
+          fontFamily: "inherit",
+          cursor: w ? "pointer" : "default",
+          display: "flex",
+          flexDirection: "column",
+          gap: "5px",
+          padding: "8px 9px",
+          minHeight: "84px",
           borderRadius: "var(--radius-control)",
-          borderInlineStart: `2px solid ${missed ? "var(--color-negative)" : ran ? "var(--color-positive)" : "transparent"}`,
-          background: isEditing ? "var(--color-elevated)" : "transparent",
+          background: selected || isToday ? "var(--color-elevated)" : "transparent",
+          border: `1px solid ${
+            selected
+              ? "var(--color-accent)"
+              : isToday
+                ? "var(--color-accent-soft)"
+                : missed
+                  ? "var(--color-negative)"
+                  : "var(--color-line)"
+          }`,
+          opacity: w ? 1 : 0.45,
         }}
       >
-        <div style={{ display: "grid", gridTemplateColumns: "78px 1fr auto auto", alignItems: "center", gap: "12px" }}>
-          <span className="num" style={{ fontSize: "11px", color: w.date === today ? "var(--color-accent)" : "var(--color-faint)" }}>
-            {w.date.slice(5)}
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "4px" }}>
+          <span className="num" style={{ fontSize: "9.5px", letterSpacing: ".08em", textTransform: "uppercase", color: isToday ? "var(--color-accent)" : "var(--color-faint)" }}>
+            {WEEKDAYS[index]}
           </span>
-          <span style={{ fontSize: "12.5px", color: "var(--color-ink)" }}>
-            {w.workoutType === "rest"
-              ? "Rest"
-              : `${w.workoutType[0].toUpperCase()}${w.workoutType.slice(1)}${w.plannedDistanceM ? ` ${(w.plannedDistanceM / 1000).toFixed(0)} km` : ""}`}
+          <span className="num" style={{ fontSize: "9.5px", color: "var(--color-faint)" }}>
+            {iso.slice(8)}
           </span>
-          <span className="num" style={{ fontSize: "11.5px", color: ran ? "var(--color-positive)" : missed ? "var(--color-negative)" : "var(--color-faint)" }}>
-            {ran ? `ran ${km(w.actualM)}` : missed ? "missed" : ""}
-          </span>
+        </div>
+        <div style={{ flex: 1 }}>
+          <p style={{ margin: 0, fontSize: "11.5px", fontWeight: 500, color: w && w.workoutType !== "rest" ? "var(--color-ink)" : "var(--color-faint)" }}>
+            {label}
+          </p>
+          {w && w.plannedDistanceM ? (
+            <p className="num" style={{ margin: "1px 0 0", fontSize: "10px", color: "var(--color-faint)" }}>
+              {(w.plannedDistanceM / 1000).toFixed(1)} km
+            </p>
+          ) : null}
+        </div>
+        <span className="num" style={{ fontSize: "9px", letterSpacing: ".04em", textTransform: "uppercase", color: ran ? "var(--color-positive)" : missed ? "var(--color-negative)" : "var(--color-faint)" }}>
+          {ran ? `ran ${((w!.actualM as number) / 1000).toFixed(1)}` : missed ? "missed" : ""}
+        </span>
+      </button>
+    );
+  };
+
+  /** The one session being changed, under the strip. */
+  const editorPanel = () => {
+    const w = workouts.find((x) => x.id === editing);
+    if (!w) return null;
+    return (
+      <div
+        style={{
+          marginBlockStart: "12px",
+          borderBlockStart: "1px solid var(--color-line)",
+          paddingBlockStart: "14px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "10px",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
+          <h3 style={{ margin: 0, fontSize: "12.5px", fontWeight: 600 }}>
+            {new Date(`${w.date}T00:00:00`).toLocaleDateString(APP_LOCALE, {
+              weekday: "long", day: "numeric", month: "long", timeZone: APP_TIME_ZONE,
+            })}
+          </h3>
           <button
             className="btn btn-secondary"
             type="button"
-            onClick={() => (isEditing ? setEditing(null) : open(w))}
+            onClick={() => setEditing(null)}
             style={{ padding: "4px 10px", fontSize: "11px" }}
           >
-            {isEditing ? COACH_COPY.cancel : COACH_COPY.change}
+            {COACH_COPY.cancel}
           </button>
         </div>
 
-        {isEditing && (
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBlockStart: "10px" }}>
-            {WORKOUT_TYPES.map((t) => (
-              <button
-                key={t}
-                className="tag"
-                type="button"
-                onClick={() => setDraft((d) => ({ ...d, type: t }))}
-                style={{
-                  cursor: "pointer",
-                  border: `1px solid ${draft.type === t ? "transparent" : "var(--color-line-strong)"}`,
-                  background: draft.type === t ? "var(--color-accent)" : "transparent",
-                  color: draft.type === t ? "var(--color-accent-ink)" : "var(--color-muted)",
-                }}
-              >
-                {t}
-              </button>
-            ))}
-            {draft.type !== "rest" && (
-              <input
-                className="field"
-                inputMode="decimal"
-                value={draft.km}
-                onChange={(e) => setDraft((d) => ({ ...d, km: e.target.value }))}
-                placeholder="km"
-                style={{ width: "84px" }}
-              />
-            )}
-            <button className="btn btn-primary" type="button" onClick={() => save(w)} disabled={pending} style={{ padding: "6px 13px", fontSize: "12px" }}>
-              {pending ? COACH_COPY.saving : COACH_COPY.save}
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+          {WORKOUT_TYPES.map((t) => (
+            <button
+              key={t}
+              className="tag"
+              type="button"
+              onClick={() => setDraft((d) => ({ ...d, type: t }))}
+              style={{
+                cursor: "pointer",
+                border: `1px solid ${draft.type === t ? "transparent" : "var(--color-line-strong)"}`,
+                background: draft.type === t ? "var(--color-accent)" : "transparent",
+                color: draft.type === t ? "var(--color-accent-ink)" : "var(--color-muted)",
+              }}
+            >
+              {t}
             </button>
-          </div>
-        )}
+          ))}
+          {draft.type !== "rest" && (
+            <input
+              className="field"
+              inputMode="decimal"
+              value={draft.km}
+              onChange={(e) => setDraft((d) => ({ ...d, km: e.target.value }))}
+              placeholder="km"
+              style={{ width: "84px" }}
+            />
+          )}
+          <button className="btn btn-primary" type="button" onClick={() => save(w)} disabled={pending} style={{ padding: "6px 13px", fontSize: "12px" }}>
+            {pending ? COACH_COPY.saving : COACH_COPY.save}
+          </button>
+        </div>
+
+        <p style={{ margin: 0, fontSize: "11px", color: "var(--color-faint)", lineHeight: 1.6 }}>
+          {COACH_COPY.editNote}
+        </p>
       </div>
     );
   };
@@ -220,9 +343,7 @@ export function CoachAthleteView({ detail, today }: { detail: AthleteDetail; tod
       <CoachNav active="athletes" />
 
       <div style={{ display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap" }}>
-        <span className="num" style={{ width: "44px", height: "44px", flex: "none", borderRadius: "50%", background: "var(--color-elevated)", color: "var(--color-muted)", fontSize: "14px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          {initials(athlete.name)}
-        </span>
+        <Avatar src={athlete.avatarUrl ?? null} name={athlete.name} size={44} zoomable />
         <div style={{ minWidth: 0 }}>
           <h1 style={{ margin: 0, fontSize: "17px", fontWeight: 600 }}>{athlete.name}</h1>
           <p className="num" style={{ margin: "2px 0 0", fontSize: "11px", color: "var(--color-faint)" }}>
@@ -290,20 +411,43 @@ export function CoachAthleteView({ detail, today }: { detail: AthleteDetail; tod
             {note}
           </p>
         )}
-        {workouts.length === 0 ? (
+        {workouts.length === 0 || !week ? (
           <p style={{ margin: "10px 0 0", fontSize: "12px", color: "var(--color-faint)" }}>{COACH_COPY.planEmpty}</p>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginBlockStart: "10px" }}>
-            {ahead.map(workoutRow)}
-            {past.length > 0 && (
-              <>
-                <p className="num" style={{ margin: "12px 0 4px", fontSize: "9.5px", letterSpacing: ".08em", textTransform: "uppercase", color: "var(--color-faint)" }}>
-                  {COACH_COPY.planPast}
-                </p>
-                {past.map(workoutRow)}
-              </>
-            )}
-          </div>
+          <>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", marginBlockStart: "12px" }}>
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={() => stepWeek(-1)}
+                disabled={shownWeek <= 0}
+                style={{ padding: "4px 10px", fontSize: "12px" }}
+                aria-label="Previous week"
+              >
+                ‹
+              </button>
+              <span className="num" style={{ fontSize: "11.5px", color: "var(--color-muted)", textAlign: "center" }}>
+                {weekLabel(week.start)}
+                <span style={{ color: "var(--color-faint)" }}> · {shownWeek + 1}/{weeks.length}</span>
+              </span>
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={() => stepWeek(1)}
+                disabled={shownWeek >= weeks.length - 1}
+                style={{ padding: "4px 10px", fontSize: "12px" }}
+                aria-label="Next week"
+              >
+                ›
+              </button>
+            </div>
+
+            <div className="week-grid" style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: "6px", marginBlockStart: "10px" }}>
+              {weekDates(week.start).map((iso, i) => daySquare(week.days[i], iso, i))}
+            </div>
+
+            {editorPanel()}
+          </>
         )}
       </section>
 

@@ -86,7 +86,6 @@ export default async function DashboardPage({
     readinessAsOf: latest.date,
     athleteName: await athleteName(),
     avatarUrl: avatar.url,
-    avatarPosition: avatar.position,
     personalRecords: derived.prs,
     cardiacDriftPct: derived.cardiacDrift,
     rail,
@@ -121,18 +120,18 @@ async function athleteName(): Promise<string | null> {
 }
 
 /** The photo and framing the athlete saved in Settings, if any. */
-async function athletePhoto(): Promise<{ url: string | null; position: string | undefined }> {
+async function athletePhoto(): Promise<{ url: string | null }> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { url: null, position: undefined };
+  if (!user) return { url: null };
   const { data } = await supabase
     .from("profiles")
-    .select("avatar_url, avatar_position")
+    .select("avatar_url")
     .eq("id", user.id)
     .maybeSingle();
-  return { url: data?.avatar_url ?? null, position: data?.avatar_position ?? undefined };
+  return { url: data?.avatar_url ?? null };
 }
 
 /**

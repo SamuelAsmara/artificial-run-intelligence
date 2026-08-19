@@ -45,6 +45,8 @@ export const COACH_COPY = {
   rosterEmpty:
     "No athletes yet. Share your join code — they enter it in Settings and appear here.",
   rosterFiltered: "Nobody matches those filters.",
+  editNote:
+    "A session you change is yours — ARI will not adjust it automatically afterwards.",
   removeTitle: "Remove from roster",
   removeBody:
     "They keep their own training and history — you stop seeing it, and they stop having a coach. They can join you again with your code.",

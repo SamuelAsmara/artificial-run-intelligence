@@ -33,6 +33,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { AvatarEditor } from "@/components/settings/AvatarEditor";
+import { Avatar } from "@/components/ui/Avatar";
 import { AccountSecurity } from "@/components/settings/AccountSecurity";
 import { CoachLink } from "@/components/settings/CoachLink";
 import { SignOutButton } from "@/components/SignOutButton";
@@ -231,7 +232,12 @@ function ProfileSummary({
   return (
     <>
       <div className="profile-view" style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-        <Avatar src={profile?.avatarUrl ?? null} position={profile?.avatarPosition ?? "50% 30%"} size={76} />
+        <Avatar
+          src={profile?.avatarUrl ?? null}
+          name={profile?.fullName || profile?.email}
+          size={76}
+          zoomable
+        />
 
         <div style={{ flex: 1, minWidth: "220px" }}>
           <h2 style={{ margin: 0, fontSize: "17px", fontWeight: 600 }}>
@@ -305,7 +311,6 @@ function ProfileEditor({
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
           <AvatarEditor
             src={draft.avatarUrl}
-            position={draft.avatarPosition}
             onChange={(next) => {
               set("avatarUrl", next.src);
               set("avatarPosition", next.position);
@@ -819,27 +824,6 @@ function Segmented({
           </button>
         );
       })}
-    </div>
-  );
-}
-
-/** The read-only circle. Same framing rule as the editor, so they agree. */
-function Avatar({ src, position, size }: { src: string | null; position: string; size: number }) {
-  return (
-    <div style={{
-      width: `${size}px`, height: `${size}px`, flex: "none", borderRadius: "50%",
-      overflow: "hidden", background: "var(--color-elevated)",
-      border: "1px solid var(--color-line-strong)",
-      display: "flex", alignItems: "center", justifyContent: "center",
-    }}>
-      {src ? (
-        // eslint-disable-next-line @next/next/no-img-element -- a data: URL, nothing to optimise
-        <img src={src} alt="" style={{
-          width: "100%", height: "100%", objectFit: "cover", objectPosition: position,
-        }} />
-      ) : (
-        <span style={{ fontSize: "10px", color: "var(--color-faint)" }}>Photo</span>
-      )}
     </div>
   );
 }

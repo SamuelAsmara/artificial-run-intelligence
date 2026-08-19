@@ -15,8 +15,9 @@ import { applyFilter, buildCycles, EMPTY_FILTER, type RosterFilter } from "@/lib
 import { colorFor } from "@/lib/coach/calendar";
 import { RACE_LABEL } from "@/lib/coach/templates";
 import { formatMinSec } from "@/lib/format/pace";
+import { Avatar } from "@/components/ui/Avatar";
 import {
-  COACH_COPY, formColor, initials, loadColor, readinessColor, sinceLabel, untilLabel,
+  COACH_COPY, formColor, loadColor, readinessColor, sinceLabel, untilLabel,
 } from "@/lib/screens/coachHome";
 
 const FAINT = "var(--color-faint)";
@@ -250,18 +251,9 @@ function Row({
       style={{ display: "grid", gridTemplateColumns: "minmax(190px,1.6fr) .5fr 1fr .7fr .7fr .6fr .6fr .8fr .8fr", gap: "10px", alignItems: "center", padding: "9px 10px", borderRadius: "var(--radius-control)" }}
     >
       <span style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
-        {a.avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={a.avatarUrl}
-            alt=""
-            style={{ width: "32px", height: "32px", flex: "none", borderRadius: "50%", objectFit: "cover" }}
-          />
-        ) : (
-          <span className="num" style={{ width: "32px", height: "32px", flex: "none", borderRadius: "50%", background: "var(--color-elevated)", color: "var(--color-muted)", fontSize: "11px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            {initials(a.name)}
-          </span>
-        )}
+        {/* Not zoomable: the whole row is a link, and a button inside a link
+            is invalid markup and swallows the navigation. */}
+        <Avatar src={a.avatarUrl} name={a.name} size={32} />
         <span style={{ minWidth: 0 }}>
           <span style={{ display: "block", fontSize: "12.5px", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {a.name}

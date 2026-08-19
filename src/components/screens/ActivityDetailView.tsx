@@ -42,6 +42,7 @@ import { AD_COPY, buildStreams, fmt, fmtLong } from "@/lib/screens/activityDetai
 import { formatPace } from "@/lib/format/pace";
 import type { Comparison } from "@/lib/activity/plannedVsActual";
 import type { ActivityNote } from "@/lib/activity/buildActivityNote";
+import { Avatar } from "@/components/ui/Avatar";
 
 const copy = AD_COPY;
 const DASH = "—";
@@ -491,24 +492,18 @@ function HeaderCard({
       <div className="head-grid" style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "stretch" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: "1 1 250px", minWidth: 0 }}>
           <div style={{ ...boxed, display: "flex", alignItems: "center", gap: "10px", padding: "6px 12px", flex: 1 }}>
-            <div style={{
-              position: "relative", width: "40px", height: "40px", flex: "none", borderRadius: "50%",
-              overflow: "hidden", background: "var(--color-elevated)",
-            }}>
-              {data?.athlete.avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element -- a data: URL
-                <img src={data.athlete.avatarUrl} alt="" style={{
-                  width: "100%", height: "100%", objectFit: "cover", objectPosition: data.athlete.avatarPosition,
-                }} />
-              ) : (
-                <span className="num" style={{
-                  position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: "12px", fontWeight: 500, color: "var(--color-muted)",
-                }}>
-                  {data?.athlete.initials}
-                </span>
-              )}
-            </div>
+            {/*
+              One Avatar, like everywhere else. This used to be a bare <img>
+              with no error handler beside a <span> of initials with no circle
+              around it — so an athlete with no photo saw their own name sitting
+              in the layout as loose text rather than as a portrait slot.
+            */}
+            <Avatar
+              src={data?.athlete.avatarUrl ?? null}
+              name={data?.athlete.name}
+              size={40}
+              zoomable
+            />
             <div style={{ minWidth: 0, paddingInlineStart: "4px", display: "flex", flexDirection: "column", gap: "4px" }}>
               <span className="tag" style={{ background: "var(--color-accent-soft)", color: "var(--color-accent)", alignSelf: "start" }}>
                 {data?.runType ?? "Run"}
