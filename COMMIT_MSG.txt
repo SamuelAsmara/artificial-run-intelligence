@@ -1,46 +1,39 @@
-fix: one avatar everywhere, a photo editor that actually moves, and a week
-strip for the coach's plan
+demo dataset, six documents as Word, and a pace column that held a duration
 
-FOUR THINGS, THREE OF THEM THE SAME BUG WEARING DIFFERENT CLOTHES.
+Adds scripts/seed-demo.ts: one coach, twenty athletes across four race
+groups, sixteen weeks of history each and a full plan to race day. The
+script writes only raw inputs — distance, duration, heart rate, sleep —
+and imports the application's own modules (recomputeForUser,
+readCapacity, estimateThresholds, generatePlan) for everything derived.
+A demo built from hand-tuned CTL values proves nothing; this one is a
+live test of the engine over twenty athletes at once.
 
-The photo editor felt frozen, and it was. It stored the whole image plus an
-`object-position` and let you drag that around — but `object-fit: cover`
-only leaves something to pan along the axis where the image overflows its
-box. Every photo from a phone is a portrait, so inside a square circle it
-overflows vertically and not at all horizontally: dragging sideways did
-literally nothing and dragging up and down ran out after a centimetre.
-There was no bug in the drag handler. The mechanism could not do the job.
+It found two real defects on its first dry run.
 
-Now it pans *and zooms*, and what is saved is a square crop of exactly what
-the circle shows. Zoom is what creates room to pan — at 1.4x a portrait
-overflows both ways. Storing the crop also retires a whole class of
-disagreement: every box that shows an avatar is square, so there is no
-framing rule left to get wrong. `profiles.avatar_position` stays for the
-rows written before this and stops being consulted.
+plan_workouts.planned_pace is declared `interval` and every writer puts a
+pace label in it. Postgres reads "5:49" as five hours forty-nine minutes,
+and every reader treats the column as an already-formatted string. No row
+had ever been written to it — no plan had ever been generated against a
+real account — so nobody had seen it. Migration 0016 changes the column
+to text, which is what the value has always been.
 
-The activity page showed a name where a photo belongs. Five components had
-grown their own avatar, each falling back differently when there was no
-photo: to a file that does not exist in `public/`, to a blue smiley, to the
-literal word "Photo", and — on the activity page — to bare initials with no
-circle around them, which reads as a caption rather than a portrait. One
-`Avatar` now, with initials that scale with the circle so they look
-deliberate at 32px and at 116px, and an `onError` so a photo that cannot be
-decoded never leaves a broken-image icon.
+The second is not fixed here and needs a decision. When an athlete has no
+sustained hard effort of 35–75 minutes, estimateThresholdSpeed falls back
+to the fastest run over twenty minutes and shades it down 6%. For a
+low-volume runner that run is an easy long run, so the estimator treats an
+easy pace as threshold and then slows it further: prescribed easy paces of
+8:15 to 10:29 per kilometre for athletes who actually run 6:45. The seed
+works around it with a minutes-based floor on generated sessions; the
+underlying fallback is still wrong for real users.
 
-Clicking an avatar enlarges it. A plain fixed overlay rather than a
-`<dialog>`: it has to close on Escape, on the backdrop and on the button,
-and it must never be able to trap the page.
+Also converts the six course documents from the markdown drafts to Word
+with full RTL, tables, code blocks and page furniture (scripts/md2docx.js,
+so they can be rebuilt after any edit to the source). The previous .docx
+versions moved to _archive/ rather than being deleted.
 
-The coach's plan was two flat lists — every upcoming session as a full row
-with a Change button, then every past one underneath. On a fourteen-week
-plan that is ninety-eight expanded rows and finding Thursday means
-scrolling. It is now a week of seven squares, which is the vocabulary the
-athlete already sees on their dashboard and plan screen, so coach and
-athlete look at the same shape. One session opens at a time, underneath the
-day it belongs to, with arrows across the weeks. The editor also says out
-loud what migration 0014 made true: a session you change is yours, and the
-adjustment engine will leave it alone.
+Adds the first structure of the presentation — fourteen slides in the
+product's own palette, with speaker notes. Slides 5–7 carry placeholder
+frames until the demo data is in and the screenshots can be taken.
 
-Deleted `ImageSlot`, which had no callers left.
-
-554 tests pass, 4 of them new. tsc clean. next build passes.
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01SwrFRrEWTDaEjCwqEZogWx

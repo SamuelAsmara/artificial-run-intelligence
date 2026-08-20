@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="he" dir="rtl"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ARI — מסמך טכני פנימי</title>
+<style>
+:root{
+  --canvas:#0a0c10; --surface:#12151b; --elevated:#1b1f27; --ink:#e9edf3;
+  --muted:#a4aebe; --faint:#8792a3; --line:#242a34; --line-strong:#364050;
+  --accent:#4e8ef7; --accent-soft:#16233a; --positive:#7fc887; --caution:#e0a33c;
+  --negative:#f0705c; --gold:#d8b45f;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:'IBM Plex Sans',-apple-system,'Segoe UI',Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--canvas);color:var(--ink);
+  font:400 15px/1.75 var(--sans);direction:rtl;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+code,.mono{font-family:var(--mono);font-size:.88em}
+
+/* ---- layout ---- */
+.wrap{display:grid;grid-template-columns:270px minmax(0,1fr);gap:0;max-width:1400px;margin:0 auto}
+nav{
+  position:sticky;top:0;height:100dvh;overflow-y:auto;padding:26px 20px 40px;
+  border-inline-start:1px solid var(--line);background:var(--surface);
+}
+main{padding:34px 42px 120px;min-width:0}
+@media(max-width:900px){
+  .wrap{grid-template-columns:1fr}
+  nav{position:static;height:auto;border:none;border-block-end:1px solid var(--line)}
+  main{padding:24px 18px 80px}
+}
+
+/* ---- nav ---- */
+.brandbox{display:flex;align-items:center;gap:9px;margin-block-end:4px}
+.dot{width:10px;height:10px;background:var(--accent);border-radius:2px}
+.brand{font-family:var(--mono);font-weight:500;font-size:16px;letter-spacing:.12em}
+.tagline{font-size:11px;color:var(--faint);margin:0 0 22px;line-height:1.6}
+nav a.nl{
+  display:block;padding:7px 11px;border-radius:7px;color:var(--muted);
+  font-size:13.5px;margin-block-end:1px;border-inline-start:2px solid transparent;
+}
+nav a.nl:hover{background:var(--elevated);color:var(--ink);text-decoration:none}
+nav a.nl.on{background:var(--accent-soft);color:var(--ink);border-inline-start-color:var(--accent)}
+.navgroup{font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--faint);
+  margin:20px 0 7px;padding-inline-start:11px}
+
+/* ---- type ---- */
+h1{font-size:29px;line-height:1.25;margin:0 0 8px;letter-spacing:-.4px}
+h2{font-size:21px;margin:52px 0 4px;padding-block-end:9px;border-block-end:1px solid var(--line);scroll-margin-top:20px}
+h3{font-size:16px;margin:30px 0 8px;color:var(--ink)}
+h4{font-size:13.5px;margin:20px 0 6px;color:var(--muted);font-weight:600}
+p{margin:11px 0}
+.lede{font-size:16.5px;color:var(--muted);line-height:1.8;margin-block-end:6px}
+ul,ol{margin:11px 0;padding-inline-start:22px}
+li{margin:6px 0}
+strong{color:#fff;font-weight:600}
+hr{border:none;border-block-start:1px solid var(--line);margin:34px 0}
+
+/* ---- bits ---- */
+.file{
+  display:inline-block;font-family:var(--mono);font-size:11.5px;
+  background:var(--elevated);border:1px solid var(--line-strong);color:var(--muted);
+  padding:1px 7px;border-radius:5px;direction:ltr;white-space:nowrap;
+}
+.tag{display:inline-block;font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+  padding:2px 8px;border-radius:100px;background:var(--elevated);color:var(--muted)}
+.tag.good{color:var(--positive)} .tag.warn{color:var(--caution)} .tag.bad{color:var(--negative)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 22px;margin:16px 0}
+.card.accent{border-color:var(--accent);background:linear-gradient(180deg,var(--accent-soft),var(--surface) 70%)}
+.card.bad{border-color:var(--negative)}
+.card.warn{border-color:var(--caution)}
+.card h3,.card h4{margin-block-start:0}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px}
+
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px}
+th,td{text-align:start;padding:9px 11px;border-block-end:1px solid var(--line);vertical-align:top}
+th{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);font-weight:600}
+tr:hover td{background:rgba(255,255,255,.02)}
+
+pre{
+  background:#080a0e;border:1px solid var(--line);border-radius:9px;
+  padding:14px 16px;overflow-x:auto;direction:ltr;text-align:start;
+  font-family:var(--mono);font-size:12.5px;line-height:1.65;margin:14px 0;color:#cfd8e3;
+}
+pre .c{color:var(--faint)}
+pre .k{color:var(--accent)}
+pre .s{color:var(--positive)}
+
+.flow{display:flex;flex-direction:column;gap:0;margin:18px 0}
+.step{display:grid;grid-template-columns:30px 1fr;gap:14px;padding-block-end:16px;position:relative}
+.step:not(:last-child)::before{
+  content:"";position:absolute;inset-inline-start:14px;top:30px;bottom:0;width:1px;background:var(--line-strong);
+}
+.stepn{
+  width:30px;height:30px;border-radius:50%;background:var(--elevated);
+  border:1px solid var(--line-strong);display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:12px;color:var(--accent);z-index:1;
+}
+.step .body{padding-block-start:3px}
+.step .body p{margin:4px 0}
+
+details{border:1px solid var(--line);border-radius:10px;margin:9px 0;background:var(--surface);overflow:hidden}
+details[open]{border-color:var(--line-strong)}
+summary{padding:13px 18px;cursor:pointer;font-weight:600;font-size:14.5px;list-style:none;color:var(--ink)}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"‹";float:inline-start;margin-inline-end:10px;color:var(--accent);
+  transition:transform .18s;display:inline-block}
+details[open] summary::before{transform:rotate(-90deg)}
+details .inner{padding:0 18px 16px;color:var(--muted);font-size:14px}
+details .inner p:first-child{margin-block-start:0}
+
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:12px;margin:18px 0}
+.kpi div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:13px 15px}
+.kpi .n{font-family:var(--mono);font-size:23px;font-weight:500;color:var(--ink)}
+.kpi .l{font-size:11px;color:var(--muted);margin-block-start:2px}
+.note{font-size:13px;color:var(--faint);border-inline-start:2px solid var(--line-strong);
+  padding-inline-start:13px;margin:14px 0}
+</style>
+</head><body>
+<div class="wrap">
+<nav><div class="brandbox"><span class="dot"></span><span class="brand">ARI</span></div>
+<p class="tagline">מסמך טכני פנימי<br>לא מוגש — נועד להסביר את הקוד</p>
+<div class="navgroup">קרא קודם</div>
+<a class="nl" href="#start">מאיפה מתחילים</a>
+<a class="nl" href="#map">מפת המערכת</a>
+<div class="navgroup">איך זה עובד</div>
+<a class="nl" href="#flows">חמשת התהליכים</a>
+<a class="nl" href="#physio">המודל הפיזיולוגי</a>
+<a class="nl" href="#db">מסד הנתונים</a>
+<div class="navgroup">למה ככה</div>
+<a class="nl" href="#decisions">ההחלטות</a>
+<a class="nl" href="#broke">מה נשבר ואיך תוקן</a>
+<div class="navgroup">להצגה</div>
+<a class="nl" href="#qa">20 שאלות ותשובות</a>
+<a class="nl" href="#cheat">דף רמאות</a></nav>
+<main>
+<h1>Artificial Run Intelligence — איך זה עובד</h1>
+<p class="lede">
+מסמך פנימי. <strong>לא מוגש.</strong> הוא קיים כדי שתדע להצביע על הקוד מאחורי
+כל החלטה — כי המטלה מבקשת בדיוק את זה: <em>"לדעת להסביר למה נבחרה כל ספרייה,
+כל רכיב, כל שיטה וכל החלטה טכנית."</em>
+</p>
+
+<div class="kpi">
+  <div><div class="n">21</div><div class="l">עמודים ונתיבים</div></div>
+  <div><div class="n">38</div><div class="l">פעולות שרת</div></div>
+  <div><div class="n">16</div><div class="l">טבלאות</div></div>
+  <div><div class="n">37</div><div class="l">מדיניות הרשאה</div></div>
+  <div><div class="n">15</div><div class="l">מיגרציות</div></div>
+  <div><div class="n">554</div><div class="l">בדיקות</div></div>
+</div>
+
+<h2 id="start">מאיפה מתחילים</h2>
+
+<p>אם יש לך עשר דקות לפני ההצגה, קרא את <a href="#cheat">דף הרמאות</a>.
+אם יש שעה — קרא לפי הסדר.</p>
+
+<h3>הכלל שמסביר את כל מבנה הקוד</h3>
+<div class="card accent">
+<p><strong><span class="file">src/lib/</span> לא יודע ש-React קיים, ולא יודע ש-Supabase קיים.</strong>
+הוא מקבל מספרים ומחזיר מספרים.</p>
+<p><span class="file">src/actions/</span> מדבר עם המסד וקורא ל-<code>lib</code>.
+<span class="file">src/components/</span> רק מציג — מסך לא שולף לבד, הוא מקבל נתונים כ-props.</p>
+<p class="note">זו הסיבה ש-554 בדיקות רצות ב-14 שניות בלי מסד ובלי דפדפן. וזו גם
+התשובה לשאלה "איך בדקת את זה?" — הלוגיקה מבודדת, אז אפשר לבדוק אותה.</p>
+</div>
+
+<h2 id="map">מפת המערכת</h2>
+
+<p>חמישה רכיבים, <strong>ואף אחד מהם אינו שרת שאנחנו מתחזקים.</strong></p>
+
+<pre>
+<span class="c">                    ┌─────────────────────┐</span>
+<span class="c">   דפדפן  ─────────►│   Next.js (Vercel)  │</span>
+<span class="c">                    │  עמודים + לוגיקת    │</span>
+<span class="c">                    │  שרת באותו פרויקט   │</span>
+<span class="c">                    └──────────┬──────────┘</span>
+<span class="c">                               │</span>
+<span class="c">              ┌────────────────┼────────────────┐</span>
+<span class="c">              ▼                ▼                ▼</span>
+<span class="c">     ┌──────────────┐  ┌─────────────┐  ┌──────────────┐</span>
+<span class="c">     │  Supabase    │  │  Supabase   │  │ intervals.icu│</span>
+<span class="c">     │  Postgres    │  │    Auth     │  │  (חיצוני)    │</span>
+<span class="c">     │  + RLS       │  │             │  │              │</span>
+<span class="c">     └──────────────┘  └─────────────┘  └──────────────┘</span>
+<span class="c">              ▲</span>
+<span class="c">              │  03:00 כל לילה</span>
+<span class="c">     ┌────────┴────────┐</span>
+<span class="c">     │  Vercel Cron    │</span>
+<span class="c">     └─────────────────┘</span>
+</pre>
+
+<h3>שתי ההחלטות המבניות</h3>
+<div class="grid2">
+<div class="card">
+<h4>אין שרת נפרד</h4>
+<p>Next.js מריץ קוד שרת בתוך אותו פרויקט. <strong>אין API נפרד לתחזק, אין שני
+מודלי טיפוסים לסנכרן, ואין CORS.</strong></p>
+</div>
+<div class="card">
+<h4>ההרשאה במסד, לא בקוד</h4>
+<p>לכל טבלה צמודה מדיניות שנאכפת בפוסטגרס בכל שאילתה. <strong>באג בקוד לא יכול
+להביא נתונים שהמשתמש לא רשאי לקבל.</strong></p>
+</div>
+</div>
+
+<h3>איפה כל דבר יושב</h3>
+<table>
+<tr><th>תיקייה</th><th>מה בה</th><th>קובץ שכדאי להכיר</th></tr>
+<tr><td><span class="file">src/app/</span></td><td>עמודים ונתיבים</td><td><span class="file">app/coach/layout.tsx</span> — שער התפקיד</td></tr>
+<tr><td><span class="file">src/actions/</span></td><td>הגבול בין לקוח לשרת</td><td><span class="file">actions/coach.ts</span> — הגדול ביותר</td></tr>
+<tr><td><span class="file">src/lib/planning/</span></td><td>עומס, תוכנית, התאמה</td><td><span class="file">planning/load.ts</span>, <span class="file">planning/pmc.ts</span></td></tr>
+<tr><td><span class="file">src/lib/readiness/</span></td><td>הצינור היומי</td><td><span class="file">readiness/pipeline.ts</span></td></tr>
+<tr><td><span class="file">src/lib/providers/</span></td><td>ייבוא מ-intervals.icu</td><td><span class="file">providers/syncIcu.ts</span></td></tr>
+<tr><td><span class="file">src/lib/time/</span></td><td>שבוע ואזור זמן</td><td><span class="file">time/week.ts</span> — מקור אמת אחד</td></tr>
+<tr><td><span class="file">supabase/migrations/</span></td><td>15 מיגרציות</td><td><span class="file">0013_coach_link_consent.sql</span></td></tr>
+</table>
+
+<h2 id="flows">חמשת התהליכים — מקצה לקצה</h2>
+<p class="lede">אם ישאלו "תראה לי איך X עובד" — זה המקום.</p>
+
+<h3>1 · משתמש נרשם ומתחבר</h3>
+<div class="flow">
+  <div class="step"><div class="stepn">1</div><div class="body">
+    <p><strong>הרשמה</strong> — <span class="file">components/screens/LoginView.tsx</span></p>
+    <p>הטופס קורא ל-<code>supabase.auth.signUp</code>, ומעביר את התפקיד
+    (אתלט/מאמן) ב-<code>options.data</code>.</p></div></div>
+  <div class="step"><div class="stepn">2</div><div class="body">
+    <p><strong>שורת פרופיל נוצרת</strong> — טריגר <code>handle_new_user()</code> במסד</p>
+    <p>קורא את התפקיד מה-metadata וכותב שורה ב-<code>profiles</code>. במסד ולא
+    בקוד, כדי שלא יהיה משתמש בלי פרופיל.</p></div></div>
+  <div class="step"><div class="stepn">3</div><div class="body">
+    <p><strong>הקישור במייל</strong> — <span class="file">app/auth/callback/route.ts</span></p>
+    <p>Supabase משתמש ב-PKCE: הקישור מביא <strong>קוד חד-פעמי, לא סשן</strong>.
+    צריך <code>exchangeCodeForSession</code> <strong>בשרת</strong>, כדי שהעוגייה
+    תיכתב בתשובה שהדפדפן ישמור.</p>
+    <p class="note">בלי הנתיב הזה: ההרשמה עבדה, המשתמש נוצר, והקישור הוביל ל-404.</p></div></div>
+  <div class="step"><div class="stepn">4</div><div class="body">
+    <p><strong>כל בקשה</strong> — <span class="file">src/middleware.ts</span></p>
+    <p>מרענן את הסשן ומפנה מבקר לא מחובר. מעביר את העוגיות המרועננות גם להפניה —
+    בלי זה נוצר לולאת הפניות שאי אפשר לצאת ממנה.</p></div></div>
+</div>
+
+<h3>2 · ריצה נכנסת ומגיעה לדשבורד</h3>
+<p><span class="tag">התהליך המרכזי במוצר</span></p>
+<div class="flow">
+  <div class="step"><div class="stepn">1</div><div class="body">
+    <p><strong>מה מפעיל</strong> — <span class="file">app/api/cron/sync-intervals/route.ts</span> ב-03:00,
+    או "Sync now" מההגדרות</p></div></div>
+  <div class="step"><div class="stepn">2</div><div class="body">
+    <p><strong>ייבוא</strong> — <code>importFromIcu()</code> ב-<span class="file">lib/providers/syncIcu.ts</span></p>
+    <p>מושך חלון של <strong>400 יום</strong> ועושה upsert לפי
+    <code>(user_id, source, external_id)</code> — <strong>האינדקס הייחודי הוא מה
+    שמונע כפילות מבנית</strong>, לא קוד.</p></div></div>
+  <div class="step"><div class="stepn">3</div><div class="body">
+    <p><strong>ניתוח מקטעים</strong> — <code>processStreams()</code></p>
+    <p>מוריד את המקטעים הגולמיים בקבוצות של 25, במקביליות 4, וגוזר ארבע עמודות:
+    צורת קצב, שיאים, סחיפת דופק, ונקודת ההתחלה שלה.
+    <strong>המקטעים עצמם נזרקים</strong> — עשרות מגה-בייט לשנה.</p></div></div>
+  <div class="step"><div class="stepn">4</div><div class="body">
+    <p><strong>חישוב מוכנות</strong> — <code>recomputeForUser()</code> ב-<span class="file">lib/readiness/recompute.ts</span></p>
+    <p>120 יום אחורה → כושר, עייפות, טריות, יחס עומס, ציון והסבר, לכל יום.</p></div></div>
+  <div class="step"><div class="stepn">5</div><div class="body">
+    <p><strong>התאמת תוכנית</strong> — <code>runPlanAdjustment()</code></p></div></div>
+  <div class="step"><div class="stepn">6</div><div class="body">
+    <p><strong>הדשבורד</strong> — <span class="file">app/dashboard/page.tsx</span></p>
+    <p>Server Component ששולף ומעביר ל-<code>DashboardView</code>.
+    <strong>הדפדפן לא מדבר עם המסד.</strong></p></div></div>
+</div>
+
+<div class="card warn">
+<h4>למה משיכה ולא webhook</h4>
+<p>התכנון המקורי היה webhook. משיכה פשוטה יותר: <strong>אין נקודת קצה ציבורית
+להגן עליה, אין אירועים כפולים, ואין תלות בכך שהצד השני זוכר להודיע.</strong>
+המחיר: עד 24 שעות עיכוב באוטומטי — והמשתמש יכול ללחוץ "סנכרן" מתי שירצה.</p>
+</div>
+
+<h3>3 · תוכנית נבנית</h3>
+<div class="flow">
+  <div class="step"><div class="stepn">1</div><div class="body">
+    <p><strong>מרוץ יעד</strong> — <span class="file">actions/profile.ts</span>, <code>saveGoalRace()</code></p>
+    <p>מתעדכן <strong>במקום</strong> ולא נוצר מחדש — אחרת שינוי תאריך מייתם תוכנית
+    שרצים לפיה כבר חודש.</p></div></div>
+  <div class="step"><div class="stepn">2</div><div class="body">
+    <p><strong>הכפתור</strong> — <span class="file">components/plan/BuildPlanCard.tsx</span>
+    → <code>buildPlanForActiveRace()</code></p>
+    <p><strong>מסרב לדרוס תוכנית קיימת.</strong> בנייה מחדש מוחקת שבועות של
+    היסטוריה, וזה לא מה ש"בנה לי תוכנית" נשמע כמו.</p></div></div>
+  <div class="step"><div class="stepn">3</div><div class="body">
+    <p><strong>יכולת הרץ</strong> — <span class="file">lib/planning/readCapacity.ts</span> + <code>capacity.ts</code></p>
+    <p><strong>הנפח נגזר ממה שהוא רץ היום</strong>, לא מטבלה. הריצה הארוכה גדלה
+    מהריצה הארוכה שלו, עם שבוע הקלה כל רביעי.</p></div></div>
+  <div class="step"><div class="stepn">4</div><div class="body">
+    <p><strong>יצירה</strong> — <span class="file">lib/planning/generatePlan.ts</span></p>
+    <p>מחלק לארבע פאזות. <strong>תבנית המאמן נכנסת כפרופורציות ולא כלוח זמנים</strong> —
+    תבנית של 14 שבועות למי שרץ בעוד תשעה הופכת לתשעה ששומרים על הצורה.</p></div></div>
+</div>
+
+<h3>4 · המנוע מקטין אימון — ומחזיר אותו</h3>
+<div class="flow">
+  <div class="step"><div class="stepn">1</div><div class="body">
+    <p><strong>ההחלטה</strong> — <code>decideAdjustments()</code> ב-<span class="file">lib/planning/adjustPlan.ts</span></p>
+    <p>פונקציה טהורה. מקבלת אימונים ועומס יומי, מחזירה החלטות.</p></div></div>
+  <div class="step"><div class="stepn">2</div><div class="body">
+    <p><strong>מדלגת על מה שאדם קבע</strong> — <code>origin</code></p>
+    <p>מאמן שקבע 18 ק"מ מצא 14.4 בבוקר, כי העריכה השאירה
+    <code>status = 'planned'</code> — בדיוק המצב שהמנוע מחפש.</p></div></div>
+  <div class="step"><div class="stepn">3</div><div class="body">
+    <p><strong>מקטינה</strong> — ל-80%, ושומרת <code>planned_distance_original</code></p></div></div>
+  <div class="step"><div class="stepn">4</div><div class="body">
+    <p><strong>ומחזירה</strong> — פעולת <code>restore</code></p>
+    <p>הפעולה היחידה שיכולה <strong>רק להוסיף מרחק בחזרה</strong>. בלעדיה, שבוע
+    שהוקטן נשאר מוקטן לנצח.</p></div></div>
+</div>
+
+<h3>5 · מאמן פותח מתאמן ועורך</h3>
+<div class="flow">
+  <div class="step"><div class="stepn">1</div><div class="body">
+    <p><strong>שער התפקיד</strong> — <span class="file">app/coach/layout.tsx</span></p>
+    <p>נבדק פעם אחת לכל הענף, כי <strong>שער שנכתב לכל עמוד הוא שער ששוכחים
+    בעמוד השביעי.</strong></p></div></div>
+  <div class="step"><div class="stepn">2</div><div class="body">
+    <p><strong>הרוסטר</strong> — <code>getCoachWorkspace()</code> ב-<span class="file">actions/coach.ts</span></p>
+    <p><strong>שאילתה אחת לכל סוג נתון</strong> עם <code>.in(ids)</code>, לא אחת
+    למתאמן. מאמן עם 30 עולה כמו מאמן עם 3.</p></div></div>
+  <div class="step"><div class="stepn">3</div><div class="body">
+    <p><strong>העריכה</strong> — <code>updateWorkout()</code></p>
+    <p>בודקת בעלות, כותבת <code>origin = 'coach'</code>,
+    ומבקשת בחזרה את השורות שהשתנו — <strong>כי פוסטגרס לא זורק כשהוא מסרב.</strong></p></div></div>
+</div>
+
+<h2 id="physio">המודל הפיזיולוגי</h2>
+<p class="lede">זה ה"אינטליגנציה" בשם המוצר. <strong>אין כאן מודל שפה</strong> —
+יש מדע אימון שמומש בקוד.</p>
+
+<pre>
+ריצה  ──►  עומס יומי  ──►  כושר / עייפות / טריות  ──►  יחס עומס  ──►  ציון מוכנות
+</pre>
+
+<h3>עומס לאימון בודד <span class="file">lib/planning/load.ts</span></h3>
+<div class="grid2">
+<div class="card">
+<h4>יש דופק → Banister TRIMP</h4>
+<p>משקלל <strong>משך × עצימות</strong> בעקומה מעריכית.</p>
+<p class="note">למה מעריכי: 20 דקות בדופק גבוה אינן פי שניים מ-10. הנזק
+והגירוי גדלים מהר יותר מהזמן.</p>
+</div>
+<div class="card">
+<h4>אין דופק → Minetti GAP</h4>
+<p>קצב מותאם-שיפוע. <strong>קילומטר בעלייה אינו קילומטר במישור.</strong></p>
+<p class="note">Minetti מדד את עלות האנרגיה בשיפועים שונים; אנחנו ממירים
+לקצב "שקול במישור".</p>
+</div>
+</div>
+
+<h3>כושר, עייפות, טריות <span class="file">lib/planning/pmc.ts</span></h3>
+<table>
+<tr><th>מדד</th><th>מה זה</th><th>קבוע זמן</th></tr>
+<tr><td><strong>CTL</strong> — כושר</td><td>ממוצע נע מעריכי של העומס</td><td><code>CTL_TAU = 42</code> יום</td></tr>
+<tr><td><strong>ATL</strong> — עייפות</td><td>אותו דבר, חלון קצר</td><td><code>ATL_TAU = 7</code> יום</td></tr>
+<tr><td><strong>TSB</strong> — טריות</td><td><code>CTL − ATL</code></td><td>—</td></tr>
+</table>
+<p><strong>הרעיון:</strong> אימון בונה כושר לאט ועייפות מהר. ההפרש הוא כמה אתה
+טרי. חיובי גבוה = נחת יותר מדי; שלילי עמוק = חופר בור.</p>
+
+<h3>יחס עומס — ACWR <span class="file">lib/planning/acwr.ts</span></h3>
+<p>עומס השבוע האחרון חלקי הממוצע של ארבעה. <strong>מעל ~1.5 = סיכון פציעה.</strong></p>
+<div class="card warn">
+<h4>ולמה מימשנו גרסה עם תיקון הטיה</h4>
+<p>ממוצע מעריכי בתחילת סדרה <strong>מוטה כלפי מטה</strong> — אין לו מספיק
+היסטוריה. בלי תיקון, אתלט חדש נראה בטוח יותר משהוא בדיוק בשבועות שבהם הוא
+הכי בסיכון.</p>
+</div>
+
+<h3>סחיפת דופק <span class="file">lib/planning/cardiacDrift.ts</span></h3>
+<p>הדופק עולה בעוד <strong>הקצב נשמר</strong> — סימן לעייפות, חום או התייבשות.
+נמדד על המקטע, ונשמר גם <em>איפה</em> זה התחיל.</p>
+
+<h3>ציון מוכנות <span class="file">lib/planning/readiness.ts</span></h3>
+<p>שקלול של טריות, יחס עומס, שינה, HRV וסחיפה. <strong>לכל רכיב יש ציון משנה,
+משקל ומשפט הסבר</strong> — וזה בדיוק מה שפאנל ההסבר מציג.</p>
+
+<div class="card accent">
+<h4>ולמה זה לא LLM</h4>
+<p><span class="file">lib/narrative/buildNarrative.ts</span> <strong>מרכיב</strong> משפט מהערכים
+שכבר חושבו.</p>
+<ul>
+<li><strong>אי אפשר להזות מספר</strong> — אין ניסוח חופשי, יש הרכבה.</li>
+<li><strong>כל מספר ניתן לעקוב</strong> עד החישוב שהפיק אותו.</li>
+<li><strong>עובד בלי רשת, בלי עלות, בלי ספק</strong> שיכול ליפול.</li>
+</ul>
+</div>
+
+<h2 id="db">מסד הנתונים</h2>
+<p class="lede">16 טבלאות, 37 מדיניויות, <strong>RLS על כל 16 בלי יוצא מן הכלל</strong>.</p>
+
+<h3>שלוש עמודות שכדאי להכיר</h3>
+
+<h4>1 · <code>streams_derived_version</code></h4>
+<p><strong>הבעיה:</strong> ארבע העמודות הנגזרות הן מטמון של פונקציה על מידע
+שכבר זרקנו. כשמשנים את הנוסחה, כל השורות הישנות נשארות עם התשובה הישנה
+<strong>בשקט</strong>.</p>
+<p><strong>מה קרה בפועל:</strong> חישוב השיאים מדד <em>זמן שעון</em> ולא זמן
+תנועה — רמזור אדום בתוך 10 ק"מ מהיר נספר לרעת הריצה.
+<strong>ריצה שהייתה 43 שניות מהירה יותר נרשמה כשיא האיטי יותר.</strong></p>
+<p><strong>הפתרון:</strong> מספר גרסה. משנים נוסחה, מעלים מספר, והנתונים מתקנים
+את עצמם בסנכרון הבא.</p>
+
+<h4>2 · <code>source_updated_at</code></h4>
+<p>עונה על החצי השני: מה אם <em>הריצה</em> השתנתה? אתלט חותך ריצה
+ב-intervals.icu — המרחק מתעדכן והניתוח נשאר של הקובץ הישן. שמירת חותמת השינוי
+הופכת את "השתנה?" לשאלה שאפשר לענות עליה.</p>
+
+<h4>3 · <code>origin</code></h4>
+<p>מי קבע את האימון: <code>generated</code> / <code>coach</code> /
+<code>athlete</code>. <strong>המנוע רשאי לשנות מה שהוא בנה; הוא לא רשאי לבטל
+החלטה של אדם.</strong></p>
+
+<h3>איך RLS עובדת כאן</h3>
+<pre>
+<span class="c">-- אתלט רואה את שלו</span>
+<span class="k">using</span> (user_id = auth.uid())
+
+<span class="c">-- מאמן רואה את של מי שהוא מאמן שלו</span>
+<span class="k">using</span> (public.is_coach_of(user_id))
+</pre>
+<p><code>is_coach_of()</code> מסומנת <code>SECURITY DEFINER</code> — היא צריכה
+לקרוא טבלה שהקורא עצמו לא רשאי לקרוא.</p>
+
+<div class="card bad">
+<h4>וכאן הייתה הפרצה</h4>
+<p><strong>כל הרשאה בצד המאמן מסתכמת בשאלה "יש שורה ב-<code>coach_athletes</code>?"</strong>
+— ולכן מדיניות ה-INSERT על הטבלה הזו היא <strong>כל גבול האבטחה</strong>.</p>
+<pre>
+<span class="c">-- 0001, שגוי:</span>
+<span class="k">with check</span> (coach_id = auth.uid())   <span class="c">-- athlete_id פרוץ!</span>
+
+<span class="c">-- 0013, נכון:</span>
+<span class="k">with check</span> (athlete_id = auth.uid()) <span class="c">-- רק המתאמן יוצר את הקשר</span>
+</pre>
+<p>ראה <a href="#broke">מה נשבר</a> לסיפור המלא.</p>
+</div>
+
+<h2 id="decisions">ההחלטות — ולמה</h2>
+<p class="lede">אלה השאלות שישאלו. לכל אחת יש תשובה, ולכל תשובה יש נימוק.</p>
+
+<table>
+<tr><th>ההחלטה</th><th>הנימוק בשורה</th></tr>
+<tr><td><strong>intervals.icu ולא Strava</strong></td>
+<td>מצבר — Garmin, Polar, Coros ו-Strava מגיעים דרכו. <strong>אינטגרציה אחת = חמישה מקורות.</strong> וגם: מפתח אישי במקום OAuth וניהול טוקנים.</td></tr>
+<tr><td><strong>בלי LLM</strong></td>
+<td>ההסבר מחושב. <strong>אי אפשר להזות מספר שלא ניסחת.</strong> וכל נתון ניתן למעקב.</td></tr>
+<tr><td><strong>בלי ספריית גרפים</strong></td>
+<td>ספרייה מביאה מערכת עיצוב משלה שנלחמת בשלנו. חמישה גרפים בכתב יד ב-SVG שוקלים פחות מהספרייה.</td></tr>
+<tr><td><strong>בלי Redux/Zustand</strong></td>
+<td>מקור האמת הוא המסד והעמודים נבנים בשרת. <strong>אין state בלקוח שצריך לסנכרן.</strong></td></tr>
+<tr><td><strong>RLS ולא בדיקה בקוד</strong></td>
+<td>קוד שוכחים. מדיניות שצמודה לטבלה נאכפת בכל שאילתה, <strong>גם כשהקוד מבקש משהו אחר.</strong></td></tr>
+<tr><td><strong>Server Actions ולא REST</strong></td>
+<td>אין API נפרד לתחזק, והטיפוסים משותפים לשני צדי הרשת.</td></tr>
+<tr><td><strong>השבוע מתחיל ביום ראשון</strong></td>
+<td>זה השבוע של המשתמשים. ISO אומר שני — <strong>שבוע הוא אובייקט תרבותי, לא פיזיקלי.</strong></td></tr>
+<tr><td><strong>אזור זמן קבוע</strong></td>
+<td>Vercel רץ ב-UTC והמשתמשים בישראל. בלי זה, בין חצות ל-03:00 המערכת חשבה שזה עוד אתמול.</td></tr>
+<tr><td><strong>הצטרפות בקוד ולא הזמנה במייל</strong></td>
+<td><strong>הזמנה במייל מאפשרת ליצור קשר על מישהו בלי הסכמתו.</strong> הקוד הופך את הכיוון.</td></tr>
+<tr><td><strong>מיגרציות לא רצות בפריסה</strong></td>
+<td>אפשר לבטל פריסת קוד; אי אפשר לבטל מחיקת עמודה. <strong>מבנה קודם, קוד אחריו.</strong></td></tr>
+<tr><td><strong>Supabase לא מחובר ל-GitHub</strong></td>
+<td>Branching עולה לפי שעה ו<strong>לא מכוסה ב-spend cap</strong>; נועד לזרימת PRs שאין לנו; ולא פותר את חלון התאימות — רק מסתיר אותו.</td></tr>
+</table>
+
+<h2 id="broke">מה נשבר — ואיך תוקן</h2>
+<p class="lede">התשובה ל<em>"ספר לי על משהו שהשתבש"</em>. ארבעה סיפורים, כל אחד
+עם לקח.</p>
+
+<div class="card bad">
+<h3>1 · הפרצה <span class="tag bad">קריטי</span></h3>
+<p><strong>מה:</strong> מדיניות יצירת קשר מאמן־מתאמן בדקה רק
+<code>coach_id</code>. <code>athlete_id</code> היה פרוץ לגמרי.</p>
+<p><strong>המשמעות:</strong> שורה אחת בקונסול, וכל משתמש מחובר הופך ל"מאמן" של
+כל אחד — וקורא את הפרופיל, הפעילויות, המוכנות והתוכנית שלו. <strong>ומיגרציה
+0009 נתנה למאמן גם הרשאת כתיבה על אימונים.</strong> הקורבן לא מקבל התראה.</p>
+<p><strong>למה זה קרה:</strong> כל הרשאה בצד המאמן נשענת על הטבלה הזו, <strong>מה
+שהופך את מדיניות ה-INSERT שלה לכל גבול האבטחה</strong> — והיא בדקה את העמודה
+הלא נכונה. טעות של תו אחד, במקום היחיד שחשוב.</p>
+<p><strong>איך נמצאה:</strong> לא בקריאת קוד ולא בבדיקות. נמצאה כששאלנו
+<em>"מה בעצם מחליט שמישהו הוא מאמן שלי?"</em> והלכנו לקרוא את המדיניות עצמה.</p>
+<p class="note"><strong>הלקח:</strong> כשכל ההרשאה מתרכזת בשאלה אחת, קרא את
+השורה שעונה עליה. ואמת מול <code>pg_policy</code>, לא מול הודעת הצלחה.</p>
+</div>
+
+<div class="card warn">
+<h3>2 · המספרים המומצאים <span class="tag warn">47 מקרים</span></h3>
+<p><strong>מה:</strong> המוצר הועבר ממודל HTML מלא נתונים של אתלט בדיוני,
+והמספרים שרדו כברירות מחדל. הדשבורד הכריז לכל משתמש:
+<em>"האימון הבא: אינטרוולים — 6 × 800 מ׳"</em> — <strong>שני סנטימטרים מתחת
+למשפט הנכון "אין עדיין תוכנית".</strong></p>
+<p><strong>הכלל שנקבע:</strong> בלי נתון אמיתי — קו מקף, מצב ריק, או הסתרה.
+לעולם לא ערך לדוגמה.</p>
+</div>
+
+<div class="card warn">
+<h3>3 · השיאים <span class="tag warn">נמצא ע"י המשתמש</span></h3>
+<p><strong>מה:</strong> ריצה שהייתה <strong>43 שניות מהירה יותר</strong> נרשמה
+כשיא האיטי יותר. חישוב השיאים מדד זמן שעון ולא זמן תנועה — רמזור אדום נספר
+לרעת הריצה.</p>
+<p><strong>ולמה זה היה גרוע פי שניים:</strong> תיקון הפונקציה לא תיקן שורה אחת
+שכבר נשמרה. מכאן נולד <code>streams_derived_version</code>.</p>
+<p class="note"><strong>הלקח:</strong> מטמון של פונקציה חייב לדעת <em>איזו
+גרסה</em> של הפונקציה יצרה אותו.</p>
+</div>
+
+<div class="card warn">
+<h3>4 · אזור הזמן</h3>
+<p><strong>מה:</strong> התאריך חושב באזור הזמן של השרת. בין חצות ל-03:00 הרצף
+היה קצר ביום, והתוכנית תייגה את אתמול כ"היום".</p>
+<p><strong>והחלק המעניין:</strong> הבדיקה הקיימת <strong>הגדירה את אזור הזמן
+לפני שרצה</strong> — כלומר הוכיחה התנהגות שלייצור מעולם לא הייתה.</p>
+<p class="note"><strong>הלקח:</strong> בדיקה שמכינה לעצמה סביבה נוחה לא בודקת
+כלום. עכשיו הבדיקות רצות תחת <em>כל</em> אזור זמן.</p>
+</div>
+
+<h2 id="qa">20 שאלות ותשובות</h2>
+<p class="lede">תרגול לראיון. פתח, נסה לענות בעצמך, ואז בדוק.</p>
+
+<h3>ארכיטקטורה</h3>
+<details><summary>איפה בדיוק נאכפת ההרשאה?</summary><div class="inner"><p><strong>במסד.</strong> 37 מדיניויות RLS על 16 טבלאות — כולן. הדפוס: אתלט רואה שורה אם <code>user_id = auth.uid()</code>; מאמן אם <code>is_coach_of(user_id)</code>.</p><p>יש עוד שתי שכבות מעל — middleware ובדיקת <code>getUser()</code> בכל פעולה — אבל <strong>הן לא ההגנה.</strong> הן נוחות. ההגנה היא שהמסד מסרב.</p></div></details>
+<details><summary>למה Server Actions ולא REST API?</summary><div class="inner"><p>אין API נפרד לתחזק, אין שני מודלי טיפוסים לסנכרן, ואין CORS. הקומפוננטה קוראת לפונקציה ו-Next.js עושה את הרשת.</p><p><strong>המחיר שצריך להכיר:</strong> כל ייצוא מקובץ <code>&quot;use server&quot;</code> הוא נקודת קצה ציבורית. לכן מייצאים רק פונקציות אסינכרוניות, וכל אחת בודקת אימות. ייצוא של קבוע הפיל לנו את הבנייה פעמיים — וזו התנהגות נכונה.</p></div></details>
+<details><summary>איך המידע זורם מהדפדפן למסד?</summary><div class="inner"><p><strong>הוא לא.</strong> הדפדפן לא מדבר עם המסד. העמוד נבנה בשרת (Server Component), קורא ל-Server Action, שקוראת ל-Supabase — ו-RLS מסננת. לדפדפן מגיע HTML מוכן.</p></div></details>
+<details><summary>למה בלי ניהול state גלובלי?</summary><div class="inner"><p>כי אין state גלובלי. מקור האמת הוא המסד, והעמודים נבנים בשרת. <code>useState</code> רק למה שבאמת מקומי — טאב פתוח, יום נבחר.</p><p>אחרי כתיבה קוראים ל-<code>revalidatePath</code> והשרת מרנדר מחדש.</p></div></details>
+
+<h3>מסד נתונים</h3>
+<details><summary>למה בחרת Postgres ולא מסד מסמכים?</summary><div class="inner"><p>הנתונים יחסיים מטבעם — תוכנית שייכת למרוץ, אימון לתוכנית, מתאמן למאמן. וכל שאלה שהמוצר שואל היא צירוף.</p><p>ו-Supabase דווקא <strong>בגלל RLS</strong> — היכולת להצמיד כלל הרשאה לטבלה עצמה.</p></div></details>
+<details><summary>מה זה streams_derived_version ולמה הוא קיים?</summary><div class="inner"><p>ארבע עמודות ב-<code>activities</code> נגזרות מהמקטעים הגולמיים, <strong>והמקטעים נזרקים</strong> (עשרות מגה-בייט לשנה). כלומר הן מטמון של פונקציה על מידע שכבר אין.</p><p>כשמשנים את הנוסחה, השורות הישנות נשארות שגויות <strong>בשקט</strong>. עמודת הגרסה הופכת את זה לריפוי עצמי: מעלים מספר, והסנכרון הבא מנתח מחדש.</p></div></details>
+<details><summary>איך אתה מונע כפילות בייבוא?</summary><div class="inner"><p><strong>אינדקס ייחודי</strong> על <code>(user_id, source, external_id)</code>, ו-upsert. זה מבני ולא לוגי — <strong>המסד מונע את זה, לא הקוד.</strong></p></div></details>
+<details><summary>מה זה origin ולמה הוספת אותו?</summary><div class="inner"><p>מי קבע את האימון. <strong>שני באגים עם שורש אחד:</strong> <code>status</code> עשה עבודה שהוא לא מתאים לה.</p><p>עריכת מאמן השאירה <code>status = 'planned'</code> — בדיוק המצב שהמנוע מחפש, אז 18 ק&quot;מ הפכו ל-14.4 בלילה. ובמקביל, הקטנה לא יכלה לחזור לעולם.</p></div></details>
+
+<h3>לוגיקה</h3>
+<details><summary>איך מחושב ציון המוכנות? תראה לי.</summary><div class="inner"><p>שרשרת: ריצה ← עומס יומי ← CTL/ATL/TSB ← ACWR ← ציון.</p><ul><li>עומס: TRIMP עם דופק, קצב מותאם-שיפוע בלעדיו — <span class="file">lib/planning/load.ts</span></li><li>כושר/עייפות: ממוצעים מעריכיים, 42 ו-7 יום — <span class="file">lib/planning/pmc.ts</span></li><li>יחס עומס: שבוע חלקי ארבעה, עם תיקון הטיה — <span class="file">lib/planning/acwr.ts</span></li><li>ציון: שקלול, כל רכיב עם משקל והסבר — <span class="file">lib/planning/readiness.ts</span></li></ul></div></details>
+<details><summary>למה ACWR עם תיקון הטיה?</summary><div class="inner"><p>ממוצע מעריכי בתחילת סדרה מוטה כלפי מטה — אין לו מספיק היסטוריה. <strong>בלי תיקון, אתלט חדש נראה בטוח יותר משהוא</strong> בדיוק בשבועות שבהם הוא הכי בסיכון.</p></div></details>
+<details><summary>איך נבנית התוכנית?</summary><div class="inner"><p>מחלקים את השבועות עד המרוץ לארבע פאזות. <strong>הנפח נגזר מהיכולת הנוכחית של הרץ</strong> — הריצה הארוכה גדלה מהריצה הארוכה שלו, לא מטבלה.</p><p>ותבנית המאמן נכנסת <strong>כפרופורציות</strong>: 14 שבועות למי שרץ בעוד תשעה הופכים לתשעה ששומרים על הצורה.</p></div></details>
+<details><summary>מה קורה אם intervals.icu לא עונה?</summary><div class="inner"><p>תלוי במה:</p><ul><li><strong>404/422</strong> — לריצה הזו אין מקטע. מסומן ומדלגים.</li><li><strong>429 או 5xx</strong> — <strong>זורק</strong>, והשורה נשארת בתור.</li><li><strong>401/403</strong> — החיבור מסומן כשגוי והשגיאה מוצגת בהגדרות.</li></ul><p class='note'>זה היה באג: תקלת רשת סומנה כ&quot;אין מקטע&quot;, והריצה איבדה את הגרף ואת השיא <strong>לנצח</strong>.</p></div></details>
+<details><summary>איפה ה-AI במוצר?</summary><div class="inner"><p><strong>אין מודל שפה.</strong> ההסבר <em>מחושב</em> — <span class="file">lib/narrative/buildNarrative.ts</span> מרכיב משפט מערכים שכבר חושבו.</p><p>וזה יתרון: אי אפשר להזות מספר שלא ניסחת, כל נתון ניתן למעקב, והמוצר עובד בלי רשת ובלי עלות. האינטליגנציה היא במודל הפיזיולוגי.</p></div></details>
+
+<h3>בדיקות ואיכות</h3>
+<details><summary>מה בדקת, ואיך?</summary><div class="inner"><p><strong>554 בדיקות ב-37 קבצים, שרצות ב-14 שניות</strong> בלי מסד ובלי דפדפן — כי כל הלוגיקה ב-<code>lib/</code> טהורה.</p><p>הכיסוי: המודל הפיזיולוגי, יצירת התוכנית, מנוע ההתאמה, אזורי זמן, גיאומטריית גרפים, הרוסטר והיומן.</p></div></details>
+<details><summary>למה אין Playwright ו-E2E?</summary><div class="inner"><p>תוכננו ולא מומשו. <strong>התקציב הוגבל והיה צריך לבחור</strong> בין לבדוק שכפתור מרונדר לבין לבדוק שהחישוב מאחוריו נכון.</p><p>בחרנו בחישוב: באג בכפתור נראה בעין; ריצה שנרשמה כשיא איטי יותר משהייתה — לא. במקום זאת בוצעה <strong>סריקה ידנית מתועדת</strong> שמצאה 47 ליקויים.</p></div></details>
+<details><summary>מה המגבלה שהכי מטרידה אותך בבדיקות?</summary><div class="inner"><p>שההרשאות נבדקות <strong>בעיניים ולא אוטומטית</strong> — וזה החלק שבו טעות עולה הכי ביוקר. הפרצה שנמצאה מוכיחה גם שהבדיקה הידנית עבדה, וגם שהיא הגיעה מאוחר.</p></div></details>
+
+<h3>סקייל ואבטחה</h3>
+<details><summary>מה יישבר ראשון אם יהיו 1000 משתמשים?</summary><div class="inner"><p><strong>המשימה היומית.</strong> היא לולאה סדרתית — משתמש = 3–8 שניות, רובן המתנה לרשת.</p><table><tr><td>100 משתמשים</td><td>~10 דקות</td></tr><tr><td>300</td><td>~30 דקות</td></tr><tr><td>1,000</td><td><strong>~90 דקות — חורג ממגבלת הזמן</strong></td></tr></table><p><strong>נקודת השבירה: 200–400 משתמשים פעילים</strong>, ומה שנגמר הוא זמן הריצה, לא המסד. הפתרון: תור עבודה.</p></div></details>
+<details><summary>איך מנעת בעיית N+1?</summary><div class="inner"><p>שאילתה אחת <strong>לכל סוג נתון</strong> עם <code>.in(ids)</code>, והצירוף בזיכרון — לא שאילתה לכל מתאמן.</p><p><strong>מאמן עם 30 מתאמנים עולה כמו מאמן עם 3.</strong> זו ההחלטה שהכי משפיעה על התנהגות בגדילה.</p></div></details>
+<details><summary>איפה שמורים הסודות?</summary><div class="inner"><p>ב-Vercel. <code>.env.local</code> חסום ב-gitignore.</p><ul><li><strong>anon key</strong> — נחשף לדפדפן <em>בכוונה</em>, מוגבל ע&quot;י RLS</li><li><strong>service-role</strong> — <strong>עוקף RLS לגמרי</strong>, שרת בלבד, רק במשימה היומית</li><li><strong>המפתח האישי של המשתמש ל-intervals.icu</strong> — בטבלה מאחורי RLS, <strong>ולעולם לא מגיע לדפדפן</strong>. הפאנל מציג ארבעה תווים אחרונים.</li></ul></div></details>
+<details><summary>מה עדיין לא מאובטח מספיק?</summary><div class="inner"><p>שלושה דברים אמיתיים:</p><ul><li><strong>אין הגבלת קצב</strong> — אפשר לנסות סיסמאות בהתחברות. זה מה שהייתי מתקן ראשון.</li><li><strong>כל Server Action היא נקודת קצה</strong> — הגבול נשען על כך שאף אחת לא תישכח.</li><li><strong>אין יומן ביקורת</strong> — אין רישום מי ניגש למה.</li></ul></div></details>
+
+<h2 id="cheat">דף רמאות — לקרוא לפני ההצגה</h2>
+
+<div class="card accent">
+<h3>המוצר בשלוש שורות</h3>
+<p>תוכניות ריצה סטטיות לא יודעות שהיה לך שבוע קשה. <strong>ARI בונה תוכנית
+מהיכולת האמיתית שלך, משנה אותה כשהעומס מסוכן, ומסבירה למה.</strong>
+ולמאמן — מקום אחד שאומר בבוקר למי לשים לב.</p>
+</div>
+
+<table>
+<tr><th>אם ישאלו…</th><th>המשפט</th></tr>
+<tr><td>מה מיוחד</td><td>לא איסוף דאטה — <strong>התאמה אוטומטית מודעת-התאוששות</strong>, עם הסבר.</td></tr>
+<tr><td>איפה ה-AI</td><td>במודל הפיזיולוגי. <strong>אין LLM — ולכן אי אפשר להמציא מספר.</strong></td></tr>
+<tr><td>הארכיטקטורה</td><td>Next.js על Vercel, Supabase, ו<strong>הרשאות שנאכפות במסד ולא בקוד</strong>.</td></tr>
+<tr><td>מה למדת</td><td><strong>שפוסטגרס לא צועק כשהוא מסרב</strong> — פעולה שנחסמה ע"י RLS מדווחת הצלחה.</td></tr>
+<tr><td>מה השתבש</td><td>פרצה במדיניות אחת שהייתה כל גבול האבטחה. נמצאה כששאלנו מה בעצם מחליט.</td></tr>
+<tr><td>מה תשפר</td><td><strong>תור עבודה</strong> במקום הלולאה הסדרתית — נקודת השבירה ידועה ומחושבת.</td></tr>
+</table>
+
+<h3>המספרים</h3>
+<div class="kpi">
+  <div><div class="n">554</div><div class="l">בדיקות · 14 שניות</div></div>
+  <div><div class="n">37</div><div class="l">מדיניויות · 16 טבלאות</div></div>
+  <div><div class="n">42/7</div><div class="l">ימים · כושר/עייפות</div></div>
+  <div><div class="n">1.5</div><div class="l">סף יחס העומס</div></div>
+  <div><div class="n">47</div><div class="l">ליקויים שנמצאו ותוקנו</div></div>
+  <div><div class="n">200-400</div><div class="l">נקודת השבירה</div></div>
+</div>
+
+<hr>
+<p class="note">נוצר 19 באוגוסט 2026 · מסמך פנימי, לא להגשה ·
+<a href="https://ari-coach.vercel.app">ari-coach.vercel.app</a></p>
+</main>
+</div>
+<script>
+const links=[...document.querySelectorAll('nav a.nl')];
+const heads=links.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
+const spy=()=>{
+  let cur=heads[0];
+  for(const h of heads){ if(h.getBoundingClientRect().top<=110) cur=h; }
+  links.forEach(a=>a.classList.toggle('on',a.getAttribute('href')==='#'+cur.id));
+};
+document.addEventListener('scroll',spy,{passive:true}); spy();
+</script>
+</body></html>
