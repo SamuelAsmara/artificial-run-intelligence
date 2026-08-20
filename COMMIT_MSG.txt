@@ -1,44 +1,46 @@
-fix the coach board's silent truncation, mark record runs, and stop dropping distance
+stop inventing a threshold pace, and keep profiles.email in step
 
-The twenty-athlete demo dataset did what it was built to do: it surfaced a
-class of bug that cannot exist with one account.
+estimateThresholdSpeed had a fallback: with no sustained hard effort on
+record, take the fastest run over twenty minutes and shade it down 6%. It
+looks harmless. For an athlete who only ever runs easy, "the fastest run over
+twenty minutes" is an easy run — so the fallback treated an easy pace as a
+threshold pace and then made it slower still. The demo dataset put numbers on
+it: prescribed easy paces of 8:15, 8:18, 8:30 and 10:29 per kilometre for
+athletes whose actual easy pace is 6:45. The app was telling beginners to run
+slower than they already run easily, and it compounds — run to those paces and
+the next estimate is slower again.
 
-getCoachWorkspace read a roster's worth of sessions with no range and no
-order. PostgREST returns at most a thousand rows and says nothing about the
-rest, and the window holds about fourteen hundred. The board showed 32
-sessions in a week where there were 80, eight on a Thursday where there were
-twenty, and left the athlete with the most missed sessions off the "needs
-you" list entirely, because his rows were among the ones dropped. Nothing
-errored. The screen was simply wrong, and looked fine.
+The reason it produced nonsense is that it never looked at heart rate. The
+main path does; the fallback inferred effort from speed alone, which only
+works for somebody who does hard sessions — precisely the athlete who never
+reaches it.
 
-Two neighbouring queries were one growth step from the same fault and only
-survived by accident: readiness_snapshots read 2,162 rows to keep 20, and
-activities read every run the roster had ever logged. The first is now
-bounded by a row count, the second by the date window — deliberately not by
-a row count, because a run outside the window cannot mark a session inside
-it, and truncating would have invented missed sessions. The per-athlete
-filter became a Map; it was 28,000 comparisons per render and grew with the
-product of roster and window.
+So it is gone. No qualifying effort now means no threshold pace, and the
+callers already handled that: paceForWorkout returns null and describeSession
+falls back to distance, so a session reads "8.0 km, easy" rather than carrying
+an invented number. This is also what the field does — TrainingPeaks, WKO5,
+GoldenCheetah and Final Surge all leave threshold pace as something somebody
+enters, and intervals.icu computes a critical speed and still declines to
+write it there.
 
-comparePlanned computed a distance note and then threw it away whenever the
-pace verdict fired. An athlete given 6.6 km who ran 15.7 was told only that
-his pace was 20 s/km slow. Past 25% drift the distance now leads the note;
-below it, it trails. The verdict tag still follows pace, because pace is
-what the plan prescribed.
+The qualifying window widens from 35 minutes to 20, which is what Friel,
+TrainingPeaks and Tredict accept and what most interval sessions actually are;
+35 was excluding the hard efforts of everybody who trains hard twice a week. A
+duration discount comes with it — threshold is about 95% of a best 20-minute
+effort — because widening the window without one would have made every
+threshold too fast, which is the same bug pointing the other way.
 
-Adds recordSetters: which runs broke a record on the day they were run,
-rather than which runs hold a record today. A personal best is a day, not a
-standing title — a run keeps its mark after it has been beaten. The list
-draws it with the gold token globals.css already reserves for personal
-records, as an inset ring so the row does not move by a pixel.
+Also adds migration 0017. auth.users had one trigger, on INSERT, so
+profiles.email was copied at signup and never updated again: an athlete who
+changed their address kept the old one in profiles forever, and the coach's
+roster labels people by it. A trigger rather than a write in the action,
+because the address can also change from the dashboard or the admin API.
 
-The seed was writing streams_fetched_at with no pace_shape or best_efforts,
-which was worse than writing neither: the app concluded the streams had been
-fetched and were empty, so every chart said there was no detail and every
-personal best showed a dash. Both columns are now generated per session
-type.
+And the seed's closing summary reported what that run created rather than what
+is in the database, so --reset followed by a plain seed printed "0 planned
+workouts" over a database holding six thousand.
 
-565 tests, 11 of them new.
+576 tests, 11 of them new.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01SwrFRrEWTDaEjCwqEZogWx

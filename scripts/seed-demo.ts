@@ -1042,9 +1042,29 @@ async function main() {
     );
   }
 
+  /*
+   * Report what is in the database, not what this run happened to create.
+   *
+   * `--reset` clears and then re-seeds, so running `--reset` followed by a
+   * plain seed leaves the second run with nothing to create: it finds the
+   * plans already there, skips them, and used to print "0 planned workouts" at
+   * the end of a database holding six thousand. The number was true and the
+   * sentence was a lie.
+   */
+  const { count: planCount } = await admin
+    .from("training_plans")
+    .select("*", { count: "exact", head: true });
+  const { count: workoutCount } = await admin
+    .from("plan_workouts")
+    .select("*", { count: "exact", head: true });
+
   console.log(
     `\nDone. ${COACHES.length} coaches · ${roster.length} athletes · ` +
-      `${totalRuns} runs · ${totalWorkouts} planned workouts.`,
+      `${totalRuns} runs written this run.`,
+  );
+  console.log(
+    `In the database now: ${planCount ?? "?"} plans · ${workoutCount ?? "?"} planned workouts` +
+      `${totalWorkouts === 0 ? " (already present, nothing created this run)" : ""}.`,
   );
   console.log(`Coaches:  coach1@${DEMO_DOMAIN} · coach2@${DEMO_DOMAIN}`);
   console.log(`Athletes: runner1-coach1@${DEMO_DOMAIN} … runner20-coach2@${DEMO_DOMAIN}`);

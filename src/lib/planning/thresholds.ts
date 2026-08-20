@@ -138,9 +138,66 @@ export function estimateLthr(
 /* ---------------------------------------------------------------- */
 
 /**
- * Fastest sustained speed over 35–75 minutes, gated on the effort actually
+ * Shortest effort that still says something about threshold, in seconds.
+ *
+ * Was 35 minutes, which is stricter than the evidence requires and stricter
+ * than the industry: TrainingPeaks, Friel and Tredict all accept a 20-minute
+ * effort. Twenty minutes at threshold heart rate is a real threshold effort,
+ * and demanding 35 excluded most interval sessions — which is how athletes who
+ * train hard twice a week ended up with no measurable threshold at all.
+ */
+export const MIN_THRESHOLD_EFFORT_S = 1200;
+
+/** Beyond this an effort is long enough that fatigue, not threshold, sets the pace. */
+export const MAX_THRESHOLD_EFFORT_S = 4500;
+
+/**
+ * An effort shorter than an hour is run *above* threshold, so it is shaded down.
+ *
+ * The industry convention is threshold ≈ 95% of a best 20-minute effort
+ * (TrainingPeaks, Friel). An effort of 35 minutes or more is close enough to
+ * threshold to take as-is. Between the two we interpolate.
+ *
+ * Without this, widening the window would have produced a threshold that is too
+ * *fast* — the opposite error, and a worse one: every prescribed pace would come
+ * out harder than intended.
+ */
+export function durationDiscount(durationSec: number): number {
+  if (durationSec >= 2100) return 1;
+  const t = (durationSec - MIN_THRESHOLD_EFFORT_S) / (2100 - MIN_THRESHOLD_EFFORT_S);
+  return 0.95 + 0.05 * Math.max(0, Math.min(1, t));
+}
+
+/**
+ * Fastest sustained speed over 20–75 minutes, gated on the effort actually
  * having been hard (>= 90% of LTHR) so easy long runs don't set the threshold.
- * Falls back to Riegel-scaling the best short effort.
+ *
+ * ## Why there is no longer a fallback
+ *
+ * There used to be one: with no qualifying effort, take the best speed over any
+ * run of 20+ minutes and shade it down 6%. It looks harmless and it is not.
+ *
+ * For an athlete who only ever runs easy, "the best run over 20 minutes" *is* an
+ * easy run. The fallback therefore treated an easy pace as threshold pace and
+ * then made it slower still — and because every prescribed pace is a ratio of
+ * this number, it told beginners to run 8:15, 8:30, even 10:29 per kilometre
+ * when their actual easy pace was 6:45. The app was instructing people to run
+ * slower than they already run easily, and it compounds: run to those paces and
+ * the next estimate is slower again.
+ *
+ * The reason it produced nonsense is that it never checked heart rate. The main
+ * path does; the fallback inferred effort from speed alone, which only works for
+ * somebody who does hard sessions — exactly the athlete who never needs it.
+ *
+ * So it is gone. No qualifying effort means no threshold pace: zero, `measured`
+ * false, and the callers already handle that — `paceForWorkout` returns null and
+ * `describeSession` falls back to distance alone, so the plan reads "8.0 km,
+ * easy" instead of inventing a number.
+ *
+ * This is also the industry norm. TrainingPeaks, WKO5, GoldenCheetah and Final
+ * Surge all leave threshold *pace* as a field somebody fills in; intervals.icu
+ * computes a critical speed and still refuses to write it there. Nobody guesses
+ * this from ordinary training, because it cannot be done.
  */
 export function estimateThresholdSpeed(
   history: HistoryActivity[],
@@ -148,24 +205,19 @@ export function estimateThresholdSpeed(
 ): { thresholdSpeedMps: number; measured: boolean } {
   const hard = history.filter(
     (a) =>
-      a.durationSec >= 2100 &&
-      a.durationSec <= 4500 &&
+      a.durationSec >= MIN_THRESHOLD_EFFORT_S &&
+      a.durationSec <= MAX_THRESHOLD_EFFORT_S &&
       a.distanceM > 0 &&
       a.avgHr !== null &&
       a.avgHr >= lthr * 0.9,
   );
 
-  if (hard.length > 0) {
-    const best = Math.max(...hard.map((a) => a.distanceM / a.durationSec));
-    return { thresholdSpeedMps: best, measured: true };
-  }
+  if (hard.length === 0) return { thresholdSpeedMps: 0, measured: false };
 
-  // no qualifying effort — take the best speed over any run of 20+ minutes
-  // and shade it down, since a shorter effort is run above threshold
-  const any = history.filter((a) => a.durationSec >= 1200 && a.distanceM > 0);
-  if (any.length === 0) return { thresholdSpeedMps: 0, measured: false };
-  const best = Math.max(...any.map((a) => a.distanceM / a.durationSec));
-  return { thresholdSpeedMps: best * 0.94, measured: false };
+  const best = Math.max(
+    ...hard.map((a) => (a.distanceM / a.durationSec) * durationDiscount(a.durationSec)),
+  );
+  return { thresholdSpeedMps: best, measured: true };
 }
 
 /* ---------------------------------------------------------------- */
@@ -214,11 +266,21 @@ export function estimateThresholds(
 
   const { thresholdSpeedMps, measured: paceMeasured } = estimateThresholdSpeed(history, lthr);
   if (thresholdSpeedMps > 0) {
-    const pace = formatMinSec(1000 / thresholdSpeedMps);
     notes.push(
-      paceMeasured
-        ? `Threshold pace ${pace}/km, from your fastest sustained run.`
-        : `Threshold pace ${pace}/km — estimated, no qualifying hard run yet.`,
+      `Threshold pace ${formatMinSec(1000 / thresholdSpeedMps)}/km, from your fastest sustained run.`,
+    );
+  } else {
+    /*
+     * Say why there is no pace, rather than leaving a silent blank.
+     *
+     * This branch is now reachable — it was not, because the old fallback
+     * always produced a number — so the athlete needs to know what to do about
+     * it. The plan still works: it prescribes distances, and picks up paces the
+     * moment there is something real to base them on.
+     */
+    notes.push(
+      "No threshold pace yet — sessions show distance only. One sustained hard " +
+        "effort of 20 minutes or more sets it.",
     );
   }
 
