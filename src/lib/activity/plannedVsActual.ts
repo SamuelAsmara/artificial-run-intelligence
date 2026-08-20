@@ -67,6 +67,11 @@ export type Verdict = "ontarget" | "toofast" | "tooslow" | "unplanned";
 
 export interface Comparison {
   verdict: Verdict;
+  /**
+   * The planned session's type, so the chart can decide whether one target
+   * band across the whole run is honest. It is not, for intervals.
+   */
+  workoutType: string;
   /** the tag: "On target", "Too fast", … */
   label: string;
   /** css variable for the tag's text colour */
@@ -125,6 +130,7 @@ export function comparePlanned(
     if (!planned) return null;
     return {
       verdict: "unplanned",
+      workoutType: planned.workoutType,
       label: "Rest day",
       color: "var(--color-caution)",
       plannedLine: "Planned · Rest",
@@ -149,6 +155,7 @@ export function comparePlanned(
   if (plannedPaceSec === null) {
     return {
       verdict: "ontarget",
+      workoutType: planned.workoutType,
       label: "Logged",
       color: "var(--color-muted)",
       plannedLine,
@@ -165,6 +172,7 @@ export function comparePlanned(
   if (Math.abs(delta) <= PACE_TOLERANCE_S) {
     return {
       verdict: "ontarget",
+      workoutType: planned.workoutType,
       label: "On target",
       color: "var(--color-positive)",
       plannedLine,
@@ -184,6 +192,7 @@ export function comparePlanned(
         "a target that is now too soft?";
     return {
       verdict: "toofast",
+      workoutType: planned.workoutType,
       label: "Too fast",
       color: "var(--color-caution)",
       plannedLine,
@@ -199,6 +208,7 @@ export function comparePlanned(
 
   return {
     verdict: "tooslow",
+    workoutType: planned.workoutType,
     label: "Below target",
     color: "var(--color-caution)",
     plannedLine,

@@ -101,6 +101,8 @@ export function buildStreams(): ChartStreams {
 }
 
 export const AD_COPY = {
+  targetAbove: "target pace is faster than this run",
+  targetBelow: "target pace is slower than this run",
   brand: "ARI",
   back: "Back to dashboard",
   navHome: "Home",

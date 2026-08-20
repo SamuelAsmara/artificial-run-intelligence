@@ -21,7 +21,8 @@ const base = (over: Partial<ActivityNoteInput> = {}): ActivityNoteInput => ({
   ...over,
 });
 
-const cmp = (verdict: Comparison["verdict"]): Comparison => ({
+const cmp = (verdict: Comparison["verdict"], workoutType = "easy"): Comparison => ({
+  workoutType,
   verdict, label: "", color: "", plannedLine: "", actualLine: "", note: "", plannedPaceSec: 330,
 });
 

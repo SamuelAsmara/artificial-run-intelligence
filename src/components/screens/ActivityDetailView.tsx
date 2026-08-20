@@ -34,6 +34,7 @@ import {
   AXIS_KM_Y, AXIS_TIME_Y, BAND_BOTTOM, BAND_TOP, VIEW, X0, X1,
   bandAt, distanceTicks, layoutBands, timeTicks,
   type Band, type BandRange,
+  targetBand,
 } from "@/lib/activity/chartLayout";
 import { fastestSegment, readableSegments, summarise, type RangeSummary, type Segment } from "@/lib/activity/metrics";
 import { paceAxisFor, type ChartStreams } from "@/lib/activity/resample";
@@ -220,6 +221,7 @@ export function ActivityDetailView({
             fastestSeg={fastest >= 0 ? segments[fastest] : null}
             driftOnsetM={data?.driftOnsetM ?? null}
             plannedPaceSec={data?.comparison?.plannedPaceSec ?? null}
+            plannedType={data?.comparison?.workoutType ?? null}
             onDown={onDown} onMove={onMove} onUp={onUp} onLeave={onLeave}
           />
         ) : (
@@ -609,7 +611,7 @@ function SegmentStrip({
 }
 
 function Chart({
-  geo, hover, sel, fastestSeg, driftOnsetM, plannedPaceSec,
+  geo, hover, sel, fastestSeg, driftOnsetM, plannedPaceSec, plannedType,
   onDown, onMove, onUp, onLeave,
 }: {
   geo: Geometry;
@@ -618,6 +620,7 @@ function Chart({
   fastestSeg: Segment | null;
   driftOnsetM: number | null;
   plannedPaceSec: number | null;
+  plannedType: string | null;
   onDown: (e: React.MouseEvent<SVGSVGElement>) => void;
   onMove: (e: React.MouseEvent<SVGSVGElement>) => void;
   onUp: (e: React.MouseEvent<SVGSVGElement>) => void;
@@ -625,6 +628,7 @@ function Chart({
 }) {
   const { s, bands, band, X, x, paths, kmTicks, timeRow } = geo;
   const pace = band.pace;
+  const target = pace ? targetBand(pace, plannedPaceSec, plannedType) : null;
 
   const hovered = hover && hover.i >= 0 && hover.i < geo.n ? hover : null;
   const hx = hovered ? X(hovered.i) : 0;
@@ -654,18 +658,37 @@ function Chart({
           />
         ))}
 
-        {/* the planned pace window, drawn only when a session was planned */}
-        {pace && plannedPaceSec ? (
+        {/*
+            The planned pace window.
+
+            `targetBand` decides whether there is anything honest to draw: it
+            declines for an interval session, where one band across warm-up,
+            reps and floats would report failure on a session run exactly as
+            written, and it reports when the whole run sat outside the target
+            so an edge marker can be drawn instead of a one-pixel sliver.
+        */}
+        {pace && target ? (
           <>
             <rect
-              x={X0} y={pace.y(plannedPaceSec - 10)} width={X1 - X0}
-              height={Math.max(1, pace.y(plannedPaceSec + 10) - pace.y(plannedPaceSec - 10))}
-              fill="var(--color-accent)" opacity="0.08"
+              x={X0} y={target.y} width={X1 - X0} height={target.height}
+              fill="var(--color-accent)" opacity={target.outside ? 0.5 : 0.08}
             />
-            <line
-              x1={X0} x2={X1} y1={pace.y(plannedPaceSec)} y2={pace.y(plannedPaceSec)}
-              stroke="var(--color-accent)" strokeWidth="1" strokeDasharray="6 4" opacity="0.55"
-            />
+            {target.outside ? (
+              <text
+                x={X0 + 6}
+                y={target.outside === "faster" ? target.y + 12 : target.y - 5}
+                fill="var(--color-accent)" fontSize="8.5" fontFamily="var(--font-mono)"
+                opacity="0.8"
+              >
+                {target.outside === "faster" ? copy.targetAbove : copy.targetBelow}
+              </text>
+            ) : (
+              <line
+                x1={X0} x2={X1}
+                y1={pace.y(plannedPaceSec as number)} y2={pace.y(plannedPaceSec as number)}
+                stroke="var(--color-accent)" strokeWidth="1" strokeDasharray="6 4" opacity="0.55"
+              />
+            )}
           </>
         ) : null}
 

@@ -204,3 +204,77 @@ export function timeTicks(
   }
   return out;
 }
+
+/* ------------------------------------------------------------------ */
+/* The coach's target, drawn on the pace band                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Seconds per kilometre either side of the target that still counts as on it.
+ *
+ * The same number `comparePlanned` uses for its verdict, deliberately: the
+ * shaded band and the sentence underneath it must never disagree.
+ *
+ * A band rather than a line even when the coach gives a single figure. Nobody
+ * holds an exact pace, and a hairline would make every honest run look like a
+ * miss — which trains the athlete to ignore it.
+ */
+export const TARGET_TOLERANCE_S = 10;
+
+export interface TargetBand {
+  /** rect top, in the same coordinates as the chart */
+  y: number;
+  height: number;
+  /**
+   * Set when the whole run sat outside the target, so the band had to be
+   * clamped to the edge of the plot. The caller should draw an edge marker
+   * rather than a sliver: a two-pixel bar at the top of the band reads as
+   * "your target is up here somewhere", which is the truth, where a squashed
+   * rectangle reads as a rendering fault.
+   */
+  outside: "faster" | "slower" | null;
+}
+
+/**
+ * Where to shade the pace band so the coach's target is visible against what
+ * was actually run.
+ *
+ * Returns null when there is nothing honest to draw:
+ *
+ * - **no target** — nothing was prescribed, so nothing is claimed;
+ * - **an interval session** — a single band across the whole run is wrong for
+ *   a session whose target changes every few minutes. The warm-up and the
+ *   floats would sit outside a band built for the reps, and the picture would
+ *   report failure on a session run exactly as written. Per-rep targets are a
+ *   different shape of data and a later piece of work.
+ */
+export function targetBand(
+  band: Pick<Band, "y" | "plotTop" | "plotBottom" | "hi" | "lo">,
+  plannedPaceSec: number | null,
+  workoutType: string | null,
+  toleranceS: number = TARGET_TOLERANCE_S,
+): TargetBand | null {
+  if (!plannedPaceSec || !Number.isFinite(plannedPaceSec)) return null;
+  if (workoutType === "interval" || workoutType === "intervals") return null;
+
+  const fast = plannedPaceSec - toleranceS;
+  const slow = plannedPaceSec + toleranceS;
+
+  // The pace band is inverted — faster is higher — so which end maps to the
+  // top is not something to assume. Ask the band and sort.
+  const a = band.y(fast);
+  const b = band.y(slow);
+  const y = Math.min(a, b);
+  const height = Math.abs(a - b);
+
+  const plotLo = Math.min(band.lo, band.hi);
+  const plotHi = Math.max(band.lo, band.hi);
+
+  let outside: TargetBand["outside"] = null;
+  if (slow < plotLo) outside = "faster";
+  else if (fast > plotHi) outside = "slower";
+
+  return outside
+    ? { y: outside === "faster" ? band.plotTop : band.plotBottom - 2, height: 2, outside }
+    : { y, height, outside: null };
+}

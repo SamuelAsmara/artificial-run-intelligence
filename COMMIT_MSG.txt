@@ -1,46 +1,35 @@
-stop inventing a threshold pace, and keep profiles.email in step
+make the planned-pace band tell the truth about interval sessions
 
-estimateThresholdSpeed had a fallback: with no sustained hard effort on
-record, take the fastest run over twenty minutes and shade it down 6%. It
-looks harmless. For an athlete who only ever runs easy, "the fastest run over
-twenty minutes" is an easy run — so the fallback treated an easy pace as a
-threshold pace and then made it slower still. The demo dataset put numbers on
-it: prescribed easy paces of 8:15, 8:18, 8:30 and 10:29 per kilometre for
-athletes whose actual easy pace is 6:45. The app was telling beginners to run
-slower than they already run easily, and it compounds — run to those paces and
-the next estimate is slower again.
+The band itself was already there — a shaded window ±10 s/km around the
+target, with a dashed centre line, drawn on the pace lane. Nobody had seen it,
+because no demo run carried a pace stream and the whole chart fell back to
+"second-by-second detail is only available for runs from intervals.icu". It
+was correct and invisible.
 
-The reason it produced nonsense is that it never looked at heart rate. The
-main path does; the fallback inferred effort from speed alone, which only
-works for somebody who does hard sessions — precisely the athlete who never
-reaches it.
+Two things it got wrong once there was data to draw it against.
 
-So it is gone. No qualifying effort now means no threshold pace, and the
-callers already handled that: paceForWorkout returns null and describeSession
-falls back to distance, so a session reads "8.0 km, easy" rather than carrying
-an invented number. This is also what the field does — TrainingPeaks, WKO5,
-GoldenCheetah and Final Surge all leave threshold pace as something somebody
-enters, and intervals.icu computes a critical speed and still declines to
-write it there.
+An interval session has no single target pace. The warm-up, the floats and the
+cool-down all sit outside any window built around the reps, so a band across
+the whole run reported failure on a session executed exactly as written.
+targetBand declines to draw one, and per-rep targets are left as their own
+piece of work — sessionShape already knows how to split a session, so the
+data exists when the screen is ready for it.
 
-The qualifying window widens from 35 minutes to 20, which is what Friel,
-TrainingPeaks and Tredict accept and what most interval sessions actually are;
-35 was excluding the hard efforts of everybody who trains hard twice a week. A
-duration discount comes with it — threshold is about 95% of a best 20-minute
-effort — because widening the window without one would have made every
-threshold too fast, which is the same bug pointing the other way.
+And when the whole run fell outside the target, band.y clamped both edges to
+the same boundary and Math.max(1, …) drew a one-pixel line with no
+explanation — which reads as a rendering fault rather than as information.
+That case is now an explicit edge marker with a label saying which side the
+target is on.
 
-Also adds migration 0017. auth.users had one trigger, on INSERT, so
-profiles.email was copied at signup and never updated again: an athlete who
-changed their address kept the old one in profiles forever, and the coach's
-roster labels people by it. A trigger rather than a write in the action,
-because the address can also change from the dashboard or the admin API.
+The tolerance moves into a named constant shared with comparePlanned, so the
+shaded window and the sentence underneath it cannot drift apart. Comparison
+gains workoutType, which is how the chart knows what kind of session it is
+looking at.
 
-And the seed's closing summary reported what that run created rather than what
-is in the database, so --reset followed by a plain seed printed "0 planned
-workouts" over a database holding six thousand.
+In the ordinary case the rendered output is unchanged: same rect, same
+geometry, same dashed line.
 
-576 tests, 11 of them new.
+583 tests, 7 of them new.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01SwrFRrEWTDaEjCwqEZogWx
