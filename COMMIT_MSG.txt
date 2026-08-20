@@ -1,39 +1,44 @@
-demo dataset, six documents as Word, and a pace column that held a duration
+fix the coach board's silent truncation, mark record runs, and stop dropping distance
 
-Adds scripts/seed-demo.ts: one coach, twenty athletes across four race
-groups, sixteen weeks of history each and a full plan to race day. The
-script writes only raw inputs — distance, duration, heart rate, sleep —
-and imports the application's own modules (recomputeForUser,
-readCapacity, estimateThresholds, generatePlan) for everything derived.
-A demo built from hand-tuned CTL values proves nothing; this one is a
-live test of the engine over twenty athletes at once.
+The twenty-athlete demo dataset did what it was built to do: it surfaced a
+class of bug that cannot exist with one account.
 
-It found two real defects on its first dry run.
+getCoachWorkspace read a roster's worth of sessions with no range and no
+order. PostgREST returns at most a thousand rows and says nothing about the
+rest, and the window holds about fourteen hundred. The board showed 32
+sessions in a week where there were 80, eight on a Thursday where there were
+twenty, and left the athlete with the most missed sessions off the "needs
+you" list entirely, because his rows were among the ones dropped. Nothing
+errored. The screen was simply wrong, and looked fine.
 
-plan_workouts.planned_pace is declared `interval` and every writer puts a
-pace label in it. Postgres reads "5:49" as five hours forty-nine minutes,
-and every reader treats the column as an already-formatted string. No row
-had ever been written to it — no plan had ever been generated against a
-real account — so nobody had seen it. Migration 0016 changes the column
-to text, which is what the value has always been.
+Two neighbouring queries were one growth step from the same fault and only
+survived by accident: readiness_snapshots read 2,162 rows to keep 20, and
+activities read every run the roster had ever logged. The first is now
+bounded by a row count, the second by the date window — deliberately not by
+a row count, because a run outside the window cannot mark a session inside
+it, and truncating would have invented missed sessions. The per-athlete
+filter became a Map; it was 28,000 comparisons per render and grew with the
+product of roster and window.
 
-The second is not fixed here and needs a decision. When an athlete has no
-sustained hard effort of 35–75 minutes, estimateThresholdSpeed falls back
-to the fastest run over twenty minutes and shades it down 6%. For a
-low-volume runner that run is an easy long run, so the estimator treats an
-easy pace as threshold and then slows it further: prescribed easy paces of
-8:15 to 10:29 per kilometre for athletes who actually run 6:45. The seed
-works around it with a minutes-based floor on generated sessions; the
-underlying fallback is still wrong for real users.
+comparePlanned computed a distance note and then threw it away whenever the
+pace verdict fired. An athlete given 6.6 km who ran 15.7 was told only that
+his pace was 20 s/km slow. Past 25% drift the distance now leads the note;
+below it, it trails. The verdict tag still follows pace, because pace is
+what the plan prescribed.
 
-Also converts the six course documents from the markdown drafts to Word
-with full RTL, tables, code blocks and page furniture (scripts/md2docx.js,
-so they can be rebuilt after any edit to the source). The previous .docx
-versions moved to _archive/ rather than being deleted.
+Adds recordSetters: which runs broke a record on the day they were run,
+rather than which runs hold a record today. A personal best is a day, not a
+standing title — a run keeps its mark after it has been beaten. The list
+draws it with the gold token globals.css already reserves for personal
+records, as an inset ring so the row does not move by a pixel.
 
-Adds the first structure of the presentation — fourteen slides in the
-product's own palette, with speaker notes. Slides 5–7 carry placeholder
-frames until the demo data is in and the screenshots can be taken.
+The seed was writing streams_fetched_at with no pace_shape or best_efforts,
+which was worse than writing neither: the app concluded the streams had been
+fetched and were empty, so every chart said there was no detail and every
+personal best showed a dash. Both columns are now generated per session
+type.
+
+565 tests, 11 of them new.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01SwrFRrEWTDaEjCwqEZogWx

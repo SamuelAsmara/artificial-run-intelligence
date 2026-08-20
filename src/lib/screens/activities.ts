@@ -26,6 +26,8 @@ export interface Act {
   type: string; name: string; date: string; km: string; time: string;
   pace: string; paceSec: number; hr: string; kmN: number;
   spark: string; sparkColor: string;
+  /** "10K PB" when this run broke a record on the day it was run */
+  pb?: string | null;
 }
 
 const NAMES: Record<string, string> = {
@@ -109,6 +111,7 @@ export interface PacePoint {
 }
 
 export const ACT_COPY = {
+  pbTitle: "This run set a personal best on the day you ran it.",
   brand: "ARI", navHome: "Home", navActivities: "Activities",
   navPlan: "Plan", navSettings: "Settings",
   title: "Activities", subtitle: "Training history · last 4 weeks",

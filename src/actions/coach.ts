@@ -870,6 +870,51 @@ const shiftIso = (iso: string, days: number) =>
   new Date(Date.parse(iso) + days * 86_400_000).toISOString().slice(0, 10);
 
 /**
+ * PostgREST returns at most a thousand rows and says nothing about the rest.
+ *
+ * ## The bug this exists to stop
+ *
+ * The coach workspace read a roster's worth of sessions with a plain
+ * `.in(...).gte(...).lte(...)` and no range. With one athlete that returns
+ * everything; with twenty it returns the first thousand of about fourteen
+ * hundred, silently, and with no `order by` it is not even defined *which*
+ * thousand. The board then showed 32 sessions in a week where there were 80,
+ * eight sessions on a Thursday where there were twenty, and — the part that
+ * actually hurts — left the athlete with the most missed sessions off the
+ * "needs you" list entirely, because his rows were among the ones dropped.
+ *
+ * Nothing errored. The screen was simply wrong, and looked fine.
+ *
+ * ## Why paging rather than a smaller query
+ *
+ * The board genuinely needs every session in the window: it counts them per
+ * day, per race type and per athlete. Aggregating in Postgres would be faster
+ * still and is the right end state, but it means a new RPC and a migration,
+ * and this is the fix that makes the numbers correct today without changing
+ * the shape of anything.
+ *
+ * The explicit `order` is not decoration — paging without a total order can
+ * repeat or skip rows between pages.
+ */
+const PAGE = 1000;
+
+async function fetchAllPages<T>(
+  page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
+): Promise<T[]> {
+  const out: T[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await page(from, from + PAGE - 1);
+    if (error || !data) break;
+    out.push(...data);
+    if (data.length < PAGE) break;
+    // A roster large enough to need more than this has other problems; the
+    // guard is here so a bad filter can never spin forever.
+    if (out.length >= PAGE * 50) break;
+  }
+  return out;
+}
+
+/**
  * Everything the coach's home needs, for a window of dates.
  *
  * One call rather than one per panel. The window is a parameter because the
@@ -916,11 +961,20 @@ export async function getCoachWorkspace(
   const [{ data: profiles }, { data: snapshots }, { data: races }, { data: plans }, { data: lastRuns }] =
     await Promise.all([
       supabase.from("profiles").select("id, full_name, email, avatar_url, age, sex").in("id", ids),
+      /*
+       * Only the newest row per athlete is used, so ask for a bounded slice
+       * rather than every snapshot the roster has ever had. Twenty athletes
+       * had 2,162 of them and this read all of them to keep twenty.
+       *
+       * `ids.length * 2` covers the case where two athletes share the newest
+       * date and one of them has a second row for it.
+       */
       supabase
         .from("readiness_snapshots")
         .select("user_id, date, readiness_score, tsb, acwr")
         .in("user_id", ids)
-        .order("date", { ascending: false }),
+        .order("date", { ascending: false })
+        .limit(Math.max(50, ids.length * 4)),
       supabase
         .from("goal_races")
         .select("user_id, race_type, race_date, target_time")
@@ -928,10 +982,19 @@ export async function getCoachWorkspace(
         .eq("status", "active")
         .order("race_date", { ascending: true }),
       supabase.from("training_plans").select("id, user_id").in("user_id", ids).eq("status", "active"),
+      /*
+       * Runs are needed for two things: the latest run per athlete, and the
+       * set of days somebody actually ran, which decides whether a session
+       * counts as missed. The second one is why this is bounded by the window
+       * rather than by a row count — a run that falls outside the window can
+       * never mark a session inside it, and a row cap would silently drop the
+       * oldest days and invent missed sessions.
+       */
       supabase
         .from("activities")
         .select("user_id, started_at, distance_m")
         .in("user_id", ids)
+        .gte("started_at", `${windowFrom}T00:00:00Z`)
         .order("started_at", { ascending: false }),
     ]);
 
@@ -959,29 +1022,53 @@ export async function getCoachWorkspace(
   const planIds = (plans ?? []).map((p) => p.id);
   const planOwner = new Map((plans ?? []).map((p) => [p.id, p.user_id]));
 
-  const { data: workouts } = planIds.length
-    ? await supabase
-        .from("plan_workouts")
-        .select("plan_id, day_date, workout_type, planned_distance")
-        .in("plan_id", planIds)
-        .gte("day_date", windowFrom)
-        .lte("day_date", windowTo)
-    : { data: [] };
+  const workouts = planIds.length
+    ? await fetchAllPages<{
+        plan_id: string;
+        day_date: string;
+        workout_type: WorkoutType;
+        planned_distance: number | null;
+      }>((from, to) =>
+        supabase
+          .from("plan_workouts")
+          .select("plan_id, day_date, workout_type, planned_distance")
+          .in("plan_id", planIds)
+          .gte("day_date", windowFrom)
+          .lte("day_date", windowTo)
+          .order("day_date", { ascending: true })
+          .order("plan_id", { ascending: true })
+          .range(from, to),
+      )
+    : [];
+
+  /*
+   * Group once instead of scanning the whole list per athlete.
+   *
+   * The previous shape was `ids.map(... workouts.filter(...))` — twenty
+   * athletes times fourteen hundred sessions is 28,000 comparisons on every
+   * render, and it grows with the product of the two.
+   */
+  const workoutsByAthlete = new Map<string, typeof workouts>();
+  for (const w of workouts) {
+    const owner = planOwner.get(w.plan_id);
+    if (!owner) continue;
+    const bucket = workoutsByAthlete.get(owner);
+    if (bucket) bucket.push(w);
+    else workoutsByAthlete.set(owner, [w]);
+  }
 
   const week = weekDates(day);
   const athletes: AthleteRow[] = ids.map((id) => {
     const snap = latestSnap.get(id);
     const race = raceOf.get(id);
     const last = lastRunOf.get(id);
-    const missed = (workouts ?? []).filter((w) => {
-      if (planOwner.get(w.plan_id) !== id) return false;
-      return (
+    const missed = (workoutsByAthlete.get(id) ?? []).filter(
+      (w) =>
         w.day_date >= week[0] &&
         w.day_date < day &&
         w.workout_type !== "rest" &&
-        !ranByDay.has(`${id}|${w.day_date}`)
-      );
-    }).length;
+        !ranByDay.has(`${id}|${w.day_date}`),
+    ).length;
 
     return {
       id,
@@ -998,7 +1085,7 @@ export async function getCoachWorkspace(
     };
   });
 
-  const sessions: CalendarSession[] = (workouts ?? []).flatMap((w) => {
+  const sessions: CalendarSession[] = workouts.flatMap((w) => {
     const athleteId = planOwner.get(w.plan_id);
     if (!athleteId) return [];
     return [{

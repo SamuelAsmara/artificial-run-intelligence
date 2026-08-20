@@ -15,8 +15,20 @@
  * Pace decides the verdict and distance only qualifies it. That ordering is
  * deliberate: running an easy day 20 s/km too fast is the mistake that costs
  * you the next session, while running 6.4 km instead of 6.0 km costs nothing.
- * The tolerance is ±10 s/km, matching the shaded band the chart already draws,
- * so the words under the chart and the picture on it cannot disagree.
+ * The tolerance is ±10 s/km, matching the shaded band the chart draws, so the
+ * words under the chart and the picture on it cannot disagree.
+ *
+ * ## Except when the distance is the story
+ *
+ * That ordering holds while the distance is roughly right. It stops holding
+ * somewhere: an athlete who was given 6.6 km and ran 15.7 was told "pace came
+ * in 20 s/km slower than planned" and nothing else — a note about pace, to
+ * somebody who ran two and a half times the session. It read as though the app
+ * had not noticed.
+ *
+ * So past {@link DISTANCE_HEADLINE} the distance is said first and the pace
+ * second, and below it the distance note is appended rather than dropped. The
+ * verdict tag still follows pace, because that is what the plan prescribed.
  *
  * Everything here is pure. It takes two plain objects and returns strings.
  */
@@ -28,6 +40,15 @@ export const PACE_TOLERANCE_S = 10;
 
 /** How far the distance may drift before it is worth mentioning. */
 export const DISTANCE_TOLERANCE = 0.1;
+
+/**
+ * Drift past which the distance leads the note rather than trailing it.
+ *
+ * A quarter is deliberately well clear of the ±10% that counts as "close
+ * enough": between the two the distance is mentioned, and only past this is it
+ * the first thing said.
+ */
+export const DISTANCE_HEADLINE = 0.25;
 
 export interface PlannedSession {
   /** "easy" | "long" | "tempo" | "intervals" | "rest" | … */
@@ -156,20 +177,25 @@ export function comparePlanned(
   }
 
   if (delta < 0) {
+    const pace = easyDay
+      ? `You ran ${-delta} s/km faster than planned on an easy day. That costs ` +
+        "recovery — the next session assumes you kept this easy."
+      : `${-delta} s/km faster than planned. Worth knowing why: good legs, or ` +
+        "a target that is now too soft?";
     return {
       verdict: "toofast",
       label: "Too fast",
       color: "var(--color-caution)",
       plannedLine,
       actualLine,
-      note: easyDay
-        ? `You ran ${-delta} s/km faster than planned on an easy day. That costs ` +
-          "recovery — the next session assumes you kept this easy."
-        : `${-delta} s/km faster than planned. Worth knowing why: good legs, or ` +
-          "a target that is now too soft?",
+      note: withDistance(pace, plannedKm, actualKm),
       plannedPaceSec,
     };
   }
+
+  const pace =
+    `Pace came in ${delta} s/km slower than planned. If you felt heavy, that is ` +
+    "worth logging — fatigue may be higher than the model estimates.";
 
   return {
     verdict: "tooslow",
@@ -177,11 +203,31 @@ export function comparePlanned(
     color: "var(--color-caution)",
     plannedLine,
     actualLine,
-    note:
-      `Pace came in ${delta} s/km slower than planned. If you felt heavy, that is ` +
-      "worth logging — fatigue may be higher than the model estimates.",
+    note: withDistance(pace, plannedKm, actualKm),
     plannedPaceSec,
   };
+}
+
+/**
+ * Puts the pace sentence and the distance sentence in the right order.
+ *
+ * Past {@link DISTANCE_HEADLINE} the distance goes first: it is the larger
+ * departure from the plan and the one the athlete already knows about.
+ */
+function withDistance(
+  paceSentence: string,
+  plannedKm: number | null,
+  actualKm: number,
+): string {
+  const distance = distanceNote(plannedKm, actualKm);
+  if (!distance) return paceSentence;
+
+  const drift =
+    plannedKm && plannedKm > 0 ? Math.abs(actualKm - plannedKm) / plannedKm : 0;
+
+  return drift > DISTANCE_HEADLINE
+    ? `${distance} ${paceSentence}`
+    : `${paceSentence} ${distance}`;
 }
 
 /** A sentence about distance, or "" when the distance was close enough. */

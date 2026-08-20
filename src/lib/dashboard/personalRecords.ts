@@ -75,3 +75,62 @@ export function personalRecords(
     };
   });
 }
+
+/* ------------------------------------------------------------------ */
+/* Which run set the record                                            */
+/* ------------------------------------------------------------------ */
+
+export interface ActivityForRecordCheck extends ActivityWithEfforts {
+  id: string;
+}
+
+/**
+ * The runs that broke a record *at the time they were run*.
+ *
+ * `personalRecords` answers "what is my best 10 km" — one row per distance,
+ * reduced over everything. This answers a different question the list needs:
+ * standing in front of a run from March, was it a personal best *then*?
+ *
+ * The distinction matters. A run is not a record because it happens to hold
+ * the crown today — that would un-mark a run the moment it was beaten, and a
+ * personal best you have since improved on is still the day you ran it. So
+ * this walks the history oldest first and marks a run whenever it beat
+ * everything before it. A record once set stays marked forever.
+ *
+ * A run can break more than one distance at once — a fast half marathon
+ * usually takes the 10 km with it. The label names the longest one, because
+ * that is the achievement the athlete will recognise.
+ *
+ * @returns activity id -> label, e.g. "10K PB". Runs that set nothing are absent.
+ */
+export function recordSetters(
+  activities: ActivityForRecordCheck[],
+): Map<string, string> {
+  const oldestFirst = [...activities]
+    .filter((a) => a.started_at && a.best_efforts)
+    .sort((a, b) => (a.started_at as string).localeCompare(b.started_at as string));
+
+  const best = new Map<string, number>();
+  const out = new Map<string, string>();
+
+  for (const activity of oldestFirst) {
+    let longest: { label: string; index: number } | null = null;
+
+    PR_ROWS.forEach(({ key, label }, index) => {
+      const seconds = activity.best_efforts?.[key];
+      if (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds <= 0) return;
+
+      const previous = best.get(key);
+      // The first time a distance is ever covered it is a record by definition,
+      // which is correct: there was no previous best to beat.
+      if (previous === undefined || seconds < previous) {
+        best.set(key, seconds);
+        if (!longest || index > longest.index) longest = { label, index };
+      }
+    });
+
+    if (longest) out.set(activity.id, `${(longest as { label: string }).label} PB`);
+  }
+
+  return out;
+}

@@ -143,3 +143,39 @@ describe("comparePlanned", () => {
     }
   });
 });
+
+describe("distance is not dropped when the pace verdict fires", () => {
+  const planned = { workoutType: "easy", plannedDistanceM: 6600, plannedPace: "4:57" };
+
+  it("mentions the distance even when the pace is off target", () => {
+    // The reported case: 6.6 km planned, 15.7 km run, and the app said only
+    // that the pace was 20 s/km slow.
+    const c = comparePlanned(planned, { distanceM: 15_700, durationS: 4985 });
+    expect(c?.verdict).toBe("tooslow");
+    expect(c?.note).toMatch(/9\.1 km further/);
+    expect(c?.note).toMatch(/s\/km slower/);
+  });
+
+  it("leads with the distance once the drift is large", () => {
+    const c = comparePlanned(planned, { distanceM: 15_700, durationS: 4985 });
+    expect(c?.note.startsWith("You went")).toBe(true);
+  });
+
+  it("keeps pace first when the distance only drifted a little", () => {
+    // 7.6 km against 6.6 planned: worth a mention, not worth the headline.
+    const c = comparePlanned(planned, { distanceM: 7600, durationS: 2600 });
+    expect(c?.note.startsWith("Pace came in")).toBe(true);
+    expect(c?.note).toMatch(/1\.0 km further/);
+  });
+
+  it("says nothing about distance when it landed on the number", () => {
+    const c = comparePlanned(planned, { distanceM: 6600, durationS: 2100 });
+    expect(c?.note).not.toMatch(/km further|km short/);
+  });
+
+  it("appends the distance to a too-fast verdict as well", () => {
+    const c = comparePlanned(planned, { distanceM: 3000, durationS: 780 });
+    expect(c?.verdict).toBe("toofast");
+    expect(c?.note).toMatch(/3\.6 km short/);
+  });
+});

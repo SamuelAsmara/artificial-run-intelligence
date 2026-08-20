@@ -23,7 +23,11 @@ import type { ChartStreams } from "@/lib/activity/resample";
 import { driftOnset, readableSegments, summarise, fastestSegment, type RangeSummary, type Segment } from "@/lib/activity/metrics";
 import { buildActivityNote, type ActivityNote } from "@/lib/activity/buildActivityNote";
 import { effectiveHrMax, estimateLthr, observedHrMax } from "@/lib/activity/zones";
-import { personalRecords, type PersonalRecord } from "@/lib/dashboard/personalRecords";
+import {
+  personalRecords,
+  recordSetters,
+  type PersonalRecord,
+} from "@/lib/dashboard/personalRecords";
 import { APP_LOCALE, APP_TIME_ZONE } from "@/lib/time/week";
 
 /**
@@ -49,6 +53,8 @@ export interface ActivityListItem {
   avgHr: number | null;
   paceShape: (number | null)[] | null;
   cardiacDriftPct: number | null;
+  /** "10K PB" when this run broke a record the day it was run, else null */
+  pb: string | null;
 }
 
 /**
@@ -76,10 +82,25 @@ export async function getActivities(limit = 60): Promise<ActivityListItem[]> {
 
   const { data } = await supabase
     .from("activities")
-    .select("id, started_at, distance_m, duration_s, avg_hr, pace_shape, cardiac_drift_pct")
+    .select("id, started_at, distance_m, duration_s, avg_hr, pace_shape, cardiac_drift_pct, best_efforts")
     .eq("user_id", user.id)
     .order("started_at", { ascending: false })
     .limit(limit);
+
+  /*
+   * Records are decided over the whole history, not over the page.
+   *
+   * `limit` is the list's page size; a run from last March can only be judged
+   * against everything before it. Asking for the efforts alone is cheap — two
+   * columns, no streams — and it is the only way the mark can be honest.
+   */
+  const { data: history } = await supabase
+    .from("activities")
+    .select("id, started_at, best_efforts")
+    .eq("user_id", user.id)
+    .not("best_efforts", "is", null);
+
+  const records = recordSetters(history ?? []);
 
   return (data ?? [])
     .filter((a) => a.started_at)
@@ -97,6 +118,7 @@ export async function getActivities(limit = 60): Promise<ActivityListItem[]> {
         avgHr: a.avg_hr,
         paceShape: a.pace_shape,
         cardiacDriftPct: a.cardiac_drift_pct,
+        pb: records.get(a.id) ?? null,
       };
     });
 }

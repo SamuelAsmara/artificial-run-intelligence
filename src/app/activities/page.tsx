@@ -51,6 +51,7 @@ export default async function ActivitiesPage() {
       kmN: r.distanceKm,
       spark: paceShapeToPath(r.paceShape),
       sparkColor: paceShapeColor(r.paceShape),
+      pb: r.pb,
     };
   });
 

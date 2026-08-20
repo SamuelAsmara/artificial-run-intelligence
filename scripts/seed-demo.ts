@@ -1,5 +1,5 @@
 /**
- * Demo dataset: one coach, twenty athletes, four race groups.
+ * Demo dataset: two coaches, twenty athletes each, four race groups apiece.
  *
  *   npx tsx scripts/seed-demo.ts --dry-run  # generate and check, write nothing
  *   npx tsx scripts/seed-demo.ts            # create anything missing
@@ -11,9 +11,13 @@
  * Every screen in ARI is downstream of two things: a history of runs and a
  * plan. Until now the only real account had 130 runs and no plan at all, so the
  * plan engine, the coach board and half the dashboard had never been seen with
- * data in them. This builds a population big enough to look at: twenty athletes
- * across four race groups, each with a real training history behind them and a
- * real plan in front of them.
+ * data in them. This builds a population big enough to look at: two coaches
+ * with twenty athletes each, four race groups per coach, every athlete with a
+ * real training history behind them and a real plan in front of them.
+ *
+ * The plan was built weeks ago, so every athlete is caught mid-programme with
+ * completed and missed sessions behind them. A plan that starts today
+ * exercises none of the plan-versus-actual code.
  *
  * ## Why it does not invent the numbers
  *
@@ -35,7 +39,9 @@
  *   NEXT_PUBLIC_SUPABASE_URL     project URL
  *   SUPABASE_SERVICE_ROLE_KEY    service role key (server-side only, never ships)
  *   DEMO_PASSWORD                the shared password for the demo logins
- *   COACH_EMAIL                  the coach account the athletes attach to
+ *
+ * The two coach accounts are created by this script (coach1@, coach2@); your
+ * own account is never touched, and --purge only ever removes @demo addresses.
  */
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
@@ -72,6 +78,27 @@ const HISTORY_WEEKS = 16;
 
 const DEMO_DOMAIN = "demo.ari-coach.app";
 
+/**
+ * Two coaches rather than one.
+ *
+ * A single coach proves the roster renders. Two prove it is *isolated*: coach1
+ * must not see one row belonging to coach2, and the RLS policies that
+ * guarantee that have never once been exercised against real rows. The pair is
+ * the test, not the decoration.
+ */
+interface Coach {
+  key: string;
+  email: string;
+  name: string;
+  code: string;
+  id?: string;
+}
+
+const COACHES: Coach[] = [
+  { key: "coach1", email: `coach1@${DEMO_DOMAIN}`, name: "Coach1", code: "COACH1" },
+  { key: "coach2", email: `coach2@${DEMO_DOMAIN}`, name: "Coach2", code: "COACH2" },
+];
+
 /** The four race groups, and what training in each one looks like. */
 interface Group {
   key: string;
@@ -79,6 +106,11 @@ interface Group {
   raceType: RaceType;
   /** weeks from today to race day */
   weeksToRace: number;
+  /**
+   * How long ago the plan was built, i.e. how far into it the athlete already
+   * is. Everything before today carries a completed or missed status.
+   */
+  elapsedWeeks: number;
   level: "beginner" | "intermediate" | "advanced";
   /** threshold speed in km/h, before per-athlete variation */
   thresholdKmh: number;
@@ -87,10 +119,10 @@ interface Group {
 }
 
 const GROUPS: Group[] = [
-  { key: "A", label: "5 ק\"מ — מתקדמים",   raceType: "5k",   weeksToRace: 9,  level: "advanced",     thresholdKmh: 16.4, weeklyKm: 48 },
-  { key: "B", label: "10 ק\"מ — ביניים",   raceType: "10k",  weeksToRace: 11, level: "intermediate", thresholdKmh: 14.6, weeklyKm: 40 },
-  { key: "C", label: "חצי מרתון — ביניים", raceType: "half", weeksToRace: 14, level: "intermediate", thresholdKmh: 13.2, weeklyKm: 46 },
-  { key: "D", label: "מרתון — מתחילים",    raceType: "full", weeksToRace: 24, level: "beginner",     thresholdKmh: 11.4, weeklyKm: 34 },
+  { key: "A", label: "5 ק\"מ — מתקדמים",   raceType: "5k",   weeksToRace: 9,  elapsedWeeks: 5,  level: "advanced",     thresholdKmh: 16.4, weeklyKm: 48 },
+  { key: "B", label: "10 ק\"מ — ביניים",   raceType: "10k",  weeksToRace: 11, elapsedWeeks: 6,  level: "intermediate", thresholdKmh: 14.6, weeklyKm: 40 },
+  { key: "C", label: "חצי מרתון — ביניים", raceType: "half", weeksToRace: 14, elapsedWeeks: 8,  level: "intermediate", thresholdKmh: 13.2, weeklyKm: 46 },
+  { key: "D", label: "מרתון — מתחילים",    raceType: "full", weeksToRace: 24, elapsedWeeks: 10, level: "beginner",     thresholdKmh: 11.4, weeklyKm: 34 },
 ];
 
 /**
@@ -108,12 +140,6 @@ const CHARACTERS: { kind: Character; note: string }[] = [
   { kind: "erratic",    note: "מפספס אימונים, שינה גרועה" },
 ];
 
-const NAMES = [
-  "יונתן לוי", "מאיה כהן", "איתי ברק", "נועה שגב", "עומר דהן",
-  "שירה אבידן", "רון מזרחי", "טל בן-דוד", "אורי פלד", "ליאור נחום",
-  "אדם רוזן", "יעל שמש", "ניר הראל", "דנה גל", "אסף קדם",
-  "רותם אזולאי", "גיא שרון", "הילה ברנע", "עידו כרמי", "מור אלון",
-];
 
 type SlotType = "easy" | "interval" | "long" | "rest";
 
@@ -205,7 +231,11 @@ function required(name: string): string {
 interface Athlete {
   index: number;
   email: string;
+  /** display name, e.g. "Runner7-Coach2" -- the scheme asked for by the tester */
   name: string;
+  coach: Coach;
+  /** 1..20 within this coach's roster */
+  runnerNumber: number;
   group: Group;
   character: Character;
   characterNote: string;
@@ -223,37 +253,46 @@ interface Athlete {
 function buildRoster(): Athlete[] {
   const out: Athlete[] = [];
   let n = 0;
-  for (const group of GROUPS) {
-    for (let i = 0; i < CHARACTERS.length; i++) {
-      const r = rng(1000 + n);
-      const character = CHARACTERS[i];
-      const age = Math.round(24 + r() * 26);
-      const sex: "male" | "female" = r() < 0.45 ? "female" : "male";
-      const speedFactor =
-        (sex === "female" ? 0.94 : 1) *
-        (character.kind === "returning" ? 0.92 : 1) *
-        jitter(r, 0.05);
-      const volumeFactor =
-        (character.kind === "returning" ? 0.65 : 1) *
-        (character.kind === "erratic" ? 0.8 : 1) *
-        jitter(r, 0.12);
 
-      out.push({
-        index: n,
-        email: `${group.key.toLowerCase()}${i + 1}@${DEMO_DOMAIN}`,
-        name: NAMES[n],
-        group,
-        character: character.kind,
-        characterNote: character.note,
-        age,
-        sex,
-        heightCm: Math.round((sex === "female" ? 165 : 177) + (r() * 2 - 1) * 8),
-        weightKg: round((sex === "female" ? 58 : 72) + (r() * 2 - 1) * 8, 1),
-        thresholdMps: round((group.thresholdKmh * speedFactor) / 3.6, 3),
-        hrMax: Math.round((208 - 0.7 * age) * jitter(r, 0.03)),
-        weeklyM: Math.round(group.weeklyKm * 1000 * volumeFactor),
-      });
-      n++;
+  for (const coach of COACHES) {
+    let runnerNumber = 0;
+    for (const group of GROUPS) {
+      for (let i = 0; i < CHARACTERS.length; i++) {
+        runnerNumber++;
+        // Seeded per athlete, so the two coaches get different rosters and
+        // re-running the script reproduces both exactly.
+        const r = rng(1000 + n);
+        const character = CHARACTERS[i];
+        const age = Math.round(24 + r() * 26);
+        const sex: "male" | "female" = r() < 0.45 ? "female" : "male";
+        const speedFactor =
+          (sex === "female" ? 0.94 : 1) *
+          (character.kind === "returning" ? 0.92 : 1) *
+          jitter(r, 0.05);
+        const volumeFactor =
+          (character.kind === "returning" ? 0.65 : 1) *
+          (character.kind === "erratic" ? 0.8 : 1) *
+          jitter(r, 0.12);
+
+        out.push({
+          index: n,
+          email: `runner${runnerNumber}-${coach.key}@${DEMO_DOMAIN}`,
+          name: `Runner${runnerNumber}-${coach.name}`,
+          coach,
+          runnerNumber,
+          group,
+          character: character.kind,
+          characterNote: character.note,
+          age,
+          sex,
+          heightCm: Math.round((sex === "female" ? 165 : 177) + (r() * 2 - 1) * 8),
+          weightKg: round((sex === "female" ? 58 : 72) + (r() * 2 - 1) * 8, 1),
+          thresholdMps: round((group.thresholdKmh * speedFactor) / 3.6, 3),
+          hrMax: Math.round((208 - 0.7 * age) * jitter(r, 0.03)),
+          weeklyM: Math.round(group.weeklyKm * 1000 * volumeFactor),
+        });
+        n++;
+      }
     }
   }
   return out;
@@ -273,6 +312,10 @@ interface GeneratedRun {
   cadence: number;
   driftPct: number;
   calories: number;
+  /** per-segment pace in s/km, what the sparkline and the run chart draw */
+  paceShape: number[];
+  /** fastest continuous stretch of each distance, in seconds */
+  bestEfforts: Record<string, number>;
 }
 
 interface GeneratedDay {
@@ -316,6 +359,82 @@ function weekFraction(character: Character, weeksAgo: number, r: () => number): 
     case "erratic":
       return (0.7 + 0.4 * r()) * stepBack;
   }
+}
+
+/**
+ * A plausible pace profile across the run, in seconds per kilometre.
+ *
+ * Twenty-four points, which is what the sparkline samples. The shape is what
+ * separates one session from another to the eye: an easy run drifts slowly
+ * slower, a long run fades harder in its last third, and an interval session
+ * oscillates between hard and float around a warm-up and a cool-down.
+ *
+ * This is generated rather than measured, and it is the one place in this
+ * script where that is true of something the athlete sees directly. It exists
+ * so the chart and the sparkline have something to draw; nothing is computed
+ * from it.
+ */
+function paceShapeFor(
+  type: SlotType,
+  distanceM: number,
+  durationS: number,
+  r: () => number,
+): number[] {
+  const n = 24;
+  const mean = durationS / (distanceM / 1000);
+  const out: number[] = [];
+
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1);
+    let factor: number;
+
+    if (type === "interval") {
+      // Warm-up, then alternating reps and floats, then a cool-down.
+      if (t < 0.2) factor = 1.16;
+      else if (t > 0.85) factor = 1.2;
+      else factor = i % 2 === 0 ? 0.86 : 1.08;
+    } else if (type === "long") {
+      factor = 0.97 + (t > 0.6 ? (t - 0.6) * 0.28 : 0);
+    } else {
+      factor = 0.99 + t * 0.05;
+    }
+
+    out.push(Math.round(mean * factor * jitter(r, 0.02)));
+  }
+
+  // Re-centre so the shape averages back to the pace actually run, otherwise
+  // the picture and the number under it disagree.
+  const avg = out.reduce((sum, v) => sum + v, 0) / n;
+  return out.map((v) => Math.round((v * mean) / avg));
+}
+
+/**
+ * Fastest continuous stretch of each standard distance, in seconds.
+ *
+ * Only distances the run was long enough to contain. Scaled with Riegel's
+ * exponent (1.06), which is how a shorter split inside a longer run relates to
+ * the whole — a 5 km inside a 15 km run is meaningfully faster than the run's
+ * average, and using the average would make every long run a 5 km record.
+ */
+function bestEffortsFor(
+  distanceM: number,
+  durationS: number,
+  type: SlotType,
+): Record<string, number> {
+  const DISTANCES: [string, number][] = [
+    ["5k", 5000], ["10k", 10_000], ["half", 21_097], ["marathon", 42_195],
+  ];
+  // An interval session's best 5 km is much faster than its average; an easy
+  // run's is barely faster.
+  const sharpness = type === "interval" ? 0.94 : type === "long" ? 0.985 : 0.97;
+  const out: Record<string, number> = {};
+
+  for (const [key, meters] of DISTANCES) {
+    if (distanceM < meters) continue;
+    const riegel = durationS * Math.pow(meters / distanceM, 1.06);
+    out[key] = Math.round(riegel * sharpness);
+  }
+  return out;
 }
 
 function generateHistory(a: Athlete, today: Date): { runs: GeneratedRun[]; days: GeneratedDay[] } {
@@ -386,7 +505,22 @@ function generateHistory(a: Athlete, today: Date): { runs: GeneratedRun[]; days:
         slot.type === "interval" ? 0.89 : slot.type === "long" ? 0.79 : 0.745;
       const avgHr = Math.round(a.hrMax * hrFraction * jitter(r, 0.025));
 
+      /*
+       * The two derived columns the app reads but nothing was writing.
+       *
+       * `pace_shape` drives the sparkline in the run list and the pace band on
+       * the activity chart; `best_efforts` drives personal records and the
+       * gold marking in the list. Leaving them null while setting
+       * `streams_fetched_at` was worse than leaving both unset: the app
+       * concluded the streams had already been fetched and there was simply
+       * nothing in them, so every chart said "no second-by-second detail" and
+       * every personal best showed a dash.
+       */
+      const shape = paceShapeFor(slot.type, distanceM, durationS, r);
+
       runs.push({
+        paceShape: shape,
+        bestEfforts: bestEffortsFor(distanceM, durationS, slot.type),
         dateIso,
         startedAt: new Date(`${dateIso}T06:30:00+03:00`).toISOString(),
         distanceM,
@@ -475,6 +609,8 @@ async function writeAthlete(admin: Client, a: Athlete, coachId: string, today: D
     // external_id prefix is what marks these rows as the seed's.
     source: "manual" as const,
     external_id: `demo-${a.index}-${i}`,
+    pace_shape: run.paceShape,
+    best_efforts: run.bestEfforts,
     max_hr: run.maxHr,
     avg_cadence: run.cadence,
     calories: run.calories,
@@ -547,15 +683,31 @@ async function writeAthlete(admin: Client, a: Athlete, coachId: string, today: D
       date: run.dateIso,
     }));
 
+    /*
+     * The plan is built as of the day it would really have been built --
+     * `elapsedWeeks` ago -- not today.
+     *
+     * That is what puts the athlete mid-programme, and it matters for more
+     * than appearances: capacity is read from the history available *then*, so
+     * the volume ramp starts where the athlete actually was, and every session
+     * between that date and today gets a real completed/missed outcome. A plan
+     * generated as of today has no past, and the entire plan-versus-actual
+     * surface -- the coach's board, the week strip, the adherence figures --
+     * renders empty.
+     */
+    const planStart = addDays(today, -a.group.elapsedWeeks * 7);
+
     const capacity = readCapacity(
-      history.map((h) => ({ date: h.date, distanceM: h.distanceM })),
-      today,
+      history
+        .filter((h) => h.date <= isoDate(planStart))
+        .map((h) => ({ date: h.date, distanceM: h.distanceM })),
+      planStart,
     );
     const thresholds = estimateThresholds(history, { age: a.age, sex: a.sex });
 
     let generated;
     try {
-      generated = generatePlan(a.group.raceType, new Date(raceDate), today, capacity);
+      generated = generatePlan(a.group.raceType, new Date(raceDate), planStart, capacity);
     } catch (err) {
       if (err instanceof RaceTooSoonError) {
         console.warn(`  ${a.email}: ${err.message}`);
@@ -571,14 +723,57 @@ async function writeAthlete(admin: Client, a: Athlete, coachId: string, today: D
       .single();
     if (planError || !plan) throw new Error(`plan ${a.email}: ${planError?.message}`);
 
-    const workoutRows = generated.workouts.map((w) => ({
-      plan_id: plan.id,
-      week_number: w.weekNumber,
-      day_date: w.dayDate,
-      workout_type: w.workoutType,
-      planned_distance: w.plannedDistance,
-      planned_pace: paceLabel(w.workoutType, thresholds.thresholdSpeedMps),
-    }));
+    /*
+     * Outcomes for everything already in the past.
+     *
+     * A session is `completed` when a generated run exists on that date, and
+     * `missed` when it does not -- which is why the "erratic" character, who
+     * skips 28% of sessions, produces a visibly patchier board than the
+     * "consistent" one. Rest days in the past are completed by definition:
+     * resting is the session.
+     */
+    const todayIso = isoDate(today);
+    const ranOn = new Set(runs.map((run) => run.dateIso));
+    const outcomeFor = (w: { dayDate: string; workoutType: string }) => {
+      if (w.dayDate >= todayIso) return "planned" as const;
+      if (w.workoutType === "rest") return "completed" as const;
+      return ranOn.has(w.dayDate) ? ("completed" as const) : ("missed" as const);
+    };
+
+    /*
+     * A couple of coach edits on the athletes who are over-reaching.
+     *
+     * `origin`, `planned_distance_original`, `adjusted_reason` and
+     * `adjusted_at` were added in migration 0014 and nothing has ever written
+     * to them, so the coach-edit trail is untested. The athlete whose acute
+     * load has spiked is exactly who a coach would cut back, which makes this
+     * realistic rather than decorative.
+     */
+    const cutBack = a.character === "ramping";
+
+    const workoutRows = generated.workouts.map((w) => {
+      const status = outcomeFor(w);
+      const trim =
+        cutBack &&
+        status === "planned" &&
+        w.workoutType === "long" &&
+        w.dayDate <= isoDate(addDays(today, 14));
+
+      return {
+        plan_id: plan.id,
+        week_number: w.weekNumber,
+        day_date: w.dayDate,
+        workout_type: w.workoutType,
+        planned_distance:
+          trim && w.plannedDistance ? Math.round(w.plannedDistance * 0.8) : w.plannedDistance,
+        planned_pace: paceLabel(w.workoutType, thresholds.thresholdSpeedMps),
+        status,
+        origin: trim ? ("coach" as const) : ("generated" as const),
+        planned_distance_original: trim ? w.plannedDistance : null,
+        adjusted_reason: trim ? "עומס השבוע האחרון קפץ — מקצרים את הריצה הארוכה" : null,
+        adjusted_at: trim ? new Date(`${todayIso}T09:00:00+03:00`).toISOString() : null,
+      };
+    });
 
     for (let i = 0; i < workoutRows.length; i += 200) {
       const { error } = await admin.from("plan_workouts").insert(workoutRows.slice(i, i + 200));
@@ -622,13 +817,27 @@ async function reset(admin: Client, roster: Athlete[]) {
   }
 }
 
-/** Removes the demo accounts. Only ever touches @demo.ari-coach.app. */
-async function purge(admin: Client, roster: Athlete[]) {
-  for (const a of roster) {
-    if (!a.userId) continue;
-    if (!a.email.endsWith(`@${DEMO_DOMAIN}`)) throw new Error("refusing to delete a non-demo user");
-    const { error } = await admin.auth.admin.deleteUser(a.userId);
-    console.log(`  purge ${a.email}${error ? ` -- ${error.message}` : ""}`);
+/**
+ * Removes the demo accounts -- athletes *and* both coaches.
+ *
+ * The address check is not a formality. This runs with the service-role key,
+ * which bypasses row-level security entirely, so a wrong id here deletes a real
+ * person's account and every row that cascades from it. Refusing anything that
+ * is not @demo.ari-coach.app is the one thing standing between a typo and that.
+ */
+async function purge(admin: Client, roster: Athlete[], coaches: Coach[]) {
+  const targets: { email: string; id?: string }[] = [
+    ...roster.map((a) => ({ email: a.email, id: a.userId })),
+    ...coaches.map((c) => ({ email: c.email, id: c.id })),
+  ];
+
+  for (const t of targets) {
+    if (!t.id) continue;
+    if (!t.email.endsWith(`@${DEMO_DOMAIN}`)) {
+      throw new Error(`refusing to delete a non-demo user: ${t.email}`);
+    }
+    const { error } = await admin.auth.admin.deleteUser(t.id);
+    console.log(`  purge ${t.email}${error ? ` -- ${error.message}` : ""}`);
   }
 }
 
@@ -647,9 +856,12 @@ async function purge(admin: Client, roster: Athlete[]) {
 function dryRun(): void {
   const roster = buildRoster();
   const today = zonedNow();
-  console.log(`\nDry run · ${roster.length} athletes · ${HISTORY_WEEKS} weeks of history\n`);
   console.log(
-    "grp  athlete       runs  wk-km  long   CTL   ATL   TSB  ACWR  ready  spike     plan",
+    `\nDry run · ${COACHES.length} coaches × ${roster.length / COACHES.length} athletes ` +
+      `· ${HISTORY_WEEKS} weeks of history · plans already under way\n`,
+  );
+  console.log(
+    "athlete           grp  runs  wk-km  long   CTL   ATL   TSB  ACWR  ready  spike     plan",
   );
 
   for (const a of roster) {
@@ -708,7 +920,7 @@ function dryRun(): void {
       const plan = generatePlan(
         a.group.raceType,
         addDays(today, a.group.weeksToRace * 7),
-        today,
+        addDays(today, -a.group.elapsedWeeks * 7),
         capacity,
       );
       planSummary =
@@ -722,7 +934,7 @@ function dryRun(): void {
     }
 
     console.log(
-      `${a.group.key}    ${a.name.padEnd(12)} ${String(runs.length).padStart(4)}  ` +
+      `${a.name.padEnd(17)} ${a.group.key}   ${String(runs.length).padStart(4)}  ` +
         `${(capacity.currentWeeklyM / 1000).toFixed(1).padStart(5)}  ` +
         `${(capacity.longestRecentM / 1000).toFixed(1).padStart(4)}  ` +
         `${(last?.ctl ?? 0).toFixed(0).padStart(4)}  ${(last?.atl ?? 0).toFixed(0).padStart(4)}  ` +
@@ -734,6 +946,41 @@ function dryRun(): void {
   console.log("");
 }
 
+/**
+ * Create (or find) a coach account and put it in a state a coach can work from:
+ * the coach role, a fixed join code, and enough seats for twenty athletes.
+ *
+ * The seat limit matters. `subscriptions.seat_limit` defaults to 3, and a coach
+ * with twenty athletes on a three-seat plan is a state the billing screen has
+ * never been shown.
+ */
+async function ensureCoach(admin: Client, coach: Coach, password: string): Promise<string> {
+  let id = await findUserByEmail(admin, coach.email);
+
+  if (!id) {
+    const { data, error } = await admin.auth.admin.createUser({
+      email: coach.email,
+      password,
+      email_confirm: true,
+      user_metadata: { role: "coach", username: coach.name },
+    });
+    if (error || !data.user) throw new Error(`createUser ${coach.email}: ${error?.message}`);
+    id = data.user.id;
+  }
+
+  const { error: profileError } = await admin
+    .from("profiles")
+    .update({ role: "coach", full_name: coach.name, coach_code: coach.code })
+    .eq("id", id);
+  if (profileError) throw new Error(`coach profile ${coach.email}: ${profileError.message}`);
+
+  await admin
+    .from("subscriptions")
+    .upsert({ user_id: id, plan: "pro", seat_limit: 25 }, { onConflict: "user_id" });
+
+  return id;
+}
+
 async function main() {
   if (process.argv.includes("--dry-run")) {
     dryRun();
@@ -743,7 +990,6 @@ async function main() {
   loadEnv();
   const url = required("NEXT_PUBLIC_SUPABASE_URL");
   const serviceKey = required("SUPABASE_SERVICE_ROLE_KEY");
-  const coachEmail = required("COACH_EMAIL");
   const mode = process.argv.includes("--purge")
     ? "purge"
     : process.argv.includes("--reset")
@@ -755,47 +1001,53 @@ async function main() {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  const coachId = await findUserByEmail(admin, coachEmail);
-  if (!coachId) throw new Error(`No account for COACH_EMAIL=${coachEmail}`);
-  await admin.from("profiles").update({ role: "coach" }).eq("id", coachId);
-  await admin
-    .from("subscriptions")
-    .upsert({ user_id: coachId, plan: "pro", seat_limit: 25 }, { onConflict: "user_id" });
-
   const roster = buildRoster();
   const today = zonedNow();
 
   if (mode !== "seed") {
+    for (const c of COACHES) c.id = (await findUserByEmail(admin, c.email)) ?? undefined;
     for (const a of roster) a.userId = (await findUserByEmail(admin, a.email)) ?? undefined;
     if (mode === "reset") await reset(admin, roster);
-    else await purge(admin, roster);
+    else await purge(admin, roster, COACHES);
     if (mode === "purge") {
       console.log("\nDemo accounts removed.\n");
       return;
     }
   }
 
-  console.log(`\nSeeding ${roster.length} athletes onto coach ${coachEmail}`);
-  console.log(`History: ${HISTORY_WEEKS} weeks back · plans run to each group's race date\n`);
+  for (const coach of COACHES) {
+    coach.id = await ensureCoach(admin, coach, password);
+    console.log(`  coach ${coach.email.padEnd(28)} code ${coach.code}`);
+  }
+
+  console.log(
+    `\nSeeding ${COACHES.length} coaches × ${roster.length / COACHES.length} athletes`,
+  );
+  console.log(
+    `History: ${HISTORY_WEEKS} weeks back · plans already ` +
+      `${GROUPS.map((g) => g.elapsedWeeks).join("/")} weeks under way\n`,
+  );
 
   let totalRuns = 0;
   let totalWorkouts = 0;
   for (const a of roster) {
     a.userId = await ensureUser(admin, a, password);
-    const result = await writeAthlete(admin, a, coachId, today);
+    const result = await writeAthlete(admin, a, a.coach.id as string, today);
     totalRuns += result.runs;
     totalWorkouts += result.workouts;
     console.log(
-      `  ${a.group.key}  ${a.email.padEnd(24)} ${a.name.padEnd(12)} ` +
+      `  ${a.name.padEnd(17)} ${a.group.key}  ${a.email.padEnd(30)} ` +
         `${String(result.runs).padStart(3)} runs · ${String(result.readiness).padStart(3)} days · ` +
         `${String(result.workouts).padStart(3)} workouts · ${a.characterNote}`,
     );
   }
 
   console.log(
-    `\nDone. ${roster.length} athletes · ${totalRuns} runs · ${totalWorkouts} planned workouts.`,
+    `\nDone. ${COACHES.length} coaches · ${roster.length} athletes · ` +
+      `${totalRuns} runs · ${totalWorkouts} planned workouts.`,
   );
-  console.log(`Logins: <group><n>@${DEMO_DOMAIN} (a1..a5, b1..b5, c1..c5, d1..d5)`);
+  console.log(`Coaches:  coach1@${DEMO_DOMAIN} · coach2@${DEMO_DOMAIN}`);
+  console.log(`Athletes: runner1-coach1@${DEMO_DOMAIN} … runner20-coach2@${DEMO_DOMAIN}`);
   console.log(`Password: whatever you set in DEMO_PASSWORD.\n`);
 }
 
