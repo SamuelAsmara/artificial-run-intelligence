@@ -206,3 +206,36 @@ describe("weekBoard", () => {
     expect(weekBoard([a], sessions, [], TODAY)[0].cells[0].state).toBe("empty");
   });
 });
+
+describe("rosterFlags gives each athlete one row", () => {
+  const athlete = (over: Partial<AthleteRow>): AthleteRow => ({
+    id: "a1", name: "Runner8", readiness: 82, form: 0, loadRatio: 0.76,
+    lastRunAt: "2026-08-18T06:30:00Z", lastRunM: 9000,
+    raceType: "10k", raceDate: "2026-11-01", missedThisWeek: 1,
+    avatarUrl: null,
+    ...over,
+  });
+
+  it("keeps only the loudest flag when one athlete trips several rules", () => {
+    // Runner8 was appearing twice on the board: once for the missed session and
+    // once for detraining. Two rows, one person, and the coach reads it as two
+    // problems.
+    const flags = rosterFlags([athlete({})], "2026-08-20");
+    expect(flags.filter((f) => f.athleteId === "a1")).toHaveLength(1);
+  });
+
+  it("still lists every athlete who needs a look", () => {
+    const flags = rosterFlags(
+      [athlete({}), athlete({ id: "a2", name: "Runner15", loadRatio: 0.75 })],
+      "2026-08-20",
+    );
+    expect(new Set(flags.map((f) => f.athleteId))).toEqual(new Set(["a1", "a2"]));
+  });
+
+  it("keeps the loudest tone, not whichever came first", () => {
+    const flags = rosterFlags([athlete({})], "2026-08-20");
+    const order = { negative: 0, caution: 1, accent: 2 } as const;
+    const all = [...flags];
+    expect(all.every((f) => order[f.tone] <= 2)).toBe(true);
+  });
+});

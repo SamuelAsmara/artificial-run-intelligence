@@ -343,6 +343,18 @@ export interface AthleteWorkout {
   actualM: number | null;
   /** seconds actually run that day */
   actualS: number | null;
+  /**
+   * Whose decision the current numbers are: the engine's, the coach's or the
+   * athlete's. Migration 0014 has been storing this, and the three columns it
+   * added had no reader at all — a coach could shorten a long run, leave a
+   * reason for it, come back a week later and find their own edit indis­
+   * tinguishable from anything the generator produced.
+   */
+  origin: string;
+  /** what the session was before somebody changed it, in metres */
+  originalDistanceM: number | null;
+  /** why it was changed */
+  adjustedReason: string | null;
 }
 
 export interface AthleteRun {
@@ -446,7 +458,7 @@ export async function getAthleteDetail(athleteId: string): Promise<AthleteDetail
   const { data: workoutRows } = plan?.id
     ? await supabase
         .from("plan_workouts")
-        .select("id, week_number, day_date, workout_type, planned_distance, planned_pace, status")
+        .select("id, week_number, day_date, workout_type, planned_distance, planned_pace, status, origin, planned_distance_original, adjusted_reason")
         .eq("plan_id", plan.id)
         .gte("day_date", workoutsFrom)
         .lte("day_date", workoutsTo)
@@ -512,6 +524,9 @@ export async function getAthleteDetail(athleteId: string): Promise<AthleteDetail
         status: w.status,
         actualM: ran?.m ?? null,
         actualS: ran?.s ?? null,
+        origin: w.origin ?? "generated",
+        originalDistanceM: w.planned_distance_original ?? null,
+        adjustedReason: w.adjusted_reason ?? null,
       };
     }),
     recentRuns: (runs ?? []).slice(0, 10).map((r) => ({

@@ -145,16 +145,34 @@ export function flagsFor(
   return out;
 }
 
-/** Every flag across the roster, loudest first. */
+/**
+ * Every flag across the roster, loudest first — one per athlete.
+ *
+ * An athlete can trip several rules at once: the one who has been detraining
+ * for a fortnight is also the one who missed a session this week, and both are
+ * true. Listing both put the same name on the board twice, which reads as two
+ * problems and costs the coach a second look to discover it is one person.
+ *
+ * So each athlete keeps their loudest flag and the rest are dropped. That is a
+ * deliberate loss: the board is a triage list, and its job is to name who to
+ * open, not to enumerate everything wrong with them. The rest is on their card.
+ */
 export function rosterFlags(
   athletes: AthleteRow[],
   today: string,
   thresholds: FlagThresholds = DEFAULT_THRESHOLDS,
 ): Flag[] {
   const order: Record<Flag["tone"], number> = { negative: 0, caution: 1, accent: 2 };
-  return athletes
+  const sorted = athletes
     .flatMap((a) => flagsFor(a, today, thresholds))
     .sort((x, y) => order[x.tone] - order[y.tone]);
+
+  const seen = new Set<string>();
+  return sorted.filter((f) => {
+    if (seen.has(f.athleteId)) return false;
+    seen.add(f.athleteId);
+    return true;
+  });
 }
 
 /* ------------------------------------------------------------------ */

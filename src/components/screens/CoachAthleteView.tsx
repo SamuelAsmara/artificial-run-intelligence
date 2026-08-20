@@ -299,6 +299,45 @@ export function CoachAthleteView({ detail, today }: { detail: AthleteDetail; tod
           </button>
         </div>
 
+        {/*
+            What this session used to be, and why it is not that any more.
+
+            Migration 0014 has been storing `origin`, `planned_distance_original`
+            and `adjusted_reason` since it shipped and nothing ever read them, so
+            a coach who shortened a long run and left a reason came back to a
+            number with no history — indistinguishable from what the generator
+            produced. The row below is the whole of that fix: it appears only
+            when somebody actually changed the session.
+        */}
+        {w.origin !== "generated" && (w.originalDistanceM || w.adjustedReason) ? (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "baseline",
+              gap: "8px",
+              flexWrap: "wrap",
+              padding: "8px 10px",
+              borderRadius: "var(--radius-control)",
+              background: "var(--color-elevated)",
+            }}
+          >
+            <span
+              className="tag"
+              style={{ background: "var(--color-accent-soft)", color: "var(--color-accent)" }}
+            >
+              {w.origin === "coach" ? COACH_COPY.editedByCoach : COACH_COPY.editedByAthlete}
+            </span>
+            {w.originalDistanceM ? (
+              <span className="num" style={{ fontSize: "11.5px", color: "var(--color-muted)" }}>
+                {(w.originalDistanceM / 1000).toFixed(1)} km → {((w.plannedDistanceM ?? 0) / 1000).toFixed(1)} km
+              </span>
+            ) : null}
+            {w.adjustedReason ? (
+              <span style={{ fontSize: "11.5px", color: "var(--color-muted)" }}>{w.adjustedReason}</span>
+            ) : null}
+          </div>
+        ) : null}
+
         <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
           {WORKOUT_TYPES.map((t) => (
             <button

@@ -21,6 +21,8 @@ import type { RaceType } from "@/types/database.types";
 /* ------------------------------------------------------------------ */
 
 export const COACH_COPY = {
+  editedByCoach: "changed by you",
+  editedByAthlete: "changed by the athlete",
   brand: "ARI",
   coachTag: "Coach",
   navHome: "Home",

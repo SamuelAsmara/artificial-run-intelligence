@@ -30,7 +30,10 @@ export async function GET(request: NextRequest) {
   const next =
     requested && requested.startsWith("/") && !requested.startsWith("//")
       ? requested
-      : "/dashboard";
+      : // "/" decides the front door by role — see app/page.tsx. Defaulting
+        // straight to /dashboard here sent coaches to the athlete screen and
+        // put the rule in three places instead of one.
+        "/";
 
   if (!code) {
     return NextResponse.redirect(`${origin}/login?error=missing-code`);

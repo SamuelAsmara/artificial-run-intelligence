@@ -288,7 +288,10 @@ function Row({
         {a.readiness ?? "—"}
       </span>
       <span className="num" style={{ fontSize: "12.5px", textAlign: "end", color: formColor(a.form) }}>
-        {a.form === null ? "—" : a.form.toFixed(0)}
+        {/* `+ 0` turns -0 back into 0. Without it a form of -0.4 rounds to a
+            printed "-0", which looks like a rendering fault in a column where
+            the sign carries the meaning. */}
+        {a.form === null ? "—" : (Number(a.form.toFixed(0)) + 0).toString()}
       </span>
       <span className="num" style={{ fontSize: "12.5px", textAlign: "end", color: loadColor(a.loadRatio) }}>
         {a.loadRatio === null ? "—" : a.loadRatio.toFixed(2)}
