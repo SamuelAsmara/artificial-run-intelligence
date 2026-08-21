@@ -314,6 +314,8 @@ interface GeneratedRun {
   calories: number;
   /** per-segment pace in s/km, what the sparkline and the run chart draw */
   paceShape: number[];
+  /** beats per minute on the same points, what the chart's heart-rate lane draws */
+  hrShape: number[];
   /** fastest continuous stretch of each distance, in seconds */
   bestEfforts: Record<string, number>;
 }
@@ -406,6 +408,51 @@ function paceShapeFor(
   // the picture and the number under it disagree.
   const avg = out.reduce((sum, v) => sum + v, 0) / n;
   return out.map((v) => Math.round((v * mean) / avg));
+}
+
+/**
+ * Heart rate across the run, on the same points as the pace shape.
+ *
+ * Two things it has to get right or the chart teaches the wrong lesson:
+ *
+ * **Heart rate lags pace.** Beats do not jump the instant the legs do — they
+ * climb over roughly a minute. So each point is pulled towards the previous
+ * one rather than tracking the pace curve exactly, which is why an interval
+ * session's heart-rate line is a rolling swell where its pace line is a comb.
+ *
+ * **It drifts upward.** At a steady pace, heart rate rises through a long run
+ * as the athlete warms and tires. That drift is the whole basis of the
+ * decoupling number this app computes, so a generated run that lacked it
+ * would make the demo contradict its own analysis.
+ */
+function hrShapeFor(
+  paceShape: number[],
+  avgHr: number,
+  maxHr: number,
+  driftPct: number,
+  r: () => number,
+): number[] {
+  const n = paceShape.length;
+  const meanPace = paceShape.reduce((sum, v) => sum + v, 0) / n;
+
+  const out: number[] = [];
+  let current = avgHr * 0.86; // starts below its average and climbs into it
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1);
+    // Faster than the run's own average pulls the target up, and by less than
+    // the pace moved: a 10% faster stretch is not a 10% higher heart rate.
+    const effort = 1 + (meanPace - paceShape[i]) / meanPace * 0.42;
+    const drift = 1 + (driftPct / 100) * t;
+    const target = avgHr * effort * drift;
+    // A first-order lag: about a minute to close most of a gap.
+    current += (target - current) * 0.35;
+    out.push(Math.round(Math.min(maxHr, Math.max(80, current * jitter(r, 0.012)))));
+  }
+
+  // Re-centre on the average the row reports, for the same reason the pace
+  // shape is re-centred: the picture and the figure beside it must agree.
+  const avg = out.reduce((sum, v) => sum + v, 0) / n;
+  return out.map((v) => Math.round(Math.min(maxHr, (v * avgHr) / avg)));
 }
 
 /**
@@ -517,24 +564,31 @@ function generateHistory(a: Athlete, today: Date): { runs: GeneratedRun[]; days:
        * every personal best showed a dash.
        */
       const shape = paceShapeFor(slot.type, distanceM, durationS, r);
+      const maxHr = Math.round(
+        Math.min(a.hrMax, avgHr * (slot.type === "interval" ? 1.09 : 1.06)),
+      );
+      // Drift climbs on long runs and on the athlete who is over-reaching.
+      const driftPct = round(
+        (slot.type === "long" ? 4.2 : 2.0) +
+          (a.character === "ramping" ? 2.4 : 0) +
+          r() * 2.5,
+        1,
+      );
 
       runs.push({
         paceShape: shape,
+        // Generated from the pace shape it will be drawn beside, so the two
+        // lanes of the chart tell one story rather than two unrelated ones.
+        hrShape: hrShapeFor(shape, avgHr, maxHr, driftPct, r),
         bestEfforts: bestEffortsFor(distanceM, durationS, slot.type),
         dateIso,
         startedAt: new Date(`${dateIso}T06:30:00+03:00`).toISOString(),
         distanceM,
         durationS,
         avgHr,
-        maxHr: Math.round(Math.min(a.hrMax, avgHr * (slot.type === "interval" ? 1.09 : 1.06))),
+        maxHr,
         cadence: Math.round(168 + r() * 12),
-        // Drift climbs on long runs and on the athlete who is over-reaching.
-        driftPct: round(
-          (slot.type === "long" ? 4.2 : 2.0) +
-            (a.character === "ramping" ? 2.4 : 0) +
-            r() * 2.5,
-          1,
-        ),
+        driftPct,
         calories: Math.round((distanceM / 1000) * a.weightKg * 0.95),
       });
     }
@@ -610,6 +664,7 @@ async function writeAthlete(admin: Client, a: Athlete, coachId: string, today: D
     source: "manual" as const,
     external_id: `demo-${a.index}-${i}`,
     pace_shape: run.paceShape,
+    hr_shape: run.hrShape,
     best_efforts: run.bestEfforts,
     max_hr: run.maxHr,
     avg_cadence: run.cadence,

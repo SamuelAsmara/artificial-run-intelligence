@@ -41,7 +41,7 @@ export const BACKFILL_DAYS = 400;
  *
  * See migration 0010.
  */
-export const DERIVATION_VERSION = 2;
+export const DERIVATION_VERSION = 3;
 
 /**
  * Activity streams processed per run.
@@ -280,6 +280,7 @@ export async function processStreams(
         streams_fetched_at: string;
         streams_derived_version?: number;
         pace_shape?: (number | null)[];
+        hr_shape?: (number | null)[] | null;
         best_efforts?: Record<string, number>;
         cardiac_drift_pct?: number | null;
         drift_onset_m?: number | null;
@@ -293,6 +294,7 @@ export async function processStreams(
             streams_fetched_at: new Date().toISOString(),
             streams_derived_version: DERIVATION_VERSION,
             pace_shape: derived.paceShape,
+            hr_shape: derived.hrShape,
             best_efforts: derived.bestEfforts,
             cardiac_drift_pct: derived.cardiacDriftPct,
             // Where drift began, not just how much of it there was. Derived

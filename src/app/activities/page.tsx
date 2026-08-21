@@ -3,6 +3,7 @@ import { EmptyActivities } from "@/components/screens/EmptyActivities";
 import { getActivities, getPersonalRecords } from "@/actions/activities";
 import { paceShapeColor, paceShapeToPath } from "@/lib/dashboard/sparkline";
 import type { Act } from "@/lib/screens/activities";
+import type { ComparableRun } from "@/lib/activity/compareRuns";
 
 export const metadata = { title: "Activities · ARI" };
 
@@ -54,6 +55,30 @@ export default async function ActivitiesPage() {
       pb: r.pb,
     };
   });
+
+  /*
+   * The same runs again, in the shape the comparison engine reads.
+   *
+   * Deliberately not folded into `Act`: that type is the design handoff's
+   * row model and the comparison needs raw numbers — metres, seconds, the
+   * unresampled pace shape — which the row deliberately does not carry
+   * because it only ever prints strings.
+   */
+  const compare: ComparableRun[] = rows.map((r) => ({
+    id: r.id,
+    date: r.date,
+    label: r.dateLabel,
+    distanceM: r.distanceKm * 1000,
+    durationS: r.durationSec,
+    avgHr: r.avgHr,
+    paceShape: r.paceShape,
+    hrShape: r.hrShape,
+    type: classify({
+      distanceKm: r.distanceKm,
+      paceSec: r.distanceKm > 0 ? r.durationSec / r.distanceKm : 0,
+      medianPace,
+    }),
+  }));
 
   // The list's weekly bars, oldest week first.
   const weekKm = new Array(4).fill(0);
@@ -118,7 +143,7 @@ export default async function ActivitiesPage() {
 
   return (
     <ActivitiesView
-      data={{ acts, weekKm: weekKm.map((k) => Math.round(k)), wp, pb10k, avgHr }}
+      data={{ acts, weekKm: weekKm.map((k) => Math.round(k)), wp, pb10k, avgHr, compare }}
     />
   );
 }

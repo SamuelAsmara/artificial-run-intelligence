@@ -38,6 +38,8 @@ import {
 } from "@/lib/activity/chartLayout";
 import { fastestSegment, readableSegments, summarise, type RangeSummary, type Segment } from "@/lib/activity/metrics";
 import { paceAxisFor, type ChartStreams } from "@/lib/activity/resample";
+import { DataNote } from "@/components/activities/DataNote";
+import type { Provenance } from "@/lib/activity/provenance";
 import { zoneFor } from "@/lib/activity/zones";
 import { AD_COPY, buildStreams, fmt, fmtLong } from "@/lib/screens/activityDetail";
 import { formatPace } from "@/lib/format/pace";
@@ -68,7 +70,10 @@ export interface ActivityDetailData {
   bestEfforts: Record<string, number> | null;
   calories: number | null;
   streams: ChartStreams | null;
-  streamsNote: string | null;
+  /** where this run came from, and what it is missing — see DataNote */
+  provenance?: Provenance;
+  /** the chart was rebuilt from the stored pace summary, not a real stream */
+  coarseChart?: boolean;
   comparison: Comparison | null;
   note: ActivityNote | null;
 }
@@ -83,6 +88,13 @@ export function ActivityDetailView({
   data?: ActivityDetailData;
 }) {
   const streams = data?.streams ?? (data ? null : buildStreams());
+  /*
+   * The chart was rebuilt from the stored pace summary, so it draws the run
+   * honestly at about forty points — but a range dragged across it would
+   * report a distance and a time that were interpolated rather than measured.
+   * Reading is offered; measuring is not.
+   */
+  const coarse = data?.coarseChart ?? false;
 
   const [hover, setHover] = useState<{ i: number; y: number } | null>(null);
   const [sel, setSel] = useState<{ a: number; b: number } | null>(null);
@@ -93,8 +105,8 @@ export function ActivityDetailView({
   const geo = useMemo(() => (streams ? buildGeometry(streams) : null), [streams]);
 
   /* ---- the figures on show: the selection when there is one ---- */
-  const selected = sel && streams ? summarise(streams, sel.a, sel.b, data?.movingS) : null;
-  const shown = selected ?? data?.summary ?? (streams ? summarise(streams) : null);
+  const selected = sel && streams && !coarse ? summarise(streams, sel.a, sel.b, data?.movingS) : null;
+  const shown = selected ?? data?.summary ?? (streams && !coarse ? summarise(streams) : null);
 
   // The reference run arrives without splits, so it derives its own — the same
   // function the server uses, not a second copy that could disagree.
@@ -224,11 +236,20 @@ export function ActivityDetailView({
             plannedType={data?.comparison?.workoutType ?? null}
             onDown={onDown} onMove={onMove} onUp={onUp} onLeave={onLeave}
           />
-        ) : (
+        ) : data?.provenance ? null : (
           <p style={{ margin: "24px 0", textAlign: "center", fontSize: "12.5px", color: "var(--color-faint)" }}>
-            {data?.streamsNote ?? copy.noStream}
+            {copy.noStream}
           </p>
         )}
+
+        {/*
+            What the chart above is made of — or, with no chart, why there
+            isn't one. One treatment for every route a run comes in by, so an
+            absence reads as part of the product rather than as a failure.
+        */}
+        {data?.provenance ? (
+          <DataNote provenance={data.provenance} centred={!geo} />
+        ) : null}
 
         {selected && sel ? (
           <p className="num" style={{ margin: "8px 0 0", fontSize: "11px", color: "var(--color-accent)" }}>

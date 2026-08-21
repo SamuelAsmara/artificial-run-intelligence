@@ -88,3 +88,49 @@ describe("paceShapeColor", () => {
     expect(paceShapeColor(null)).toBe("var(--color-muted)");
   });
 });
+
+/*
+ * Amplitude has to mean something.
+ *
+ * The rail read as nine identical squiggles because every run was scaled to
+ * its own range, so a steady easy run was drawn exactly as tall as an
+ * interval session. These pin the fix: height now tracks how varied the run
+ * actually was.
+ */
+describe("paceShapeToPath — height means variation", () => {
+  const height = (path: string) => Math.max(...ys(path)) - Math.min(...ys(path));
+
+  // 5:12 to 5:20 — a genuinely steady easy run.
+  const easy = [312, 314, 316, 318, 320, 318, 316, 314, 312, 315, 317, 319];
+  // 4:05 to 6:10 — reps and floats.
+  const intervals = [245, 370, 246, 368, 248, 372, 250, 366, 247, 370, 249, 369];
+
+  it("draws a steady run as a calm line, not a full-height one", () => {
+    const h = height(paceShapeToPath(easy));
+    expect(h).toBeGreaterThan(0);
+    expect(h).toBeLessThan(8); // the box is 24 tall with 2 of padding
+  });
+
+  it("lets an interval session fill the box", () => {
+    expect(height(paceShapeToPath(intervals))).toBeGreaterThan(15);
+  });
+
+  it("draws the varied run taller than the steady one", () => {
+    expect(height(paceShapeToPath(intervals))).toBeGreaterThan(
+      height(paceShapeToPath(easy)) * 2,
+    );
+  });
+
+  it("keeps a steady run centred rather than pinned to an edge", () => {
+    const v = ys(paceShapeToPath(easy));
+    const mid = (Math.max(...v) + Math.min(...v)) / 2;
+    expect(mid).toBeGreaterThan(9);
+    expect(mid).toBeLessThan(15);
+  });
+
+  it("still puts the fastest point above the slowest", () => {
+    const path = paceShapeToPath([400, 300, 400]);
+    const v = ys(path);
+    expect(v[1]).toBeLessThan(v[0]); // 300 s/km is faster, so higher on screen
+  });
+});

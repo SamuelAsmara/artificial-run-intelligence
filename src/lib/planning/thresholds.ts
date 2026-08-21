@@ -289,7 +289,32 @@ export function estimateThresholds(
     hrRest,
     lthr,
     thresholdSpeedMps,
-    measured: hrMaxMeasured && lthrMeasured,
+    /*
+     * Measured means the *threshold* was measured, not everything.
+     *
+     * This used to require `hrMaxMeasured && lthrMeasured`, and the result was
+     * that it came back false for every athlete in the database — including
+     * ones with sixteen weeks of hard training behind them. A caveat that is
+     * always shown carries no information; it just teaches people to ignore
+     * the label.
+     *
+     * The reason is that a maximum heart rate is only "measured" when somebody
+     * has produced a genuinely all-out effort, which recreational runners
+     * rarely do and never do on demand. Gating on it asked for something the
+     * data will not contain.
+     *
+     * It is also the wrong condition. What this flag governs is the confidence
+     * of the load figures and the honesty of the heart-rate zone labels, and
+     * both of those rest on LTHR. The maximum enters only through heart-rate
+     * reserve, and the header of load.ts sets out why that barely matters: the
+     * normalisation cancels the coefficient, dropping sensitivity to an error
+     * in HRmax from about ±25% to ±2–8%. Predicting it from age is what
+     * Firstbeat does in every Garmin on the market.
+     *
+     * So the flag follows LTHR. `notes` still reports the basis of each of the
+     * three values separately, for anyone who wants the detail.
+     */
+    measured: lthrMeasured,
     notes,
   };
 }

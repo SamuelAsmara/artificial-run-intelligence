@@ -167,6 +167,43 @@ export function paceShape(streams: ActivityStreams, points = SPARK_POINTS): (num
   return out;
 }
 
+/**
+ * Heart rate over the run, reduced to the same points as {@link paceShape}.
+ *
+ * Bucketed on the same indices and to the same count, deliberately: the two
+ * arrays are read together, and a heart rate at point 17 has to describe the
+ * same stretch of running as the pace at point 17 or every chart that draws
+ * both is quietly lying about which effort cost which beats.
+ *
+ * A bucket with no reading is null rather than zero — a strap dropout is not a
+ * heart rate, and averaging a zero into the neighbours would invent a dip.
+ * Below 30 bpm is a dropout too, whatever the file says.
+ */
+export function hrShape(streams: ActivityStreams, points = SPARK_POINTS): (number | null)[] {
+  const n = streams.velocity.length;
+  if (n === 0) return [];
+
+  // The same divisor paceShape uses, off the same array, so the two shapes
+  // come out the same length even when the heart-rate stream is shorter.
+  const size = Math.max(1, Math.floor(n / points));
+  const out: (number | null)[] = [];
+
+  for (let start = 0; start + size <= n && out.length < points; start += size) {
+    let sum = 0;
+    let count = 0;
+    for (let i = start; i < start + size; i++) {
+      const hr = streams.heartrate[i];
+      if (typeof hr === "number" && hr > 30) {
+        sum += hr;
+        count++;
+      }
+    }
+    out.push(count === 0 ? null : Math.round(sum / count));
+  }
+
+  return out;
+}
+
 /* ------------------------------------------------------------------ */
 /* 2. best efforts                                                     */
 /* ------------------------------------------------------------------ */
@@ -320,14 +357,21 @@ export function cardiacDriftPct(streams: ActivityStreams): number | null {
 
 export interface StreamDerived {
   paceShape: (number | null)[];
+  /** null when the run carries no heart rate at all, so the column stays null */
+  hrShape: (number | null)[] | null;
   bestEfforts: BestEfforts;
   cardiacDriftPct: number | null;
 }
 
 /** Everything we keep from one activity's stream. */
 export function deriveFromStreams(streams: ActivityStreams): StreamDerived {
+  const hr = hrShape(streams);
   return {
     paceShape: paceShape(streams),
+    // An array of nothing but nulls is not a heart rate record; storing it
+    // would make a strapless run indistinguishable from one whose strap
+    // dropped out for a minute.
+    hrShape: hr.some((v) => v !== null) ? hr : null,
     bestEfforts: bestEfforts(streams),
     cardiacDriftPct: cardiacDriftPct(streams),
   };

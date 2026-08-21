@@ -17,6 +17,8 @@ import { createClient } from "@/lib/supabase/server";
 import { icuConfigForCurrentUser } from "@/lib/providers/credentials";
 import { fetchStreams } from "@/lib/wellness/icuStreams";
 import { resampleForChart } from "@/lib/activity/resample";
+import { streamsFromShape } from "@/lib/activity/shapeStreams";
+import { provenanceOf, type Provenance } from "@/lib/activity/provenance";
 import { formatDuration, formatPace } from "@/lib/format/pace";
 import { comparePlanned, type Comparison } from "@/lib/activity/plannedVsActual";
 import type { ChartStreams } from "@/lib/activity/resample";
@@ -52,6 +54,7 @@ export interface ActivityListItem {
   duration: string;
   avgHr: number | null;
   paceShape: (number | null)[] | null;
+  hrShape: (number | null)[] | null;
   cardiacDriftPct: number | null;
   /** "10K PB" when this run broke a record the day it was run, else null */
   pb: string | null;
@@ -82,7 +85,7 @@ export async function getActivities(limit = 60): Promise<ActivityListItem[]> {
 
   const { data } = await supabase
     .from("activities")
-    .select("id, started_at, distance_m, duration_s, avg_hr, pace_shape, cardiac_drift_pct, best_efforts")
+    .select("id, started_at, distance_m, duration_s, avg_hr, pace_shape, hr_shape, cardiac_drift_pct, best_efforts")
     .eq("user_id", user.id)
     .order("started_at", { ascending: false })
     .limit(limit);
@@ -117,6 +120,7 @@ export async function getActivities(limit = 60): Promise<ActivityListItem[]> {
         duration: formatDuration(seconds),
         avgHr: a.avg_hr,
         paceShape: a.pace_shape,
+        hrShape: a.hr_shape,
         cardiacDriftPct: a.cardiac_drift_pct,
         pb: records.get(a.id) ?? null,
       };
@@ -162,8 +166,14 @@ export interface ActivityDetail {
 
   /** null when the stream could not be fetched — the page still renders */
   streams: ChartStreams | null;
-  /** why the chart is missing, when it is */
-  streamsNote: string | null;
+  /** where this run came from, at what resolution, and what it is missing */
+  provenance: Provenance;
+  /**
+   * True when the chart was rebuilt from the stored pace summary rather than a
+   * second-by-second stream. The chart is honest at that resolution; dragging
+   * a range across it is not, so the page does not offer it.
+   */
+  coarseChart: boolean;
 
   /**
    * How this run compared with the session planned for that day.
@@ -187,7 +197,7 @@ export async function getActivityDetail(id: string): Promise<ActivityDetail | nu
 
   const { data: row } = await supabase
     .from("activities")
-    .select("user_id, id, source, external_id, started_at, distance_m, duration_s, avg_hr, max_hr, calories, avg_cadence, avg_power, cardiac_drift_pct, drift_onset_m, best_efforts")
+    .select("user_id, id, source, external_id, started_at, distance_m, duration_s, avg_hr, max_hr, calories, avg_cadence, avg_power, cardiac_drift_pct, drift_onset_m, best_efforts, pace_shape, hr_shape")
     .eq("id", id)
     .maybeSingle();
 
@@ -224,7 +234,7 @@ export async function getActivityDetail(id: string): Promise<ActivityDetail | nu
   const seconds = row.duration_s ?? 0;
 
   let streams: ChartStreams | null = null;
-  let streamsNote: string | null = null;
+  let unreachable = false;
 
   if (row.source === "intervals_icu") {
     // The stream belongs to whoever ran it, so it needs their credentials. A
@@ -232,24 +242,59 @@ export async function getActivityDetail(id: string): Promise<ActivityDetail | nu
     // and `provider_connections` has no coach policy, deliberately, so this
     // returns null for them rather than reaching for the athlete's key.
     const cfg = isOwner ? await icuConfigForCurrentUser() : null;
-    if (!cfg) {
-      streamsNote = isOwner
-        ? "Connect intervals.icu to see this run second by second."
-        : "Second-by-second detail is only visible to the athlete themselves.";
-    } else {
+    if (cfg) {
       try {
         const raw = await fetchStreams(cfg, row.external_id);
         streams = raw ? resampleForChart(raw) : null;
-        if (!streams) {
-          streamsNote = "This run has no second-by-second record — it may have been entered by hand.";
-        }
       } catch {
-        streamsNote = "Could not reach intervals.icu for the detail of this run.";
+        // Their provider is down or the token expired. Say so rather than
+        // letting it read as "this run has no data".
+        unreachable = true;
       }
     }
-  } else {
-    streamsNote = "Second-by-second detail is only available for runs from intervals.icu.";
   }
+
+  /*
+   * No provider stream, but the run is not blind.
+   *
+   * `pace_shape` was stored at import for exactly this reason — forty points
+   * of seconds per kilometre, kept so the raw stream could be thrown away.
+   * Until now only the list's sparkline read it, and every run that did not
+   * come from intervals.icu lost its whole chart: no pace curve, and with it
+   * no planned pace and no target window, because both are drawn inside the
+   * pace band.
+   *
+   * Deliberately kept out of `streams`. Everything below reads that variable
+   * to decide what the *figures* are, and a forty-point curve cannot be the
+   * source of a climb or a kilometre split. It draws; the stored row still
+   * reports.
+   */
+  const coarse = streams
+    ? null
+    : streamsFromShape(
+        row.pace_shape as (number | null)[] | null,
+        row.distance_m ?? 0,
+        seconds,
+        row.hr_shape as (number | null)[] | null,
+      );
+  const chart = streams ?? coarse;
+
+  /*
+   * One description of what this chart is made of, for every door a run can
+   * come through. Each branch above used to write its own sentence, so the
+   * same absence was worded differently depending on where it was noticed and
+   * a run missing only its heart rate was described as missing everything.
+   */
+  const provenance: Provenance = provenanceOf({
+    source: row.source,
+    resolution: streams ? "full" : coarse ? "summary" : "none",
+    hasHeartRate: Boolean(chart?.hr.some((v) => Number.isFinite(v) && v > 0)),
+    hasElevation: Boolean(chart?.alt.some((v) => Number.isFinite(v))),
+    hasCadence: Boolean(chart?.hasCadence),
+    hasPower: Boolean(chart?.hasPower),
+    unreachable,
+    restricted: !isOwner && row.source === "intervals_icu",
+  });
 
   /*
    * Everything below describes the run's owner, so it is keyed on `row.user_id`
@@ -316,15 +361,24 @@ export async function getActivityDetail(id: string): Promise<ActivityDetail | nu
         avgPower: row.avg_power,
       };
 
-  const note = streams
-    ? buildActivityNote({
-        summary,
-        segments,
-        driftOnsetM: onset,
-        driftPct: row.cardiac_drift_pct,
-        comparison,
-      })
-    : null;
+  /*
+   * The narrative used to be gated on having a stream, which meant a run with
+   * a plan behind it and no stream said nothing at all about that plan. Each
+   * sentence already returns null when its own inputs are missing, so with no
+   * stream the shape and fastest-kilometre sentences drop out by themselves
+   * and the planned-versus-actual one remains, which is the sentence the
+   * athlete came for.
+   */
+  const note =
+    streams || comparison
+      ? buildActivityNote({
+          summary,
+          segments,
+          driftOnsetM: onset,
+          driftPct: row.cardiac_drift_pct,
+          comparison,
+        })
+      : null;
 
   const name = physiology.fullName ?? "";
 
@@ -356,8 +410,9 @@ export async function getActivityDetail(id: string): Promise<ActivityDetail | nu
     hrMax: physiology.hrMax,
     calories: row.calories,
     bestEfforts: row.best_efforts,
-    streams,
-    streamsNote,
+    streams: chart,
+    provenance,
+    coarseChart: Boolean(coarse),
     comparison,
     note,
   };

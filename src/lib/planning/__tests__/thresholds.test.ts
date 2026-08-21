@@ -101,3 +101,40 @@ describe("estimateThresholds", () => {
     expect(notes.join(" ")).toMatch(/Threshold pace .*from your fastest sustained run/);
   });
 });
+
+describe("what `measured` means", () => {
+  /** Three sustained runs with heart rate: enough for LTHR to be measured. */
+  const enough = (): HistoryActivity[] => [
+    run("2026-06-01", 30, 250, 160),
+    run("2026-06-08", 32, 252, 161),
+    run("2026-06-15", 28, 248, 162),
+  ];
+
+  it("is true once the threshold heart rate is measured", () => {
+    // It used to also demand a measured HRmax, which needs an all-out effort
+    // recreational runners never produce — so the flag came back false for
+    // every athlete in the database and the "provisional" caveat never went
+    // away. A caveat that is always shown carries no information.
+    const { measured, notes } = estimateThresholds(enough(), { age: 30, sex: "male" });
+    expect(measured).toBe(true);
+    expect(notes.join(" ")).toMatch(/from your sustained hard runs/);
+  });
+
+  it("is false while there are too few sustained runs to measure one", () => {
+    const two = enough().slice(0, 2);
+    const { measured, notes } = estimateThresholds(two, { age: 30, sex: "male" });
+    expect(measured).toBe(false);
+    expect(notes.join(" ")).toMatch(/provisional/i);
+  });
+
+  it("tracks the threshold and nothing else", () => {
+    // The flag governs load confidence and the honesty of zone labels, and
+    // both rest on LTHR. Whatever the maximum's basis turns out to be, it must
+    // not be what decides this.
+    const { measured } = estimateThresholds(enough(), { age: 30, sex: "male" });
+    const lthrNote = estimateThresholds(enough(), { age: 30, sex: "male" }).notes.find((n) =>
+      n.startsWith("Threshold heart rate"),
+    );
+    expect(measured).toBe(!lthrNote?.includes("provisional"));
+  });
+});
