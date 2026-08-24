@@ -67,6 +67,12 @@ export interface ActivityListItem {
  * on Vercel — an hour or three behind, which is a whole day for any run started
  * before about 03:00 local.
  */
+/** the YYYY-MM-DD the athlete would write on that run, in their own zone */
+const zonedIso = (iso: string) =>
+  new Intl.DateTimeFormat("en-CA", {
+    year: "numeric", month: "2-digit", day: "2-digit", timeZone: APP_TIME_ZONE,
+  }).format(new Date(iso));
+
 const label = (iso: string) =>
   new Intl.DateTimeFormat(APP_LOCALE, {
     day: "2-digit",
@@ -112,7 +118,11 @@ export async function getActivities(limit = 60): Promise<ActivityListItem[]> {
       const seconds = a.duration_s ?? 0;
       return {
         id: a.id,
-        date: (a.started_at as string).slice(0, 10),
+        // The athlete's calendar date, not the server's. `slice(0, 10)` on a
+        // UTC timestamp files a run started at 01:00 local on the previous
+        // day — so the list header said Tuesday while the streak, the calendar
+        // dot and the weekly bar all said Monday.
+        date: zonedIso(a.started_at as string),
         dateLabel: label(a.started_at as string),
         distanceKm: km,
         durationSec: seconds,

@@ -64,11 +64,35 @@ function shapeSentence({ segments }: ActivityNoteInput): string | null {
   if (segments.length < 4) return null;
 
   const mid = Math.floor(segments.length / 2);
-  const mean = (list: Segment[]) =>
-    list.reduce((s, x) => s + x.paceSec, 0) / list.length;
 
-  const first = mean(segments.slice(0, mid));
-  const second = mean(segments.slice(segments.length - mid));
+  /*
+   * Distance-weighted, and pace inverted before it is averaged.
+   *
+   * Two things were wrong with the plain mean over `paceSec`. Segments are not
+   * all the same length — a trailing part-kilometre is absorbed into the one
+   * before it, which can leave a final segment half again as long as the rest
+   * carrying equal weight. And pace is seconds *per kilometre*, an inverse, so
+   * the mean of two paces is not the pace over the two distances together.
+   *
+   * Both errors are small, and both push in the same direction on the runs
+   * where the verdict is closest: the eight-second threshold below is decided
+   * by a few seconds either way.
+   */
+  const paceOver = (list: Segment[]) => {
+    let m = 0;
+    let sec = 0;
+    for (const x of list) {
+      if (x.distanceM > 0 && x.paceSec > 0) {
+        m += x.distanceM;
+        sec += (x.distanceM / 1000) * x.paceSec;
+      }
+    }
+    return m > 0 ? sec / (m / 1000) : 0;
+  };
+
+  const first = paceOver(segments.slice(0, mid));
+  const second = paceOver(segments.slice(segments.length - mid));
+  if (first <= 0 || second <= 0) return null;
   const delta = Math.round(first - second);
 
   if (delta >= PROGRESSION_S) {

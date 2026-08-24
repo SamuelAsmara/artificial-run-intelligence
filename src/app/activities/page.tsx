@@ -4,6 +4,8 @@ import { getActivities, getPersonalRecords } from "@/actions/activities";
 import { paceShapeColor, paceShapeToPath } from "@/lib/dashboard/sparkline";
 import type { Act } from "@/lib/screens/activities";
 import type { ComparableRun } from "@/lib/activity/compareRuns";
+import { summariseRuns, withinDays, SUMMARY_DAYS } from "@/lib/activity/window";
+import { isoDate, weekStart, zonedNow } from "@/lib/time/week";
 
 export const metadata = { title: "Activities · ARI" };
 
@@ -81,10 +83,22 @@ export default async function ActivitiesPage() {
   }));
 
   // The list's weekly bars, oldest week first.
+  /*
+   * Calendar weeks, not seven-day windows anchored on the current clock time.
+   *
+   * `Math.floor((now - date) / week)` buckets by "how long ago", so bucket 0
+   * was the trailing seven days rather than this week — a run six days ago
+   * could fall outside "this week" while the dashboard, which uses real week
+   * starts, counted it in. Two screens, two answers for the same athlete.
+   */
   const weekKm = new Array(4).fill(0);
-  const now = Date.now();
+  const today = isoDate(zonedNow());
+  const thisWeek = isoDate(weekStart(zonedNow()));
   for (const r of rows) {
-    const weeksAgo = Math.floor((now - Date.parse(r.date)) / (7 * 86_400_000));
+    const runWeek = isoDate(weekStart(new Date(`${r.date}T00:00:00`)));
+    const weeksAgo = Math.round(
+      (Date.parse(`${thisWeek}T00:00:00`) - Date.parse(`${runWeek}T00:00:00`)) / (7 * 86_400_000),
+    );
     if (weeksAgo >= 0 && weeksAgo < 4) weekKm[3 - weeksAgo] += r.distanceKm;
   }
 
@@ -101,7 +115,10 @@ export default async function ActivitiesPage() {
     const paceSec = r.distanceKm > 0 ? r.durationSec / r.distanceKm : 0;
     if (paceSec <= 0) continue;
     if (classify({ distanceKm: r.distanceKm, paceSec, medianPace }) !== "easy") continue;
-    const weeksAgo = Math.floor((now - Date.parse(r.date)) / (7 * 86_400_000));
+    const runWeek = isoDate(weekStart(new Date(`${r.date}T00:00:00`)));
+    const weeksAgo = Math.round(
+      (Date.parse(`${thisWeek}T00:00:00`) - Date.parse(`${runWeek}T00:00:00`)) / (7 * 86_400_000),
+    );
     if (weeksAgo < 0 || weeksAgo > 11) continue;
     const bucket = easyByWeek.get(weeksAgo) ?? { sum: 0, n: 0 };
     bucket.sum += paceSec;
@@ -136,14 +153,31 @@ export default async function ActivitiesPage() {
    * that is an em dash when the strap was not worn. `+"—"` is NaN, so a single
    * strapless run turned the whole tile into "NaN bpm".
    */
-  const withHr = rows.filter((r) => r.avgHr !== null);
-  const avgHr = withHr.length
-    ? Math.round(withHr.reduce((sum, r) => sum + (r.avgHr as number), 0) / withHr.length)
-    : null;
+  /*
+   * The stats row, over the window its label promises.
+   *
+   * `getActivities(60)` is a row limit, not a date filter — for anyone running
+   * five times a week that is roughly three months. The tiles said "4 weeks"
+   * over three months of training while the bar chart beside them showed four,
+   * so one screen reported two different truths. The list still shows
+   * everything that was fetched; only the summary is windowed.
+   *
+   * Both averages are weighted, and `summariseRuns` is where that arithmetic
+   * lives so it has tests around it.
+   */
+  const summary = summariseRuns(withinDays(rows, SUMMARY_DAYS, today));
 
   return (
     <ActivitiesView
-      data={{ acts, weekKm: weekKm.map((k) => Math.round(k)), wp, pb10k, avgHr, compare }}
+      data={{
+        acts,
+        weekKm: weekKm.map((k) => Math.round(k)),
+        wp,
+        pb10k,
+        avgHr: summary.avgHr,
+        summary: { runs: summary.runs, totalKm: summary.totalKm, avgPaceSec: summary.avgPaceSec },
+        compare,
+      }}
     />
   );
 }

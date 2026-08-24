@@ -321,7 +321,17 @@ export function raceCountdown(
   let weekNumber = 1;
   if (planStartIso) {
     const start = weekStart(new Date(planStartIso + "T00:00:00"));
-    const elapsed = Math.floor((weekStart(today).getTime() - start.getTime()) / (7 * DAY));
+    /*
+     * Rounded, not floored.
+     *
+     * Both ends are local midnights, so a spring-forward inside the span makes
+     * the difference one hour short of a whole number of weeks — and `floor`
+     * then drops a week. A plan started 15 February and viewed on 12 April
+     * reported "Week 8 of 12 · 58%" when the athlete was in week 9 at 75%.
+     * `weeklyVolume` in this same file rejects the millisecond technique for
+     * exactly this reason; this was the one place it survived.
+     */
+    const elapsed = Math.round((weekStart(today).getTime() - start.getTime()) / (7 * DAY));
     weekNumber = Math.min(Math.max(1, elapsed + 1), Math.max(1, totalWeeks));
   }
 

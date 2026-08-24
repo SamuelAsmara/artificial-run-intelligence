@@ -480,7 +480,17 @@ export function summarise(
     gapSec: gradeAdjustedPace(slice),
     speedKmh: durationS > 0 ? (distanceM / 1000) / (durationS / 3600) : null,
     stoppedS: Math.max(0, Math.round(elapsedS - durationS)),
-    climbM: totalClimb(slice.alt),
+    /*
+     * `null`, not `0`, when the altitude channel is absent.
+     *
+     * `totalClimb` returns 0 for an all-NaN array — correct for a function
+     * whose job is to add up gain, wrong as an answer to "how much did this
+     * run climb". The field's own contract above says so, and the no-stream
+     * case was already handled a layer up; this was the case where the stream
+     * exists but the provider never filled the altitude channel, and a hilly
+     * run then reported "0 m" instead of an em dash.
+     */
+    climbM: slice.alt.some(Number.isFinite) ? totalClimb(slice.alt) : null,
     avgHr: avg(beats),
     maxHr: beats.length ? Math.round(Math.max(...beats)) : null,
     avgCadence: avg(steps),

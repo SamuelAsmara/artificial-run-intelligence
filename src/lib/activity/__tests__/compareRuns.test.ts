@@ -200,3 +200,32 @@ describe("compareSplits", () => {
     expect(parts.every((p) => p.paces[0] !== null)).toBe(true);
   });
 });
+
+describe("compareSplits — pace is an inverse", () => {
+  const mk2 = (id: string, shape: number[], date: string): ComparableRun => ({
+    id, date, distanceM: 10_000, durationS: 3000, avgHr: 150, paceShape: shape, type: "easy",
+  });
+
+  it("reports the pace of the quarter, not the mean of its pace figures", () => {
+    /*
+     * Equal-time buckets: half the run at 4:00/km (240 s), half at 6:00/km.
+     * 300 s at 4:00 covers 1.25 km, 300 s at 6:00 covers 0.833 km — so the
+     * quarter is 2.083 km in 600 s, which is 288 s/km. The mean of 240 and 360
+     * says 300, and is wrong by twelve seconds a kilometre.
+     */
+    const shape = [
+      ...new Array(20).fill(240),
+      ...new Array(20).fill(360),
+    ];
+    const c = compareRuns([mk2("a", shape, "2026-08-01"), mk2("b", shape, "2026-07-01")])!;
+    const pace = compareSplits(c, 1).parts[0].paces[0]!;
+    expect(pace).toBeCloseTo(288, 0);
+    expect(pace).not.toBeCloseTo(300, 0);
+  });
+
+  it("is unchanged when the whole quarter was run at one pace", () => {
+    const shape = new Array(40).fill(300);
+    const c = compareRuns([mk2("a", shape, "2026-08-01"), mk2("b", shape, "2026-07-01")])!;
+    expect(compareSplits(c, 1).parts[0].paces[0]).toBeCloseTo(300, 4);
+  });
+});

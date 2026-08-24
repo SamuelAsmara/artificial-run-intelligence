@@ -1,5 +1,10 @@
 /**
- * Cardiac Drift — בתוך אימון בודד: אם הדופק עולה בעוד הקצב נשאר קבוע,
+ * Cardiac Drift — בתוך אימון בודד:
+ *
+ * הערה: הפונקציה הזאת אינה בשימוש כרגע. סחיפת הדופק שמוצגת במוצר מחושבת
+ * ב-`lib/activity/metrics.ts`, על הזרם המדוגם מחדש. זו נשארת כיוון שהיא
+ * החישוב שמסמך התכנון מתאר, אבל אין לה קורא מלבד הטסט שלה.
+ * אם הדופק עולה בעוד הקצב נשאר קבוע,
  * זהו סימן לעייפות/התייבשות. מסמך תכנון טכני §6, מסמך אפיון בדיקות §1.
  */
 
@@ -28,9 +33,24 @@ export function detectCardiacDrift(stream: StreamPoint[]): CardiacDriftResult {
     return { hrDriftPct: 0, paceChangePct: 0, isSignificantDrift: false };
   }
 
-  const midpoint = Math.floor(stream.length / 2);
-  const firstHalf = stream.slice(0, midpoint);
-  const secondHalf = stream.slice(midpoint);
+  /*
+   * חוצים לפי זמן, לא לפי מספר הדגימות.
+   *
+   * `stream.length / 2` מניח שכל הדגימות במרווחים שווים. השדה `t` קיים כאן
+   * בדיוק מפני שהן לא תמיד — שעון שמדלג על שניות, או מקטע עם קליטה חלשה,
+   * מזיז את נקודת האמצע האמיתית. חצי מהזמן הוא מה שהמדד מתיימר להשוות.
+   */
+  const t0 = stream[0].t;
+  const tEnd = stream[stream.length - 1].t;
+  const half = t0 + (tEnd - t0) / 2;
+
+  const firstHalf = stream.filter((p) => p.t <= half);
+  const secondHalf = stream.filter((p) => p.t > half);
+
+  // מחצית ריקה אינה השוואה. קורה כשכל הדגימות נדחסו לצד אחד של האמצע.
+  if (firstHalf.length === 0 || secondHalf.length === 0) {
+    return { hrDriftPct: 0, paceChangePct: 0, isSignificantDrift: false };
+  }
 
   const avg = (points: StreamPoint[], key: "heartRate" | "pace") =>
     points.reduce((sum, p) => sum + p[key], 0) / points.length;

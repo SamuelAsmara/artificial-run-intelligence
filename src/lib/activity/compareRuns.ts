@@ -304,17 +304,44 @@ export function compareSplits(
     const from = Math.round(p * size);
     const to = p === parts - 1 ? points : Math.round((p + 1) * size);
 
-    const average = (curve: (number | null)[]) => {
-      const vals = curve
+    const slice = (curve: (number | null)[]) =>
+      curve
         .slice(from, to)
         .filter((v): v is number => v !== null && Number.isFinite(v) && v > 0);
+
+    /**
+     * Heart rate over equal-time buckets: a plain mean is already the
+     * time-weighted answer, because every bucket is the same length of time.
+     */
+    const meanOf = (curve: (number | null)[]) => {
+      const vals = slice(curve);
       return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+    };
+
+    /**
+     * Pace is not.
+     *
+     * The buckets are equal *time*, and pace is seconds per kilometre — an
+     * inverse. Averaging the pace values answers "the mean of these numbers",
+     * which is not "the pace of this quarter". Five minutes at 4:00/km and five
+     * at 6:00/km is 2.08 km in 600 s, which is 4:48/km; the mean of the two
+     * figures says 5:00. Twelve seconds a kilometre, wrong in the same
+     * direction every time, on exactly the interval sessions this panel exists
+     * to compare.
+     *
+     * Averaging the *speeds* over equal time and inverting gives the real pace.
+     */
+    const paceOf = (curve: (number | null)[]) => {
+      const vals = slice(curve);
+      if (!vals.length) return null;
+      const meanSpeed = vals.reduce((a, sec) => a + 1 / sec, 0) / vals.length;
+      return meanSpeed > 0 ? 1 / meanSpeed : null;
     };
 
     out.push({
       label: `${Math.round((p / parts) * 100)}\u2013${Math.round(((p + 1) / parts) * 100)}%`,
-      paces: runs.map((r) => average(r.curve)),
-      beats: runs.map((r) => average(r.hrCurve)),
+      paces: runs.map((r) => paceOf(r.curve)),
+      beats: runs.map((r) => meanOf(r.hrCurve)),
     });
   }
 

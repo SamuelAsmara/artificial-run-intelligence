@@ -22,6 +22,12 @@ export function ActivitiesView({
     wp: PacePoint[];
     pb10k?: string | null;
     avgHr?: number | null;
+    /**
+     * The four-week summary, computed on the server over the window the label
+     * promises. The view used to derive these from `acts`, which is every run
+     * that was fetched — a row limit, not a date range.
+     */
+    summary?: { runs: number; totalKm: number; avgPaceSec: number | null };
     /** the same runs, in the shape the comparison engine reads */
     compare?: ComparableRun[];
   };
@@ -158,19 +164,39 @@ export function ActivitiesView({
    * an em dash when there is no strap, so `+"—"` is NaN and one strapless run
    * made the tile read "NaN bpm".
    */
-  const avgHr = data ? (data.avgHr ?? null) : Math.round(
-    acts.reduce((s, a) => s + Number(a.hr), 0) / (totalRuns || 1),
-  );
+  /*
+   * `a.hr` is a *display* string and is an em dash when no strap was worn, so
+   * `Number(a.hr)` is NaN and one strapless run poisoned the whole tile. The
+   * reference branch now averages only the rows that parse, and reports
+   * nothing rather than a number when none do.
+   */
+  const avgHr = data
+    ? (data.avgHr ?? null)
+    : (() => {
+        const vals = acts.map((a) => Number(a.hr)).filter((v) => Number.isFinite(v));
+        return vals.length ? Math.round(vals.reduce((s, v) => s + v, 0) / vals.length) : null;
+      })();
 
   /*
    * The stats row, on the kit's stat tile. `v: null` is the honest reading when
    * there is nothing to average — the tile draws an em dash. It must never be a
    * zero, which an athlete would read as "I ran at 0:00/km".
    */
+  /*
+   * Prefer the server's windowed summary.
+   *
+   * The local reduce over `acts` is what made the tiles disagree with the bar
+   * chart beside them: `acts` is every run that was fetched, and the label says
+   * four weeks. It stays only for the reference render, which has no server.
+   */
+  const shownRuns = data?.summary?.runs ?? totalRuns;
+  const shownKm = data?.summary?.totalKm ?? totalKm;
+  const shownPace = data?.summary ? data.summary.avgPaceSec : avgPace;
+
   const stats: { v: string | null; unit?: string; name: string; icon: string }[] = [
-    { v: String(totalRuns), unit: "runs", name: "Completed · 4 weeks", icon: STAT_ICONS.distance },
-    { v: Math.round(totalKm) + "", unit: "km", name: "Total distance", icon: STAT_ICONS.chart },
-    { v: avgPace === null ? null : fmtPace(avgPace), unit: "/km", name: "Average pace", icon: STAT_ICONS.clock },
+    { v: String(shownRuns), unit: "runs", name: "Completed · 4 weeks", icon: STAT_ICONS.distance },
+    { v: Math.round(shownKm) + "", unit: "km", name: "Total distance", icon: STAT_ICONS.chart },
+    { v: shownPace === null ? null : fmtPace(shownPace), unit: "/km", name: "Average pace", icon: STAT_ICONS.clock },
     { v: avgHr === null || !Number.isFinite(avgHr) ? null : String(avgHr), unit: "bpm", name: "Average heart rate", icon: STAT_ICONS.pulse },
     // The athlete's own 10 km best, from the same source the dashboard reads.
     // It used to be the string "47:12", which is how one screen came to show a
