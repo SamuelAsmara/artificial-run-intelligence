@@ -14,6 +14,10 @@ import type { CoachWorkspace } from "@/actions/coach";
 import { buildCycles, cyclesSummary } from "@/lib/coach/programs";
 import { colorFor } from "@/lib/coach/calendar";
 import { RACE_LABEL } from "@/lib/coach/templates";
+import { EmptyState } from "@/components/ui";
+
+/** two figures — a cycle is a group of athletes, not a document */
+const GROUP_ICON = "M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM2 20a7 7 0 0 1 14 0M17 11a3 3 0 1 0 0-6M16 20h6a5 5 0 0 0-4-4.9";
 import {
   COACH_COPY, formColor, initials, loadColor, readinessColor, sinceLabel, untilLabel,
 } from "@/lib/screens/coachHome";
@@ -26,17 +30,29 @@ export function CoachCyclesView({ data, today }: { data: CoachWorkspace; today: 
     [athletes, today, flaggedIds],
   );
 
-  const [selected, setSelected] = useState<string[]>([]);
+  /*
+   * Cycles open one at a time, and start closed.
+   *
+   * Every cycle used to render its full athlete list. A coach with five race
+   * groups and twenty athletes got twenty rows down the page before they could
+   * see what the second group even was, which defeats the point of grouping
+   * them. The header row carries what a coach scans for — the race, how many
+   * athletes, how long until race day — and the roster is one click away.
+   *
+   * The nearest race opens by default, because that is the group with the
+   * least time left to change anything.
+   */
+  const [openIds, setOpenIds] = useState<string[] | null>(null);
+  const isOpen = (id: string, index: number) =>
+    openIds === null ? index === 0 : openIds.includes(id);
+  const toggleOpen = (id: string, index: number) =>
+    setOpenIds((prev) => {
+      const base = prev ?? (cycles[0] ? [cycles[0].id] : []);
+      void index;
+      return base.includes(id) ? base.filter((x) => x !== id) : [...base, id];
+    });
 
-  const toggle = (id: string) =>
-    setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
-
-  const shown = useMemo(() => {
-    if (selected.length === 0) return cycles;
-    return cycles.filter((c) => selected.includes(c.id));
-  }, [cycles, selected]);
-
-  const showOrphans = selected.length === 0 && withoutRace.length > 0;
+  const showOrphans = withoutRace.length > 0;
 
   return (
     <div style={{ maxWidth: "1280px", marginInline: "auto", padding: "16px 24px 40px", display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -60,9 +76,11 @@ export function CoachCyclesView({ data, today }: { data: CoachWorkspace; today: 
         screen exists to surface.
       */}
       {cycles.length === 0 && withoutRace.length === 0 ? (
-        <section className="card" style={{ padding: "34px 26px", textAlign: "center" }}>
-          <p style={{ margin: 0, fontSize: "13px", color: "var(--color-muted)" }}>{COACH_COPY.cycleEmpty}</p>
-        </section>
+        <EmptyState
+          icon={GROUP_ICON}
+          message={COACH_COPY.cycleEmpty}
+          style={{ maxWidth: "620px", marginInline: "auto", width: "100%" }}
+        />
       ) : cycles.length === 0 ? (
         <section className="card" style={{ padding: "16px 20px", borderColor: "var(--color-caution)" }}>
           <h2 style={{ margin: "0 0 4px", fontSize: "13px", fontWeight: 600 }}>{COACH_COPY.noRaceGroup}</h2>
@@ -73,89 +91,108 @@ export function CoachCyclesView({ data, today }: { data: CoachWorkspace; today: 
         </section>
       ) : (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: "10px" }}>
-            {cycles.map((c) => {
-              const on = selected.includes(c.id);
+          {/*
+              One row of tiles, and the roster opens beneath it.
+
+              There used to be two mechanisms here doing the same job: a grid of
+              selector cards that wrapped to three-then-one and looked broken,
+              and a separate stack of collapsible sections. Now the tiles *are*
+              the accordion — one row, click a tile, that cycle's athletes open
+              below it.
+          */}
+          <div style={{ display: "flex", gap: "8px", overflowX: "auto", paddingBlockEnd: "2px" }}>
+            {cycles.map((c, ci) => {
+              const on = isOpen(c.id, ci);
               const color = colorFor(c.raceType, preferences.raceColors);
               return (
                 <button
                   key={c.id}
                   type="button"
-                  onClick={() => toggle(c.id)}
-                  className="card dc-hover-border"
+                  onClick={() => toggleOpen(c.id, ci)}
+                  aria-pressed={on}
+                  className="dc-hover-border"
                   style={{
                     cursor: "pointer",
                     textAlign: "start",
                     fontFamily: "inherit",
-                    padding: "14px 16px",
+                    flex: "1 1 0",
+                    minWidth: "168px",
+                    padding: "11px 13px",
                     display: "flex",
                     flexDirection: "column",
-                    gap: "8px",
-                    borderColor: on ? color : "var(--color-line)",
-                    background: on ? "var(--color-elevated)" : "var(--color-surface)",
+                    gap: "5px",
+                    border: "none",
+                    borderRadius: "var(--radius-card)",
                     borderInlineStart: `3px solid ${color}`,
+                    background: on ? "var(--color-elevated)" : "var(--color-surface)",
+                    // Inset, so opening a cycle does not shift the row.
+                    boxShadow: on
+                      ? `inset 0 0 0 1px ${color}`
+                      : "inset 0 0 0 1px var(--color-line)",
+                    transition: "background .15s, box-shadow .15s",
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "8px" }}>
-                    <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-ink)" }}>
+                    <span style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--color-ink)", whiteSpace: "nowrap" }}>
                       {RACE_LABEL[c.raceType]}
                     </span>
-                    <span className="num" style={{ fontSize: "10.5px", color: c.daysAway < 0 ? "var(--color-faint)" : "var(--color-accent)" }}>
+                    <span className="num" style={{ fontSize: "10px", whiteSpace: "nowrap", color: c.daysAway < 0 ? "var(--color-faint)" : "var(--color-accent)" }}>
                       {untilLabel(c.raceDate, today)}
                     </span>
                   </div>
 
-                  <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
-                    <span className="num" style={{ fontSize: "22px", fontWeight: 500, color: "var(--color-ink)" }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: "5px" }}>
+                    <span className="num" style={{ fontSize: "20px", fontWeight: 500, letterSpacing: "-0.02em", lineHeight: 1, color: "var(--color-ink)" }}>
                       {c.athletes.length}
                     </span>
-                    <span className="num" style={{ fontSize: "10.5px", color: "var(--color-faint)" }}>
+                    <span className="num" style={{ fontSize: "10px", color: "var(--color-faint)" }}>
                       {c.athletes.length === 1 ? "athlete" : "athletes"}
                     </span>
                   </div>
 
-                  <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-                    <span className="num" style={{ fontSize: "10.5px", color: "var(--color-muted)" }}>
-                      {c.meanReadiness === null ? "no scores yet" : `mean readiness ${c.meanReadiness}`}
-                    </span>
-                    {c.needAttention > 0 && (
-                      <span className="num" style={{ fontSize: "10.5px", color: "var(--color-negative)" }}>
-                        {c.needAttention} flagged
-                      </span>
-                    )}
-                  </div>
-
-                  <span className="num" style={{ fontSize: "9.5px", color: "var(--color-faint)" }}>
-                    {c.daysAway < 0 ? "already run" : `${Math.max(0, c.weeksAway)} weeks out`}
+                  {/*
+                      The one line worth carrying on a closed tile: whether
+                      anybody in this group needs the coach this morning.
+                  */}
+                  <span
+                    className="num"
+                    style={{
+                      fontSize: "10px",
+                      whiteSpace: "nowrap",
+                      color: c.needAttention > 0 ? "var(--color-caution)" : "var(--color-faint)",
+                    }}
+                  >
+                    {c.needAttention > 0
+                      ? `${c.needAttention} ${c.needAttention === 1 ? COACH_COPY.flagOne : COACH_COPY.flagMany}`
+                      : c.meanReadiness === null
+                        ? COACH_COPY.noScores
+                        : `${COACH_COPY.meanReadiness} ${c.meanReadiness}`}
                   </span>
                 </button>
               );
             })}
           </div>
 
-          {selected.length > 0 && (
-            <button
-              className="btn btn-secondary"
-              type="button"
-              onClick={() => setSelected([])}
-              style={{ alignSelf: "flex-start", padding: "5px 12px", fontSize: "11.5px" }}
-            >
-              {COACH_COPY.clearAll}
-            </button>
-          )}
-
-          {shown.map((c) => (
-            <section key={c.id} className="card" style={{ padding: "16px 20px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBlockEnd: "10px" }}>
-                <span style={{ width: "10px", height: "10px", borderRadius: "3px", background: colorFor(c.raceType, preferences.raceColors) }} />
-                <h2 style={{ margin: 0, fontSize: "13px", fontWeight: 600 }}>{c.label}</h2>
-                <span className="num" style={{ fontSize: "10.5px", color: "var(--color-faint)" }}>
-                  {c.athletes.length} · {untilLabel(c.raceDate, today)}
-                </span>
-              </div>
-              <AthleteRows athletes={c.athletes} today={today} flaggedIds={flaggedIds} />
-            </section>
-          ))}
+          {cycles.map((c, ci) => {
+            if (!isOpen(c.id, ci)) return null;
+            const open = true;
+            return (
+              <section key={c.id} className="card" style={{ padding: 0, overflow: "hidden" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "13px 20px 4px" }}>
+                  <span style={{ width: "10px", height: "10px", borderRadius: "3px", flexShrink: 0, background: colorFor(c.raceType, preferences.raceColors) }} />
+                  <h2 style={{ margin: 0, fontSize: "13px", fontWeight: 600 }}>{c.label}</h2>
+                  <span className="num" style={{ fontSize: "10.5px", color: "var(--color-faint)" }}>
+                    {c.athletes.length} · {untilLabel(c.raceDate, today)}
+                  </span>
+                </div>
+                {open ? (
+                  <div style={{ padding: "0 20px 16px" }}>
+                    <AthleteRows athletes={c.athletes} today={today} flaggedIds={flaggedIds} />
+                  </div>
+                ) : null}
+              </section>
+            );
+          })}
 
           {showOrphans && (
             <section className="card" style={{ padding: "16px 20px", borderColor: "var(--color-caution)" }}>

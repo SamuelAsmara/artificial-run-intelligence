@@ -10,15 +10,31 @@
 
 import { useState, useTransition } from "react";
 import { joinCoach, leaveCoach, type MyCoach } from "@/actions/coach";
+import { Avatar } from "@/components/ui/Avatar";
 
 const COPY = {
   title: "Coach",
   subHas: "They can see how you train, and change your plan.",
-  subNone: "Have a coach code? Enter it here.",
+  subNone: "Not coached",
+  /*
+   * Said in words, not implied by an empty field.
+   *
+   * The card used to show only "Have a coach code? Enter it here." — an
+   * athlete who was never sure whether their coach had linked them had no way
+   * to tell from this screen whether the answer was no or whether the screen
+   * simply had not loaded.
+   */
+  noneTitle: "You do not have a coach",
+  noneBody:
+    "Nobody else can see your training. If a coach gave you a code, enter it below and they will be able to read your runs and change your plan.",
   privacy:
     "Your coach sees your runs, your readiness and your plan. They never see how your account is connected or any key you have entered.",
   field: "Coach code",
-  placeholder: "ABC123",
+  /*
+   * Empty on purpose. A sample code sitting in the field reads as a real one —
+   * more than one person has typed "ABC123" in and been told it is invalid.
+   */
+  placeholder: "",
   join: "Join",
   joining: "Joining…",
   leave: "Leave",
@@ -64,8 +80,14 @@ export function CoachLink({ coach }: { coach: MyCoach | null }) {
 
       {coach ? (
         <div style={{ display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap", marginBlockStart: "12px" }}>
+          <Avatar src={coach.avatarUrl ?? null} name={coach.name} size={40} />
           <div style={{ flex: "1 1 200px", minWidth: 0 }}>
             <p style={{ margin: 0, fontSize: "13.5px", fontWeight: 500 }}>{coach.name}</p>
+            {coach.bio ? (
+              <p style={{ margin: "3px 0 0", fontSize: "11.5px", color: "var(--color-muted)", lineHeight: 1.55, textWrap: "pretty" }}>
+                {coach.bio}
+              </p>
+            ) : null}
             <p className="num" style={{ margin: "2px 0 0", fontSize: "10.5px", color: "var(--color-faint)" }}>
               {COPY.since} {coach.since.slice(0, 10)}
             </p>
@@ -75,7 +97,24 @@ export function CoachLink({ coach }: { coach: MyCoach | null }) {
           </button>
         </div>
       ) : (
-        <div style={{ display: "flex", alignItems: "flex-end", gap: "10px", flexWrap: "wrap", marginBlockStart: "12px" }}>
+        <div style={{ marginBlockStart: "12px" }}>
+        <div style={{
+          display: "flex", alignItems: "flex-start", gap: "11px",
+          padding: "11px 13px", marginBlockEnd: "14px",
+          borderRadius: "var(--radius-control)",
+          background: "var(--color-elevated)",
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-faint)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginBlockStart: "1px" }} aria-hidden>
+            <path d="M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM2 20a7 7 0 0 1 14 0M17 11a3 3 0 1 0 0-6M16 20h6a5 5 0 0 0-4-4.9" />
+          </svg>
+          <div style={{ minWidth: 0 }}>
+            <p style={{ margin: 0, fontSize: "12.5px", fontWeight: 500 }}>{COPY.noneTitle}</p>
+            <p style={{ margin: "3px 0 0", fontSize: "11.5px", color: "var(--color-muted)", lineHeight: 1.6, textWrap: "pretty" }}>
+              {COPY.noneBody}
+            </p>
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: "10px", flexWrap: "wrap" }}>
           <label style={{ display: "flex", flexDirection: "column", gap: "4px", flex: "1 1 180px" }}>
             <span className="lbl">{COPY.field}</span>
             <input
@@ -95,6 +134,7 @@ export function CoachLink({ coach }: { coach: MyCoach | null }) {
           <button className="btn btn-primary" type="button" onClick={join} disabled={pending || code.trim() === ""}>
             {pending ? COPY.joining : COPY.join}
           </button>
+        </div>
         </div>
       )}
 

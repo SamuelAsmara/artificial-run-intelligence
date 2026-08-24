@@ -57,6 +57,8 @@ import {
   requiredPace,
 } from "@/lib/screens/settings";
 import type { RaceType } from "@/types/database.types";
+import { SectionHeader } from "@/components/ui";
+import { METHOD_COPY } from "@/lib/screens/methodology";
 
 const copy = SET_COPY;
 const DASH = "—";
@@ -99,6 +101,39 @@ export function SettingsView({
       <ProfileCard profile={profile} />
       <ConnectionsCard connection={icuConnection} />
       <CoachLink coach={coach} />
+
+      {/*
+          The methodology page.
+          A row rather than a section, because it is a door, not a setting.
+      */}
+      <a
+        className="card dc-hover-border"
+        href="/settings/methodology"
+        style={{
+          display: "flex", alignItems: "center", gap: "14px",
+          padding: "16px 22px", textDecoration: "none", color: "inherit",
+        }}
+      >
+        <span style={{
+          width: "34px", height: "34px", borderRadius: "50%", flexShrink: 0,
+          background: "var(--color-elevated)", display: "flex",
+          alignItems: "center", justifyContent: "center",
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z" />
+            <path d="M9 7h6M9 11h4" />
+          </svg>
+        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ margin: 0, fontSize: "13px", fontWeight: 600 }}>{METHOD_COPY.navLink}</p>
+          <p className="num" style={{ margin: "2px 0 0", fontSize: "10.5px", color: "var(--color-faint)" }}>
+            {METHOD_COPY.navHint}
+          </p>
+        </div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-faint)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="m9 18 6-6-6-6" />
+        </svg>
+      </a>
 
       <section className="card" style={{ padding: "20px 24px" }}>
         <h2 style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>{copy.secTitle}</h2>
@@ -153,7 +188,13 @@ const draftFrom = (p: AthleteProfileView | null): Draft => ({
   avatarPosition: p?.avatarPosition ?? "50% 30%",
 });
 
-function ProfileCard({ profile }: { profile: AthleteProfileView | null }) {
+/*
+ * Exported so the coach's settings page can render the same card.
+ * A coach has a profile, a photo and a name like anybody else; the alternative
+ * was a second, slightly different profile editor, which is how two screens
+ * come to disagree about what your name is.
+ */
+export function ProfileCard({ profile }: { profile: AthleteProfileView | null }) {
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
@@ -446,7 +487,7 @@ function ProfileEditor({
 /* 2. Connections                                                      */
 /* ------------------------------------------------------------------ */
 
-function ConnectionsCard({ connection }: { connection: ProviderConnectionView | null }) {
+export function ConnectionsCard({ connection }: { connection: ProviderConnectionView | null }) {
   const [selected, setSelected] = useState("intervals_icu");
 
   /*
@@ -469,7 +510,7 @@ function ConnectionsCard({ connection }: { connection: ProviderConnectionView | 
 
   return (
     <section className="card" style={{ padding: "20px 24px" }}>
-      <h2 style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>{copy.connTitle}</h2>
+      <SectionHeader title={copy.connTitle} />
       <p style={{ margin: "2px 0 0", fontSize: "11.5px", color: "var(--color-faint)" }}>{copy.connSub}</p>
 
       <div className="conn-row" style={{ marginBlockStart: "12px" }}>
@@ -486,9 +527,16 @@ function ConnectionsCard({ connection }: { connection: ProviderConnectionView | 
               style={{
                 flex: 1, minWidth: "88px", display: "flex", flexDirection: "column",
                 alignItems: "center", justifyContent: "flex-end", gap: "8px",
-                padding: "10px 8px 8px", cursor: "pointer", background: "none", border: "none",
-                borderBlockEnd: `2px solid ${isSelected ? "var(--color-accent)" : "var(--color-line)"}`,
+                padding: "10px 8px 8px", cursor: "pointer", border: "none",
                 fontFamily: "inherit",
+                // A tile, not a tab: the selection is an inset ring plus a soft
+                // ground, so picking a provider cannot shift the row it sits in.
+                borderRadius: "var(--radius-control)",
+                background: isSelected ? "var(--color-accent-soft)" : "transparent",
+                boxShadow: isSelected
+                  ? "inset 0 0 0 1px var(--color-accent)"
+                  : "inset 0 0 0 1px var(--color-line)",
+                transition: "background 0.15s, box-shadow 0.15s",
               }}
             >
               <span style={{

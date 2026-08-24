@@ -20,6 +20,7 @@ import {
 } from "@/lib/coach/calendar";
 import { RACE_LABEL } from "@/lib/coach/templates";
 import { RACE_TYPES } from "@/lib/coach/templates";
+import { FilterChip } from "@/components/ui";
 
 type Zoom = "year" | "month" | "week";
 
@@ -122,23 +123,16 @@ export function CoachCalendar({
           </button>
         </div>
 
-        <div style={{ display: "flex", gap: "4px" }}>
+        {/*
+            Zoom is membership — which of three views is on — so it takes the
+            kit's filter pill rather than a filled button, which would read as
+            an action about to happen.
+        */}
+        <div style={{ display: "flex", gap: "6px" }}>
           {(["week", "month", "year"] as Zoom[]).map((z) => (
-            <button
-              key={z}
-              className="tag"
-              type="button"
-              onClick={() => setZoom(z)}
-              style={{
-                cursor: "pointer",
-                textTransform: "capitalize",
-                border: `1px solid ${zoom === z ? "transparent" : "var(--color-line-strong)"}`,
-                background: zoom === z ? "var(--color-accent)" : "transparent",
-                color: zoom === z ? "var(--color-accent-ink)" : MUTED,
-              }}
-            >
+            <FilterChip key={z} active={zoom === z} onClick={() => setZoom(z)} style={{ textTransform: "capitalize" }}>
               {z}
-            </button>
+            </FilterChip>
           ))}
         </div>
       </div>
@@ -177,7 +171,8 @@ function MonthGrid({ view }: { view: ReturnType<typeof monthView> }) {
             style={{
               minHeight: "68px",
               borderRadius: "var(--radius-control)",
-              border: `1px solid ${cell.isToday ? "var(--color-accent)" : "var(--color-line)"}`,
+              // Inset, so marking today cannot nudge the six cells beside it.
+              boxShadow: `inset 0 0 0 1px ${cell.isToday ? "var(--color-accent)" : "var(--color-line)"}`,
               background: cell.isToday ? "var(--color-accent-soft)" : cell.inMonth ? "var(--color-surface)" : "transparent",
               padding: "5px 6px",
               opacity: cell.inMonth ? 1 : 0.34,
@@ -236,7 +231,7 @@ function WeekGrid({
           style={{
             minHeight: "190px",
             borderRadius: "var(--radius-control)",
-            border: `1px solid ${day.isToday ? "var(--color-accent)" : "var(--color-line)"}`,
+            boxShadow: `inset 0 0 0 1px ${day.isToday ? "var(--color-accent)" : "var(--color-line)"}`,
             background: day.isToday ? "var(--color-accent-soft)" : "var(--color-surface)",
             padding: "8px",
             display: "flex",

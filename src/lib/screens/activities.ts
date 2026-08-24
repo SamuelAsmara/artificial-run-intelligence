@@ -117,8 +117,25 @@ export const ACT_COPY = {
   title: "Activities", subtitle: "Training history · last 4 weeks",
   volTitle: "Weekly distance", paceTitle: "Easy-run pace trend",
   paceSub: "faster ↑ · weekly average",
+  /*
+   * What the chart is, in one line under the title.
+   *
+   * The axis hint said "faster ↑ · weekly average" — true, and no answer to
+   * "trend of what?". Easy pace is the honest fitness signal in a training
+   * log: hard sessions vary with how you felt and what the plan asked for,
+   * easy runs are the same effort week after week, so when they get faster at
+   * the same heart rate that is aerobic fitness, not a good day.
+   */
+  paceExplain:
+    "Your average pace on easy runs only. Easy effort stays constant week to week, so when the pace drifts faster at the same heart rate, that is fitness \u2014 not a good day.",
   paceEmpty: "Two weeks of easy runs and the trend starts drawing itself here.",
   histTitle: "All runs",
+  /* the pager under the list — fifteen runs to a page */
+  pagePrev: "Previous page",
+  pageNext: "Next page",
+  pageOf: (page: number, total: number) => `${page} / ${total}`,
+  pageRange: (from: number, to: number, total: number) =>
+    `${from}\u2013${to} of ${total}`,
   hDate: "Date", hType: "Session", hDist: "Dist", hTime: "Time",
   hPace: "Pace", hHr: "Avg HR", hSpark: "Pace shape",
   cmpStart: "Compare", cmpExit: "Cancel",

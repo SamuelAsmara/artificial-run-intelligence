@@ -15,6 +15,10 @@ import { removeAthlete, updateWorkout, type AthleteDetail, type AthleteWorkout }
 import { formatDuration, formatPace } from "@/lib/format/pace";
 import { RACE_LABEL } from "@/lib/coach/templates";
 import { Avatar } from "@/components/ui/Avatar";
+import { StatTile, STAT_ICONS, StatusChip } from "@/components/ui";
+
+/** why a past day does not open */
+const PAST_HINT = "This session has already happened. Past weeks are a record, not a plan.";
 import {
   addDays, APP_LOCALE, APP_TIME_ZONE, isoDate, weekDates, WEEKDAYS, weekStart,
 } from "@/lib/time/week";
@@ -103,8 +107,14 @@ export function CoachAthleteView({ detail, today }: { detail: AthleteDetail; tod
   // Fitness and fatigue over six weeks. Two lines, no axis furniture: the shape
   // is the message and the numbers are already in the metric row above.
   /*
-   * Fitness and fatigue over six weeks. Two lines, no axis furniture: the shape
-   * is the message and the numbers are already in the metric row above.
+   * Fitness and fatigue over six weeks.
+   *
+   * It used to be two bare lines — "the shape is the message". It isn't. A
+   * coach asked what the vertical axis was and there was no answer on screen:
+   * no unit, no values, and no dates, so a rise could have been from 30 to 32
+   * or from 30 to 90 and the picture was identical. Three gridlines with their
+   * figures, the unit, and the first and last date now say what is being
+   * looked at.
    *
    * Three faults were hiding in the arithmetic:
    *
@@ -130,8 +140,23 @@ export function CoachAthleteView({ detail, today }: { detail: AthleteDetail; tod
   const lo = rawLo - pad;
   const hi = rawHi + pad;
   const span = hi - lo || 1;
-  const px = (i: number) => 8 + (i / Math.max(1, trend.length - 1)) * 584;
+  // A gutter on the left for the axis figures, and a row at the bottom for the
+  // dates. The plot itself keeps the height it had.
+  const px = (i: number) => 34 + (i / Math.max(1, trend.length - 1)) * 558;
   const py = (v: number) => 8 + (1 - (v - lo) / span) * 84;
+
+  /** three lines: the bottom of the range, the middle, the top */
+  const gridlines = [lo, (lo + hi) / 2, hi].map((v) => ({
+    v,
+    y: py(v),
+    label: String(Math.round(v)),
+  }));
+
+  /** "9 Aug" — enough to place the ends of the window in the calendar */
+  const shortDate = (iso: string) =>
+    new Date(`${iso}T00:00:00`).toLocaleDateString(APP_LOCALE, {
+      day: "numeric", month: "short", timeZone: APP_TIME_ZONE,
+    });
   const path = (pick: (t: (typeof trend)[number]) => number | null) => {
     let d = "";
     let started = false;
@@ -148,11 +173,27 @@ export function CoachAthleteView({ detail, today }: { detail: AthleteDetail; tod
     return d;
   };
 
-  const metric = (label: string, value: string, color: string) => (
-    <div key={label}>
-      <p className="num" style={{ margin: 0, fontSize: "20px", fontWeight: 500, color }}>{value}</p>
-      <p style={{ margin: "2px 0 0", fontSize: "11px", color: "var(--color-muted)" }}>{label}</p>
-    </div>
+  /*
+   * The four figures at the top of an athlete's page, on the shared stat tile.
+   *
+   * The colour the caller computes is a *state*, not a decoration, so it maps
+   * onto the tile's tone rather than being painted straight onto the figure —
+   * which is what keeps the coach's board and the athlete's home reading the
+   * same way about the same number.
+   */
+  const metric = (label: string, value: string, color: string, icon?: string) => (
+    <StatTile
+      key={label}
+      value={value === "\u2014" ? null : value}
+      label={label}
+      icon={icon}
+      tone={
+        color === "var(--color-negative)" ? "bad"
+          : color === "var(--color-caution)" ? "warning"
+            : color === "var(--color-positive)" ? "good"
+              : "neutral"
+      }
+    />
   );
 
   /*
@@ -219,6 +260,23 @@ export function CoachAthleteView({ detail, today }: { detail: AthleteDetail; tod
     const ran = !!w && w.actualM !== null && w.actualM > 0;
     const missed = !!w && iso < today && w.workoutType !== "rest" && !ran;
     const selected = !!w && editing === w.id;
+    /*
+     * A past day is a record, not a plan.
+     *
+     * The server refuses the edit either way (see `updateWorkout`), but a cell
+     * that opens an editor and then rejects the save is a worse experience
+     * than one that never opened. Today stays editable — this evening's run
+     * has not happened yet.
+     */
+    const past = iso < today;
+    /*
+     * A past day opens; it just does not open an editor.
+     *
+     * The first version of the guard disabled the cell entirely, which took
+     * reading away along with writing — and reading is most of the job. "Why
+     * did she miss Tuesday" is the question this screen exists to answer.
+     */
+    const openable = !!w;
 
     const label = !w
       ? "—"
@@ -231,12 +289,13 @@ export function CoachAthleteView({ detail, today }: { detail: AthleteDetail; tod
         key={iso}
         type="button"
         className="dc-hover-border"
-        disabled={!w}
-        onClick={() => (w ? (selected ? setEditing(null) : open(w)) : undefined)}
+        disabled={!openable}
+        title={past && w ? PAST_HINT : undefined}
+        onClick={() => (openable && w ? (selected ? setEditing(null) : open(w)) : undefined)}
         style={{
           textAlign: "start",
           fontFamily: "inherit",
-          cursor: w ? "pointer" : "default",
+          cursor: openable ? "pointer" : "default",
           display: "flex",
           flexDirection: "column",
           gap: "5px",
@@ -285,6 +344,8 @@ export function CoachAthleteView({ detail, today }: { detail: AthleteDetail; tod
   const editorPanel = () => {
     const w = workouts.find((x) => x.id === editing);
     if (!w) return null;
+    // A day that has been run is shown, not edited.
+    if (w.date < today) return <PastPanel w={w} />;
     return (
       <div
         style={{
@@ -414,11 +475,11 @@ export function CoachAthleteView({ detail, today }: { detail: AthleteDetail; tod
         </div>
       </div>
 
-      <section className="card stat-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px,1fr))", gap: "16px", padding: "16px 22px" }}>
-        {metric(COACH_COPY.hReadiness, athlete.readiness === null ? "—" : String(athlete.readiness), readinessColor(athlete.readiness))}
-        {metric(COACH_COPY.hForm, athlete.form === null ? "—" : athlete.form.toFixed(0), formColor(athlete.form))}
-        {metric(COACH_COPY.hLoad, athlete.loadRatio === null ? "—" : athlete.loadRatio.toFixed(2), loadColor(athlete.loadRatio))}
-        {metric(COACH_COPY.hLastRun, sinceLabel(athlete.lastRunAt, today), "var(--color-ink)")}
+      <section className="stat-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px,1fr))", gap: "12px" }}>
+        {metric(COACH_COPY.hReadiness, athlete.readiness === null ? "—" : String(athlete.readiness), readinessColor(athlete.readiness), STAT_ICONS.gauge)}
+        {metric(COACH_COPY.hForm, athlete.form === null ? "—" : athlete.form.toFixed(0), formColor(athlete.form), STAT_ICONS.chart)}
+        {metric(COACH_COPY.hLoad, athlete.loadRatio === null ? "—" : athlete.loadRatio.toFixed(2), loadColor(athlete.loadRatio), STAT_ICONS.warning)}
+        {metric(COACH_COPY.hLastRun, sinceLabel(athlete.lastRunAt, today), "var(--color-ink)", STAT_ICONS.clock)}
       </section>
 
       {flags.length > 0 && (
@@ -442,9 +503,26 @@ export function CoachAthleteView({ detail, today }: { detail: AthleteDetail; tod
             <h2 style={{ margin: 0, fontSize: "13px", fontWeight: 600 }}>{COACH_COPY.trendTitle}</h2>
             <span className="num" style={{ fontSize: "10.5px", color: "var(--color-faint)" }}>{COACH_COPY.trendSub}</span>
           </div>
-          <svg viewBox="0 0 600 100" style={{ width: "100%", height: "auto", marginBlockStart: "10px" }}>
+          <svg viewBox="0 0 600 116" style={{ width: "100%", height: "auto", marginBlockStart: "10px" }} role="img" aria-label="Fitness and fatigue over six weeks">
+            {gridlines.map((g) => (
+              <g key={g.label + g.y}>
+                <line x1="34" x2="592" y1={g.y} y2={g.y} stroke="var(--color-line)" strokeWidth="1" />
+                <text x="28" y={g.y + 3} fill="var(--color-faint)" fontSize="8.5" fontFamily="var(--font-mono)" textAnchor="end">
+                  {g.label}
+                </text>
+              </g>
+            ))}
+            <text x="28" y="5" fill="var(--color-faint)" fontSize="8" fontFamily="var(--font-mono)" textAnchor="end">
+              {COACH_COPY.trendUnit}
+            </text>
             <path d={path((t) => t.ctl)} fill="none" stroke="var(--color-accent)" strokeWidth="1.8" />
             <path d={path((t) => t.atl)} fill="none" stroke="var(--color-caution)" strokeWidth="1.4" strokeDasharray="3 3" />
+            <text x="34" y="110" fill="var(--color-faint)" fontSize="8.5" fontFamily="var(--font-mono)">
+              {shortDate(trend[0].date)}
+            </text>
+            <text x="592" y="110" fill="var(--color-faint)" fontSize="8.5" fontFamily="var(--font-mono)" textAnchor="end">
+              {shortDate(trend[trend.length - 1].date)}
+            </text>
           </svg>
           <div style={{ display: "flex", gap: "16px", marginBlockStart: "6px" }}>
             <span className="num" style={{ fontSize: "10px", color: "var(--color-accent)" }}>— Fitness</span>
@@ -576,4 +654,100 @@ export function CoachAthleteView({ detail, today }: { detail: AthleteDetail; tod
       </section>
     </div>
   );
+}
+
+/**
+ * A session that has already happened: planned against actual, read only.
+ *
+ * No fields and no Save — `updateWorkout` refuses a past date, and offering an
+ * editor that the server will reject is worse than not offering one. What a
+ * coach wants from a past day is the comparison: what was asked for, what was
+ * run, and the gap between them.
+ */
+function PastPanel({ w }: { w: AthleteWorkout }) {
+  const plannedKm = w.plannedDistanceM ? w.plannedDistanceM / 1000 : null;
+  const actualKm = w.actualM ? w.actualM / 1000 : null;
+  // Pace only where both numbers exist. A distance with no duration, or a
+  // duration with no distance, is not a pace.
+  const actualPace =
+    w.actualM && w.actualS && w.actualM > 0 ? paceLabel(w.actualS / (w.actualM / 1000)) : null;
+  const deltaKm = plannedKm !== null && actualKm !== null ? actualKm - plannedKm : null;
+  const ran = actualKm !== null && actualKm > 0;
+
+  return (
+    <div
+      style={{
+        marginBlockStart: "12px",
+        borderBlockStart: "1px solid var(--color-line)",
+        paddingBlockStart: "14px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "10px",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
+        <h3 style={{ margin: 0, fontSize: "12.5px", fontWeight: 600 }}>
+          {new Date(`${w.date}T00:00:00`).toLocaleDateString(APP_LOCALE, {
+            weekday: "long", day: "numeric", month: "long", timeZone: APP_TIME_ZONE,
+          })}
+        </h3>
+        <StatusChip tone={ran ? "good" : "bad"}>
+          {ran ? COACH_COPY.pastRan : COACH_COPY.pastMissed}
+        </StatusChip>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "82px 1fr", rowGap: "6px", columnGap: "14px", alignItems: "baseline" }}>
+        <PastLabel>{COACH_COPY.pastPlanned}</PastLabel>
+        <span className="num" style={{ fontSize: "12.5px", color: "var(--color-muted)" }}>
+          {plannedKm === null ? "\u2014" : `${plannedKm.toFixed(1)} km`}
+          {w.plannedPace ? ` \u00b7 ${w.plannedPace}` : ""}
+        </span>
+
+        <PastLabel>{COACH_COPY.pastActual}</PastLabel>
+        <span className="num" style={{ fontSize: "12.5px", color: ran ? "var(--color-ink)" : "var(--color-faint)" }}>
+          {actualKm === null ? COACH_COPY.pastNothing : `${actualKm.toFixed(1)} km`}
+          {actualPace ? ` \u00b7 ${actualPace}` : ""}
+          {w.actualHr ? ` \u00b7 ${w.actualHr} bpm` : ""}
+        </span>
+
+        {deltaKm !== null ? (
+          <>
+            <PastLabel>{COACH_COPY.pastGap}</PastLabel>
+            <span
+              className="num"
+              style={{
+                fontSize: "12.5px",
+                // Within half a kilometre of the plan is the plan.
+                color: Math.abs(deltaKm) < 0.5 ? "var(--color-positive)" : "var(--color-caution)",
+              }}
+            >
+              {deltaKm > 0 ? "+" : ""}{deltaKm.toFixed(1)} km
+            </span>
+          </>
+        ) : null}
+      </div>
+
+      <p style={{ margin: 0, fontSize: "11px", color: "var(--color-faint)", lineHeight: 1.55 }}>
+        {PAST_HINT}
+      </p>
+    </div>
+  );
+}
+
+function PastLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span style={{
+      fontSize: "9.5px", fontWeight: 600, letterSpacing: ".09em",
+      textTransform: "uppercase", color: "var(--color-faint)",
+    }}>
+      {children}
+    </span>
+  );
+}
+
+/** seconds per km as "5:12" */
+function paceLabel(secPerKm: number): string {
+  const m = Math.floor(secPerKm / 60);
+  const sec = Math.round(secPerKm % 60);
+  return sec === 60 ? `${m + 1}:00` : `${m}:${String(sec).padStart(2, "0")}`;
 }

@@ -95,7 +95,14 @@ export function buildPmc(series?: { C: number[]; A: number[]; T: number[]; D?: s
   const n = C.length;
 
   const allV = [...C, ...A, ...T];
-  const x0 = 30, x1 = 1150, yT = 8, yB = 196;
+  /*
+   * The plot box.
+   *
+   * Shortened from 196 to 126 — a third off the height. It was the tallest
+   * object on the page and the first thing a beginner met, and the shape of a
+   * six-week trend does not need 190 pixels to be legible.
+   */
+  const x0 = 30, x1 = 1150, yT = 6, yB = 126;
   const mn = Math.floor(Math.min(...allV) / 10) * 10 - 4;
   const mx = Math.ceil(Math.max(...allV) / 10) * 10 + 4;
   const X = (i: number) => x0 + (i / (n - 1)) * (x1 - x0);
@@ -223,6 +230,15 @@ export const acts = ACTS_RAW.map((a, i) => ({
 export interface Day {
   type: WorkoutType; name: string; tag: string; dist: number; pace: string;
   day: string; dateNum: number; mon: string;
+  /**
+   * ISO date, YYYY-MM-DD.
+   *
+   * Optional only because the reference week in this file is a shape, not a
+   * schedule. Every day that came from a real plan carries one, and the month
+   * grid needs it: a day number and a month *name* are enough to print a cell
+   * and not enough to place it in a calendar.
+   */
+  date?: string;
   status: string; done: boolean; missed: boolean; today: boolean;
   /**
    * Why ARI reduced this session, in the athlete's own words.
@@ -399,19 +415,17 @@ export function calendar(
 
 export const calHead = [{ t: "S" }, { t: "M" }, { t: "T" }, { t: "W" }, { t: "T" }, { t: "F" }, { t: "S" }];
 
+/**
+ * The reference dataset's weekly volume, in the shape the shared bar chart
+ * reads. It used to carry its own colours and pixel heights; the kit owns both
+ * now, so this returns only what a week actually is — how far, and which week.
+ */
 export function volumes() {
   const volKm = weeks().map((w) => w.days.reduce((s, d) => s + (d.dist || 0), 0));
-  const volMax = Math.max(...volKm);
-  return volKm.map((km, w) => {
-    const past = w < 3, cur = w === 3;
-    return {
-      h: Math.max(6, Math.round((km / volMax) * 72)),
-      bg: past ? "var(--color-accent)" : cur ? "var(--color-caution)" : "var(--color-elevated)",
-      border: past || cur ? "transparent" : "var(--color-line-strong)",
-      title: "Week " + (w + 1) + " · " + Math.round(km) + " km" +
-        (past ? " · done" : cur ? " · planned this week" : " · planned"),
-    };
-  });
+  return volKm.map((km, w) => ({
+    km: Math.round(km * 10) / 10,
+    isoWeek: w + 1,
+  }));
 }
 
 export const pbs = [
@@ -479,7 +493,7 @@ export const COPY = {
   volTitle: "Weekly volume", volMeta: "km per week · 12 weeks", volNow: "▲ Week 4",
   raceDays: "61 days", raceName: "to race day · Marathon · Oct 11, 2026",
   raceProgLabel: "Plan progress · Week 4 of 12", raceProgPct: "33%",
-  raceTarget: "3:45:00", raceTargetLabel: "Target",
+  raceTarget: "3:45:00", raceTargetLabel: "Target", raceDaysUnit: "days",
   racePred: "3:47:10", racePredLabel: "Predicted · closing",
   chatBtn: "Ask ARI", chatTitle: "Coach chat",
   chatPlaceholder: "Ask about your plan…", chatSend: "Send",

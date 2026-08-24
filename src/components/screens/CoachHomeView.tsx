@@ -20,6 +20,10 @@ import {
   buildHighlights, COACH_COPY, FLAG_LIMIT, initials, KIND_LABEL, toneColor, untilLabel,
 } from "@/lib/screens/coachHome";
 import { weekDates } from "@/lib/coach/roster";
+import { StatTile, STAT_ICONS, EmptyState } from "@/components/ui";
+
+/** two figures — the roster is people before it is anything else */
+const ROSTER_ICON = "M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM2 20a7 7 0 0 1 14 0M17 11a3 3 0 1 0 0-6M16 20h6a5 5 0 0 0-4-4.9";
 
 const TONE: Record<string, string> = {
   negative: "var(--color-negative)",
@@ -78,9 +82,9 @@ export function CoachHomeView({ data, today }: { data: CoachWorkspace; today: st
       </div>
 
       {/* the numbers a coach quotes without thinking */}
-      <section className="card stat-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px,1fr))", gap: "16px", padding: "16px 22px" }}>
-        <Stat value={String(summary.total)} label={summary.total === 1 ? "Athlete" : "Athletes"} />
-        <Stat value={String(cycles.length)} label={cycles.length === 1 ? "Cycle" : "Cycles"} divided />
+      <section className="stat-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px,1fr))", gap: "12px" }}>
+        <Stat value={String(summary.total)} label={summary.total === 1 ? "Athlete" : "Athletes"} icon={STAT_ICONS.pulse} />
+        <Stat value={String(cycles.length)} label={cycles.length === 1 ? "Cycle" : "Cycles"} icon={STAT_ICONS.chart} />
         <Stat
           // "0/0" is not a fact about training, it is the absence of one.
           value={
@@ -89,7 +93,7 @@ export function CoachHomeView({ data, today }: { data: CoachWorkspace; today: st
               : `${weekSessions.filter((s) => s.done).length}/${weekSessions.length}`
           }
           label="Sessions this week"
-          divided
+          icon={STAT_ICONS.clock}
         />
         <Stat
           value={summary.upcoming[0] ? untilLabel(summary.upcoming[0].raceDate, today) : "—"}
@@ -155,12 +159,17 @@ export function CoachHomeView({ data, today }: { data: CoachWorkspace; today: st
           )}
 
           {athletes.length === 0 ? (
-            <section className="card" style={{ padding: "34px 26px", display: "flex", flexDirection: "column", alignItems: "center", gap: "10px", textAlign: "center" }}>
-              <h2 style={{ margin: 0, fontSize: "15px", fontWeight: 600 }}>{COACH_COPY.boardEmptyTitle}</h2>
-              <p style={{ margin: 0, fontSize: "12.5px", color: "var(--color-muted)", maxWidth: "44ch", lineHeight: 1.6 }}>
-                {COACH_COPY.boardEmptyBody}
-              </p>
-            </section>
+            <EmptyState
+              icon={ROSTER_ICON}
+              message={
+                <>
+                  <span style={{ display: "block", fontSize: "15px", fontWeight: 600, color: "var(--color-ink)", marginBlockEnd: "8px" }}>
+                    {COACH_COPY.boardEmptyTitle}
+                  </span>
+                  {COACH_COPY.boardEmptyBody}
+                </>
+              }
+            />
           ) : (
             <CoachCalendar sessions={sessions} today={today} raceColors={preferences.raceColors} from={data.from} to={data.to} />
           )}
@@ -179,11 +188,16 @@ export function CoachHomeView({ data, today }: { data: CoachWorkspace; today: st
   );
 }
 
-function Stat({ value, label, divided }: { value: string; label: string; divided?: boolean }) {
-  return (
-    <div style={divided ? { borderInlineStart: "1px solid var(--color-line)", paddingInlineStart: "16px" } : undefined}>
-      <p className="num" style={{ margin: 0, fontSize: "22px", fontWeight: 500 }}>{value}</p>
-      <p style={{ margin: "2px 0 0", fontSize: "11px", color: "var(--color-muted)" }}>{label}</p>
-    </div>
-  );
+/**
+ * The coach's summary figures, on the shared stat tile.
+ *
+ * `divided` used to draw a hairline between cells inside one card. The tiles
+ * are their own cards now, so the gap does that work and the prop is kept only
+ * so the call sites did not all have to change.
+ */
+function Stat({ value, label, icon }: { value: string; label: string; divided?: boolean; icon?: string }) {
+  // An em dash is what the callers pass when there is nothing to report; the
+  // tile understands null, so hand it through rather than printing a dash the
+  // tile would then colour as if it were a reading.
+  return <StatTile value={value === "\u2014" ? null : value} label={label} icon={icon} />;
 }

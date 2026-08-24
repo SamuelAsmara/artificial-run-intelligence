@@ -8,6 +8,8 @@
  * arrived?") was answered "yes" when the truth was "not yet".
  */
 
+import { EmptyState } from "@/components/ui";
+
 const COPY = {
   brand: "ARI",
   navHome: "Home",
@@ -22,6 +24,7 @@ const COPY = {
   cta: "Connect a data source",
 } as const;
 
+
 export function EmptyActivities() {
   return (
     <div style={{ maxWidth: "1280px", marginInline: "auto", padding: "16px 24px 40px", display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -30,6 +33,10 @@ export function EmptyActivities() {
           <span style={{ width: "10px", height: "10px", background: "var(--color-accent)", borderRadius: "2px", display: "inline-block" }} />
           <span className="num" style={{ fontWeight: 500, fontSize: "16px", letterSpacing: ".12em" }}>{COPY.brand}</span>
         </div>
+        <div style={{ textAlign: "start" }}>
+          <h1 style={{ margin: 0, fontSize: "15px", fontWeight: 600 }}>{COPY.title}</h1>
+          <p style={{ margin: 0, fontSize: "11.5px", color: "var(--color-muted)" }}>{COPY.subtitle}</p>
+        </div>
         <nav className="topnav" style={{ display: "flex", gap: "20px", fontSize: "13px", color: "var(--color-muted)" }}>
           <a href="/dashboard" style={{ color: "var(--color-muted)" }}>{COPY.navHome}</a>
           <a href="/plan" style={{ color: "var(--color-muted)" }}>{COPY.navPlan}</a>
@@ -37,21 +44,20 @@ export function EmptyActivities() {
           <a href="/settings" style={{ color: "var(--color-muted)" }}>{COPY.navSettings}</a>
         </nav>
         <div style={{ flex: 1 }} />
-        <div style={{ textAlign: "end" }}>
-          <h1 style={{ margin: 0, fontSize: "15px", fontWeight: 600 }}>{COPY.title}</h1>
-          <p style={{ margin: 0, fontSize: "11.5px", color: "var(--color-muted)" }}>{COPY.subtitle}</p>
-        </div>
       </header>
 
-      <section className="card" style={{ padding: "48px 26px", textAlign: "center" }}>
-        <h2 style={{ margin: 0, fontSize: "16px", fontWeight: 600 }}>{COPY.heading}</h2>
-        <p style={{ margin: "10px auto 0", fontSize: "13px", color: "var(--color-muted)", maxWidth: "54ch", lineHeight: 1.7 }}>
-          {COPY.body}
-        </p>
-        <a className="btn btn-primary" href="/settings" style={{ display: "inline-block", marginBlockStart: "18px" }}>
-          {COPY.cta}
-        </a>
-      </section>
+      <EmptyState
+        message={
+          <>
+            <span style={{ display: "block", fontSize: "15px", fontWeight: 600, color: "var(--color-ink)", marginBlockEnd: "8px" }}>
+              {COPY.heading}
+            </span>
+            {COPY.body}
+          </>
+        }
+        style={{ maxWidth: "620px", marginInline: "auto", width: "100%" }}
+        action={<a className="btn btn-primary" href="/settings">{COPY.cta}</a>}
+      />
     </div>
   );
 }

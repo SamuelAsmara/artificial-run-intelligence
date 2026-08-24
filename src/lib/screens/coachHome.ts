@@ -107,6 +107,40 @@ export const COACH_COPY = {
 
   navCycles: "Cycles",
   navMine: "My training",
+  /* the week strip on a template */
+  tStrip: "Who is in this programme",
+  tAthlete: "athlete",
+  tAthletes: "athletes",
+  tWeekN: "Week",
+  tWeekEmpty: "Nobody is in this week yet.",
+  tPastWeek: "Everyone on this distance is already past this week — changing it will not affect their training.",
+  tForwardOnly:
+    "Editing a template changes plans built from now on. An athlete who has already run a week keeps what they ran; the change reaches the weeks still ahead of them.",
+  /* the vertical axis of the fitness/fatigue chart — training load, not km */
+  trendUnit: "load",
+  /* the badge on a closed cycle row */
+  flagOne: "needs you",
+  accountTitle: "Account",
+  accountSub: "Your email, your password, and signing out.",
+  /* the read-only card for a session that has already happened */
+  pastPlanned: "Planned",
+  pastActual: "Ran",
+  pastGap: "Gap",
+  pastNothing: "nothing recorded",
+  pastRan: "completed",
+  pastMissed: "missed",
+  noScores: "no scores yet",
+  meanReadiness: "mean readiness",
+  flagMany: "need you",
+  /*
+   * The mode toggle. Two words for the control and a sentence for the state,
+   * because the colour alone cannot say whose numbers are on screen.
+   */
+  modeLabel: "Switch between coaching and your own training",
+  modeCoach: "Coach",
+  modeAthlete: "My training",
+  modeCoachNote: "Viewing your roster",
+  modeAthleteNote: "Viewing your own training",
 
   hello: "Hello",
   highlightsTitle: "Worth knowing",

@@ -16,11 +16,22 @@ import {
   MAX_WEEKS, MIN_WEEKS, PHASES, RACE_LABEL, SESSIONS,
   defaultTemplate, runningDays, validateTemplate, type CoachTemplate,
 } from "@/lib/coach/templates";
+import { templateWeeks, type TemplateAthlete } from "@/lib/coach/templateWeeks";
 import { COACH_COPY } from "@/lib/screens/coachHome";
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-export function CoachTemplatesView({ templates }: { templates: CoachTemplate[] }) {
+export function CoachTemplatesView({
+  templates, athletes = [], today,
+}: {
+  templates: CoachTemplate[];
+  /** the roster, so each week can say who is standing in it */
+  athletes?: TemplateAthlete[];
+  /** ISO date; defaults to the server's day when the caller does not pass one */
+  today?: string;
+}) {
+  const day = today ?? new Date().toISOString().slice(0, 10);
+  const [openWeek, setOpenWeek] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<CoachTemplate[]>(templates);
   const [note, setNote] = useState<Record<string, string>>({});
   const [pending, startTransition] = useTransition();
@@ -108,6 +119,22 @@ export function CoachTemplatesView({ templates }: { templates: CoachTemplate[] }
                 {runningDays(t.weeklyMix)} {COACH_COPY.tRunningDays}
               </span>
             </div>
+
+            {/*
+                The template as a shape, and who is standing in it.
+                A template has no dates — week 1 to week N — and every athlete
+                on this distance is somewhere inside it, having started on a
+                different day. Without this the coach was editing a form with
+                no way to see who the edit reached.
+            */}
+            <WeekStrip
+              raceType={t.raceType}
+              weeks={t.weeks}
+              athletes={athletes}
+              today={day}
+              openWeek={openWeek}
+              setOpenWeek={setOpenWeek}
+            />
 
             <div style={{ display: "flex", gap: "14px", flexWrap: "wrap", alignItems: "flex-end" }}>
               <label style={{ display: "flex", flexDirection: "column", gap: "4px", flex: "1 1 220px" }}>
@@ -204,6 +231,110 @@ export function CoachTemplatesView({ templates }: { templates: CoachTemplate[] }
       <p className="num" style={{ margin: 0, fontSize: "10.5px", color: "var(--color-faint)" }}>
         Between {MIN_WEEKS} and {MAX_WEEKS} weeks. Phases must total the plan length; the week must
         total seven days and include a rest day and a long run.
+      </p>
+    </div>
+  );
+}
+
+/**
+ * Week 1 … week N, with a head count on each.
+ *
+ * Weeks nobody can still reach are drawn faint and say so: an athlete already
+ * past week 5 has run week 5, and a coach who edits it should not leave
+ * believing they have changed that person's training.
+ */
+function WeekStrip({
+  raceType, weeks, athletes, today, openWeek, setOpenWeek,
+}: {
+  raceType: string;
+  weeks: number;
+  athletes: TemplateAthlete[];
+  today: string;
+  openWeek: string | null;
+  setOpenWeek: (v: string | null) => void;
+}) {
+  const strip = useMemo(
+    () => templateWeeks(athletes, raceType, weeks, today),
+    [athletes, raceType, weeks, today],
+  );
+
+  const inGroup = strip.reduce((s, w) => s + w.athletes.length, 0);
+  const openId = openWeek?.startsWith(`${raceType}:`) ? openWeek : null;
+  const shown = openId ? strip[Number(openId.split(":")[1]) - 1] : null;
+
+  return (
+    <div>
+      <p className="num" style={{ margin: "0 0 7px", fontSize: "9.5px", letterSpacing: ".08em", textTransform: "uppercase", color: "var(--color-faint)" }}>
+        {COACH_COPY.tStrip} — {inGroup} {inGroup === 1 ? COACH_COPY.tAthlete : COACH_COPY.tAthletes}
+      </p>
+
+      <div style={{ display: "flex", gap: "3px", flexWrap: "wrap" }}>
+        {strip.map((w) => {
+          const id = `${raceType}:${w.number}`;
+          const open = openId === id;
+          const has = w.athletes.length > 0;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setOpenWeek(open ? null : id)}
+              aria-expanded={open}
+              title={w.editable ? undefined : COACH_COPY.tPastWeek}
+              style={{
+                flex: "1 1 42px", minWidth: "42px",
+                display: "flex", flexDirection: "column", alignItems: "center", gap: "2px",
+                padding: "6px 2px", cursor: "pointer", fontFamily: "inherit",
+                border: "none", borderRadius: "var(--radius-control)",
+                background: open ? "var(--color-accent-soft)" : "var(--color-elevated)",
+                boxShadow: open ? "inset 0 0 0 1px var(--color-accent)" : "inset 0 0 0 1px var(--color-line)",
+                // A week nobody can still reach is history, and reads as history.
+                opacity: w.editable ? 1 : 0.45,
+              }}
+            >
+              <span className="num" style={{ fontSize: "9px", color: open ? "var(--color-accent)" : "var(--color-faint)" }}>
+                {w.number}
+              </span>
+              <span
+                className="num"
+                style={{
+                  fontSize: "11.5px", fontWeight: 500,
+                  color: has ? "var(--color-ink)" : "var(--color-faint)",
+                }}
+              >
+                {has ? w.athletes.length : "\u2014"}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {shown ? (
+        <div style={{
+          marginBlockStart: "8px", padding: "9px 12px",
+          borderRadius: "var(--radius-control)", background: "var(--color-elevated)",
+        }}>
+          <p className="num" style={{ margin: 0, fontSize: "10px", letterSpacing: ".06em", textTransform: "uppercase", color: "var(--color-faint)" }}>
+            {COACH_COPY.tWeekN} {shown.number}
+          </p>
+          <p style={{ margin: "4px 0 0", fontSize: "12.5px", color: "var(--color-ink)", lineHeight: 1.6 }}>
+            {shown.athletes.length === 0
+              ? COACH_COPY.tWeekEmpty
+              : shown.athletes.map((a) => a.name).join(" \u00b7 ")}
+          </p>
+          {!shown.editable ? (
+            <p style={{ margin: "6px 0 0", fontSize: "11.5px", color: "var(--color-caution)", lineHeight: 1.55 }}>
+              {COACH_COPY.tPastWeek}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/*
+          Said once per template, not once per week: an edit reaches the people
+          who have not got there yet, and nobody else.
+      */}
+      <p style={{ margin: "8px 0 0", fontSize: "11px", color: "var(--color-faint)", lineHeight: 1.6, textWrap: "pretty" }}>
+        {COACH_COPY.tForwardOnly}
       </p>
     </div>
   );

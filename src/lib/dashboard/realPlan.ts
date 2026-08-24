@@ -143,6 +143,10 @@ export function buildRealPlan(
       }
 
       return {
+        // The ISO date, carried all the way through. Everything downstream used
+        // to get only `dateNum` and a month *name*, which is enough to print a
+        // cell and not enough to put it in a calendar grid.
+        date: row.day_date,
         type: type as Day["type"],
         name: NAMES[type],
         tag: TAGS[type],

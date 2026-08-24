@@ -109,6 +109,16 @@ export interface MyCoach {
   id: string;
   name: string;
   since: string;
+  /*
+   * A face and a sentence, both optional.
+   *
+   * `my_coach_name()` returned three columns until migration 0019 widened it.
+   * They are read defensively so this code is correct against either version
+   * of the function: before the migration the athlete sees initials and a
+   * name, after it they see their coach.
+   */
+  avatarUrl?: string | null;
+  bio?: string | null;
 }
 
 /** The athlete's own coach, if they have one. */
@@ -133,10 +143,13 @@ export async function getMyCoach(): Promise<MyCoach | null> {
   const row = Array.isArray(data) ? data[0] : data;
   if (!row) return null;
 
+  const wide = row as Record<string, unknown>;
   return {
     id: row.coach_id as string,
     name: (row.coach_name as string) || "Your coach",
     since: row.since as string,
+    avatarUrl: (wide.coach_avatar_url as string | null) ?? null,
+    bio: (wide.coach_bio as string | null) ?? null,
   };
 }
 
@@ -343,6 +356,8 @@ export interface AthleteWorkout {
   actualM: number | null;
   /** seconds actually run that day */
   actualS: number | null;
+  /** distance-weighted average heart rate that day, when a strap reported one */
+  actualHr: number | null;
   /**
    * Whose decision the current numbers are: the engine's, the coach's or the
    * athlete's. Migration 0014 has been storing this, and the three columns it
@@ -466,12 +481,27 @@ export async function getAthleteDetail(athleteId: string): Promise<AthleteDetail
     : { data: [] };
 
   // What was actually run, by day, so a planned session can be shown against it.
-  const ranByDay = new Map<string, { m: number; s: number }>();
+  const ranByDay = new Map<string, { m: number; s: number; hrSum: number; hrM: number }>();
   for (const r of runs ?? []) {
     if (!r.started_at) continue;
     const d = r.started_at.slice(0, 10);
-    const prev = ranByDay.get(d) ?? { m: 0, s: 0 };
-    ranByDay.set(d, { m: prev.m + (r.distance_m ?? 0), s: prev.s + (r.duration_s ?? 0) });
+    const prev = ranByDay.get(d) ?? { m: 0, s: 0, hrSum: 0, hrM: 0 };
+    const m = r.distance_m ?? 0;
+    ranByDay.set(d, {
+      m: prev.m + m,
+      s: prev.s + (r.duration_s ?? 0),
+      /*
+       * Heart rate averaged by distance, not by run.
+       *
+       * Two runs on one day are two different lengths, and the mean of their
+       * two averages is not the day's average — a 2 km jog at 120 and a 20 km
+       * long run at 155 is not 137.5. Only runs that reported a strap
+       * contribute, so a day with one strapped run and one without reports the
+       * strapped one rather than diluting it toward zero.
+       */
+      hrSum: prev.hrSum + (r.avg_hr ? r.avg_hr * m : 0),
+      hrM: prev.hrM + (r.avg_hr ? m : 0),
+    });
   }
 
   const latest = (snaps ?? []).length ? (snaps ?? [])[(snaps ?? []).length - 1] : null;
@@ -524,6 +554,7 @@ export async function getAthleteDetail(athleteId: string): Promise<AthleteDetail
         status: w.status,
         actualM: ran?.m ?? null,
         actualS: ran?.s ?? null,
+        actualHr: ran && ran.hrM > 0 ? Math.round(ran.hrSum / ran.hrM) : null,
         origin: w.origin ?? "generated",
         originalDistanceM: w.planned_distance_original ?? null,
         adjustedReason: w.adjusted_reason ?? null,
@@ -587,14 +618,34 @@ export async function updateWorkout(
   if (patch.plannedPace !== undefined) fields.planned_pace = patch.plannedPace;
   if (Object.keys(fields).length === 0) return { ok: true, data: null };
 
-  // Whose session is this?
+  // Whose session is this, and has it already happened?
   const { data: workout } = await supabase
     .from("plan_workouts")
-    .select("plan_id")
+    .select("plan_id, day_date")
     .eq("id", workoutId)
     .maybeSingle();
 
   if (!workout) return { ok: false, error: "That session no longer exists." };
+
+  /*
+   * A day that has passed is not a plan any more, it is a record.
+   *
+   * Nothing stopped a coach editing Tuesday on Thursday. The patch below sets
+   * `status: "planned"` and nulls `planned_distance_original`, so rewriting a
+   * completed session did not just change a number — it erased the fact that
+   * the session had been completed and what it originally said. The athlete's
+   * week silently gained an unfinished workout they had actually run.
+   *
+   * Today is still editable: a session later today has not happened yet, and a
+   * coach who wants to lighten this evening's run must be able to.
+   */
+  if (workout.day_date < todayIso()) {
+    return {
+      ok: false,
+      error:
+        "That session is in the past and cannot be changed. Past weeks are a record of what happened.",
+    };
+  }
 
   const { data: plan } = await supabase
     .from("training_plans")

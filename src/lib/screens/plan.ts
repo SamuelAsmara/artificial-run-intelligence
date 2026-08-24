@@ -27,6 +27,8 @@ const MO = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","D
 export interface PlanDay {
   type: WType; name: string; dist: number; pace: string;
   day: string; dateNum: number; mon: string; monIdx: number;
+  /** ISO date, YYYY-MM-DD — what the month grid places the cell by */
+  date: string;
   status: string; done: boolean; missed: boolean; today: boolean;
   /** why ARI reduced this session — see `Day.reason` in dashboard/model.ts */
   reason?: string | null;
@@ -61,6 +63,7 @@ export function planWeeks(): PlanWeek[] {
       return {
         type, name: NAMES[type], dist, pace: PACES[type] ?? "",
         day: DN[d], dateNum: dt.getDate(), mon: MO[dt.getMonth()], monIdx: dt.getMonth(),
+        date: `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`,
         status, done, missed, today: w === 3 && d === 2,
       };
     });
@@ -123,6 +126,8 @@ export const PLAN_COPY = {
   brand: "ARI", navHome: "Home", navActivities: "Activities",
   navPlan: "Plan", navSettings: "Settings",
   title: "Marathon Plan", subtitle: "Oct 11, 2026 · Target 3:45:00",
+  /* the two ways to look at a plan: the working list, and its shape */
+  viewWeeks: "Weeks", viewMonth: "Month",
   raceTag: "Race day", raceLine: "Sun Oct 11, 2026 · Marathon · 42.2 km",
   raceTarget: "Target 3:45:00 · 5:20/km",
 };
@@ -164,6 +169,7 @@ export function realPlanWeeks(weeks: ModelWeek[]): PlanWeek[] {
       dateNum: d.dateNum,
       mon: d.mon,
       monIdx: Math.max(0, MO.indexOf(d.mon)),
+      date: d.date ?? "",
       status: d.status,
       done: d.done,
       missed: d.missed,
@@ -199,5 +205,32 @@ export const PLAN_EMPTY = {
     "ARI will build the weeks between today and race day from what you are already running — the long run grows from your current long run, not from a table.",
   cta: "Go to Settings",
   build: "Build my plan",
-  building: "Building…",
+  building: "Building\u2026",
+
+  /*
+   * The goal race, set here rather than in Settings.
+   *
+   * An athlete with no coach arrives on /plan wanting a plan, and used to be
+   * sent to a settings screen to fill in a field before anything could happen.
+   * The distance and the date are the whole input, so they are asked for on
+   * the screen that needs them.
+   */
+  raceHeading: "What are you training for?",
+  raceBody:
+    "A plan is built backwards from a race. Pick the distance and the day, and ARI sizes the weeks between now and then from what you are already running.",
+  raceDistance: "Distance",
+  raceDate: "Race day",
+  raceTarget: "Target time",
+  raceTargetHint: "optional",
+  raceTargetPlaceholder: "3:45:00",
+  raceSubmit: "Build my plan",
+  raceSubmitting: "Building\u2026",
+  raceDateMissing: "Pick a race date first.",
+  /** the four distances the generator knows how to build for */
+  raceTypes: [
+    { id: "5k", label: "5K", km: "5 km" },
+    { id: "10k", label: "10K", km: "10 km" },
+    { id: "half", label: "Half", km: "21.1 km" },
+    { id: "full", label: "Marathon", km: "42.2 km" },
+  ],
 } as const;

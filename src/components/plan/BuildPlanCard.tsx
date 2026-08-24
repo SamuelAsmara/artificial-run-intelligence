@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * The empty state on /plan, with the button that was missing.
+ * The empty state on /plan — where an athlete without a coach starts.
  *
  * ## What was wrong
  *
@@ -15,18 +15,42 @@
  *
  * ## Two states, because there are two situations
  *
- * No race set yet: the honest next step really is Settings.
  * Race set: one button, and it builds.
+ *
+ * No race yet: the distance and the date, asked for here. This used to be a
+ * link to Settings, which is the wrong answer to "I want a plan" — it sends
+ * someone off the screen that needs the answer, to fill in a field on a screen
+ * about something else, and then walk back. The two facts a plan is built from
+ * are a distance and a day, so they are asked for where the plan is.
  *
  * Generation can legitimately refuse — a race eight days away, or an account
  * with no run history to size the weeks against. Those refusals are shown, not
  * swallowed, because they tell the athlete exactly what to change.
  */
 
+import type * as React from "react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { buildPlanForActiveRace } from "@/actions/plan";
+import { createGoalRace } from "@/actions/goalRace";
 import { PLAN_EMPTY } from "@/lib/screens/plan";
+import { FilterChip } from "@/components/ui";
+
+type RaceType = "5k" | "10k" | "half" | "full";
+
+/**
+ * The soonest a plan is worth building.
+ *
+ * The generator refuses a race that is days away, and it is kinder to say so
+ * before the athlete fills the form in than after.
+ */
+const MIN_DAYS = 14;
+
+function isoIn(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
 
 export function BuildPlanCard({
   hasRace,
@@ -39,6 +63,28 @@ export function BuildPlanCard({
   const [error, setError] = useState("");
   const [notes, setNotes] = useState<string[]>([]);
   const [pending, startTransition] = useTransition();
+
+  // The goal-race form, for the athlete who has not set one.
+  const [raceType, setRaceType] = useState<RaceType>("10k");
+  const [raceDate, setRaceDate] = useState("");
+  const [targetTime, setTargetTime] = useState("");
+
+  const createRace = () => {
+    setError("");
+    setNotes([]);
+    if (!raceDate) return setError(PLAN_EMPTY.raceDateMissing);
+    startTransition(async () => {
+      // createGoalRace saves the race *and* runs the generator, so there is one
+      // button here rather than a save followed by a build.
+      const result = await createGoalRace({
+        raceType,
+        raceDate,
+        targetTime: targetTime.trim() || undefined,
+      });
+      if (result.error) return setError(result.error);
+      router.refresh();
+    });
+  };
 
   const build = () => {
     setError("");
@@ -58,12 +104,14 @@ export function BuildPlanCard({
 
   return (
     <section className="card" style={{ padding: "40px 26px", textAlign: "center" }}>
-      <h2 style={{ margin: 0, fontSize: "16px", fontWeight: 600 }}>{PLAN_EMPTY.title}</h2>
+      <h2 style={{ margin: 0, fontSize: "16px", fontWeight: 600 }}>
+        {hasRace ? PLAN_EMPTY.title : PLAN_EMPTY.raceHeading}
+      </h2>
       <p style={{
         margin: "10px auto 0", fontSize: "13px", color: "var(--color-muted)",
         maxWidth: "52ch", lineHeight: 1.7,
       }}>
-        {hasRace ? PLAN_EMPTY.bodyWithRace : PLAN_EMPTY.body}
+        {hasRace ? PLAN_EMPTY.bodyWithRace : PLAN_EMPTY.raceBody}
       </p>
 
       {hasRace && raceLine ? (
@@ -83,9 +131,55 @@ export function BuildPlanCard({
           {pending ? PLAN_EMPTY.building : PLAN_EMPTY.build}
         </button>
       ) : (
-        <a className="btn btn-primary" href="/settings" style={{ display: "inline-block", marginBlockStart: "18px" }}>
-          {PLAN_EMPTY.cta}
-        </a>
+        <div style={{ maxWidth: "460px", marginInline: "auto", marginBlockStart: "22px", textAlign: "start" }}>
+          <Field label={PLAN_EMPTY.raceDistance}>
+            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+              {PLAN_EMPTY.raceTypes.map((r) => (
+                <FilterChip
+                  key={r.id}
+                  active={raceType === r.id}
+                  onClick={() => setRaceType(r.id as RaceType)}
+                >
+                  {r.label}
+                  <span className="num" style={{ marginInlineStart: "6px", fontSize: "10.5px", opacity: 0.7 }}>
+                    {r.km}
+                  </span>
+                </FilterChip>
+              ))}
+            </div>
+          </Field>
+
+          <Field label={PLAN_EMPTY.raceDate}>
+            <input
+              type="date"
+              value={raceDate}
+              min={isoIn(MIN_DAYS)}
+              onChange={(e) => setRaceDate(e.target.value)}
+              style={INPUT}
+            />
+          </Field>
+
+          <Field label={PLAN_EMPTY.raceTarget} hint={PLAN_EMPTY.raceTargetHint}>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={targetTime}
+              onChange={(e) => setTargetTime(e.target.value)}
+              placeholder={PLAN_EMPTY.raceTargetPlaceholder}
+              style={INPUT}
+            />
+          </Field>
+
+          <button
+            className="btn btn-primary"
+            type="button"
+            onClick={createRace}
+            disabled={pending}
+            style={{ width: "100%", marginBlockStart: "18px", cursor: pending ? "progress" : "pointer" }}
+          >
+            {pending ? PLAN_EMPTY.raceSubmitting : PLAN_EMPTY.raceSubmit}
+          </button>
+        </div>
       )}
 
       {error ? (
@@ -115,5 +209,44 @@ export function BuildPlanCard({
         </ul>
       ) : null}
     </section>
+  );
+}
+
+const INPUT: React.CSSProperties = {
+  width: "100%",
+  height: "38px",
+  padding: "0 11px",
+  borderRadius: "var(--radius-control)",
+  border: "1px solid var(--color-line-strong)",
+  background: "var(--color-elevated)",
+  color: "var(--color-ink)",
+  fontFamily: "var(--font-mono)",
+  fontSize: "13px",
+  boxSizing: "border-box",
+};
+
+function Field({
+  label, hint, children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "7px", marginBlockStart: "14px" }}>
+      <span style={{
+        display: "inline-flex", alignItems: "baseline", gap: "6px",
+        fontSize: "10px", fontWeight: 600, letterSpacing: ".1em",
+        textTransform: "uppercase", color: "var(--color-faint)",
+      }}>
+        {label}
+        {hint ? (
+          <span style={{ letterSpacing: 0, textTransform: "none", fontWeight: 400, opacity: 0.8 }}>
+            {hint}
+          </span>
+        ) : null}
+      </span>
+      {children}
+    </div>
   );
 }

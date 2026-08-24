@@ -11,7 +11,7 @@ import { COACH_COPY } from "@/lib/screens/coachHome";
 export function CoachNav({
   active,
 }: {
-  active: "home" | "cycles" | "athletes" | "templates" | "mine" | "settings";
+  active: "home" | "cycles" | "athletes" | "templates" | "settings";
 }) {
   const link = (key: string, href: string, label: string) => (
     <a
@@ -45,12 +45,10 @@ export function CoachNav({
         */}
         {link("templates", "/coach/templates", COACH_COPY.navTemplates)}
         {/*
-          The coach's own training. Almost every running coach runs, and a
-          single-role account forces a choice nobody should have to make — so
-          this is one nav item rather than a second account. It opens the
-          athlete side, which has its own row of tabs underneath.
+          The coach's own training used to be a nav item here. It is the mode
+          toggle in the strip above now — one control for "whose numbers am I
+          looking at", not a control and a link that do the same thing.
         */}
-        {link("mine", "/dashboard", COACH_COPY.navMine)}
       </nav>
       <div style={{ flex: 1 }} />
       <a

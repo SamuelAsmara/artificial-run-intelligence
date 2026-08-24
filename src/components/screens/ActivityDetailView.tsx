@@ -208,7 +208,7 @@ export function ActivityDetailView({
         </div>
       ) : null}
 
-      <Nav />
+      <Nav runTitle={runTitle} />
 
       <HeaderCard
         data={data}
@@ -436,12 +436,21 @@ function buildGeometry(s: ChartStreams): Geometry {
 /* Pieces                                                              */
 /* ------------------------------------------------------------------ */
 
-function Nav() {
+function Nav({ runTitle }: { runTitle?: string }) {
   return (
     <header style={{ display: "flex", alignItems: "center", gap: "24px", paddingBlock: "6px 10px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
         <span style={{ width: "10px", height: "10px", background: "var(--color-accent)", borderRadius: "2px", display: "inline-block" }} />
         <span className="num" style={{ fontWeight: 500, fontSize: "16px", letterSpacing: ".12em" }}>{copy.brand}</span>
+      </div>
+      {/*
+          The page title, on the left, like every other screen. This was the
+          one screen without one — you arrived from the list and the header
+          told you nothing about which run you were looking at.
+      */}
+      <div style={{ textAlign: "start", minWidth: 0 }}>
+        <h1 style={{ margin: 0, fontSize: "15px", fontWeight: 600, whiteSpace: "nowrap" }}>{copy.pageTitle}</h1>
+        {runTitle ? (<p className="num" style={{ margin: 0, fontSize: "11.5px", color: "var(--color-muted)", whiteSpace: "nowrap" }}>{runTitle}</p>) : null}
       </div>
       <nav className="topnav" style={{ display: "flex", gap: "20px", fontSize: "13px", color: "var(--color-muted)" }}>
         <a href="/dashboard" style={{ color: "var(--color-muted)" }}>{copy.navHome}</a>

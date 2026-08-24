@@ -26,15 +26,37 @@ import { DEFAULT_PREFERENCES, type CoachPreferences } from "@/lib/coach/preferen
 import { colorFor, DEFAULT_RACE_COLORS } from "@/lib/coach/calendar";
 import { RACE_LABEL, RACE_TYPES } from "@/lib/coach/templates";
 import { COACH_COPY } from "@/lib/screens/coachHome";
+import { ProfileCard, ConnectionsCard } from "@/components/screens/SettingsView";
+import { AccountSecurity } from "@/components/settings/AccountSecurity";
+import { SectionHeader } from "@/components/ui";
+import { METHOD_COPY } from "@/lib/screens/methodology";
+import type { AthleteProfileView } from "@/actions/profile";
+import type { ProviderConnectionView } from "@/actions/providers";
 
+/**
+ * The coach's settings — all of them, on one page.
+ *
+ * A coach used to have two settings screens: this one for preferences,
+ * thresholds and templates, and the athlete screen for their profile, their
+ * connections and their password, reached by an "Account" button. Two screens
+ * called Settings is a contradiction, and the button was the tell: it existed
+ * because half the page was somewhere else.
+ *
+ * So the athlete cards are rendered here, as themselves — the same components,
+ * not copies, so the two can never drift apart.
+ */
 export function CoachSettingsView({
   preferences,
   code,
   email,
+  profile = null,
+  icuConnection = null,
 }: {
   preferences: CoachPreferences;
   code: string | null;
   email: string | null;
+  profile?: AthleteProfileView | null;
+  icuConnection?: ProviderConnectionView | null;
 }) {
   const [prefs, setPrefs] = useState<CoachPreferences>(preferences);
   const [note, setNote] = useState("");
@@ -138,15 +160,49 @@ export function CoachSettingsView({
         <JoinCode code={code} />
       </div>
 
-      <section className="card" style={{ padding: "18px 22px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
-        <div>
-          <p style={{ margin: 0, fontSize: "12.5px", fontWeight: 500 }}>Signed in as {email ?? "—"}</p>
-          <p style={{ margin: "2px 0 0", fontSize: "11px", color: "var(--color-faint)" }}>
-            Account details and password live on the athlete settings screen.
+      {/* The coach's own profile, connections and account — here, not elsewhere. */}
+      <ProfileCard profile={profile} />
+      <ConnectionsCard connection={icuConnection} />
+
+      <a
+        className="card dc-hover-border"
+        href="/settings/methodology"
+        style={{ display: "flex", alignItems: "center", gap: "14px", padding: "16px 22px", textDecoration: "none", color: "inherit" }}
+      >
+        <span style={{
+          width: "34px", height: "34px", borderRadius: "50%", flexShrink: 0,
+          background: "var(--color-elevated)", display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z" />
+            <path d="M9 7h6M9 11h4" />
+          </svg>
+        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ margin: 0, fontSize: "13px", fontWeight: 600 }}>{METHOD_COPY.navLink}</p>
+          <p className="num" style={{ margin: "2px 0 0", fontSize: "10.5px", color: "var(--color-faint)" }}>
+            {METHOD_COPY.navHint}
           </p>
         </div>
-        <div style={{ display: "flex", gap: "8px" }}>
-          <a className="btn btn-secondary" href="/settings">Account</a>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-faint)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="m9 18 6-6-6-6" />
+        </svg>
+      </a>
+
+      <section className="card" style={{ padding: "20px 24px" }}>
+        <SectionHeader title={COACH_COPY.accountTitle} />
+        <p style={{ margin: "2px 0 0", fontSize: "11.5px", color: "var(--color-faint)" }}>
+          {COACH_COPY.accountSub}
+        </p>
+        <AccountSecurity email={email ?? ""} />
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", marginBlockStart: "18px", paddingBlockStart: "16px", borderBlockStart: "1px solid var(--color-line)" }}>
+          <div>
+            <p style={{ margin: 0, fontSize: "12.5px", fontWeight: 500 }}>Signed in as {email ?? "\u2014"}</p>
+            <p style={{ margin: "2px 0 0", fontSize: "11px", color: "var(--color-faint)" }}>
+              Your data stays where it is; you can sign back in at any time.
+            </p>
+          </div>
           <SignOutButton />
         </div>
       </section>
