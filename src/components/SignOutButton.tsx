@@ -12,7 +12,22 @@ import { signOut } from "@/actions/auth";
 export function SignOutButton() {
   return (
     <form action={signOut}>
-      <button type="submit" className="btn btn-secondary">
+      {/*
+        Styled as what it is.
+        
+        It sat in the same neutral grey as "Save changes" and "Connect", so the
+        one control that throws away your session looked exactly like the ones
+        that keep your work. Destructive actions should announce themselves.
+      */}
+      <button
+        type="submit"
+        className="btn"
+        style={{
+          background: "transparent",
+          border: "1px solid var(--color-negative)",
+          color: "var(--color-negative)",
+        }}
+      >
         Sign out
       </button>
     </form>

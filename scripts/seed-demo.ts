@@ -410,6 +410,36 @@ function paceShapeFor(
   return out.map((v) => Math.round((v * mean) / avg));
 }
 
+/** Race distances in metres, the same figures the app's own tables use. */
+const RACE_M: Record<RaceType, number> = {
+  "5k": 5000, "10k": 10_000, half: 21_097.5, full: 42_195,
+};
+
+/**
+ * A goal time worth training towards, derived from the athlete's own fitness.
+ *
+ * The seed used to insert a goal race with a date and no target, so the TARGET
+ * and PACE columns on the coach's board were a full column of dashes for every
+ * athlete — a promise the product makes and the demo could not keep. The
+ * feature was never missing; the data was.
+ *
+ * Threshold speed is roughly what an athlete can hold for an hour, which makes
+ * it a one-hour time trial: from there Riegel's exponent scales to any other
+ * distance. Then 2.5% is taken off, because a goal set at exactly today's
+ * fitness is not a goal — the athlete is entering a training block precisely
+ * to beat it. Rounded to the nearest half minute, the way people actually say
+ * their targets out loud.
+ */
+function targetTimeFor(raceType: RaceType, thresholdMps: number): string {
+  const hourM = thresholdMps * 3600;
+  const seconds = 3600 * Math.pow(RACE_M[raceType] / hourM, 1.06) * 0.975;
+  const rounded = Math.round(seconds / 30) * 30;
+  const h = Math.floor(rounded / 3600);
+  const m = Math.floor((rounded % 3600) / 60);
+  const sec = rounded % 60;
+  return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+}
+
 /**
  * Heart rate across the run, on the same points as the pace shape.
  *
@@ -716,7 +746,12 @@ async function writeAthlete(admin: Client, a: Athlete, coachId: string, today: D
   if (!raceId) {
     const { data, error } = await admin
       .from("goal_races")
-      .insert({ user_id: userId, race_type: a.group.raceType, race_date: raceDate })
+      .insert({
+        user_id: userId,
+        race_type: a.group.raceType,
+        race_date: raceDate,
+        target_time: targetTimeFor(a.group.raceType, a.thresholdMps),
+      })
       .select("id")
       .single();
     if (error || !data) throw new Error(`goal_race ${a.email}: ${error?.message}`);

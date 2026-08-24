@@ -56,3 +56,6 @@ CLAUDE.md
 /_archive/
 .env.local
 _incoming/
+
+# טיוטת הודעת קומיט — קובץ עבודה, לא חלק מהריפו
+COMMIT_MSG.txt

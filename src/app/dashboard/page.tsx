@@ -267,7 +267,9 @@ async function recentActivityRows() {
     .select("id, started_at, distance_m, duration_s, pace_shape")
     .eq("user_id", user.id)
     .order("started_at", { ascending: false })
-    .limit(9);
+    // Five, not nine. The rail is a glance at what just happened, not the
+    // activity list — and nine rows pushed the personal records off the screen.
+    .limit(5);
 
   if (!data || data.length === 0) return undefined;
 

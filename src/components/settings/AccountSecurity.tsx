@@ -79,6 +79,7 @@ export function AccountSecurity({ email }: { email: string }) {
 function EmailBox({ email }: { email: string }) {
   const [open, setOpen] = useState(false);
   const [next, setNext] = useState("");
+  const [repeat, setRepeat] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [done, setDone] = useState("");
@@ -87,6 +88,7 @@ function EmailBox({ email }: { email: string }) {
   const toggle = () => {
     setOpen((o) => !o);
     setNext(email);
+    setRepeat("");
     setPassword("");
     setError("");
     setDone("");
@@ -96,6 +98,17 @@ function EmailBox({ email }: { email: string }) {
     const address = next.trim();
     if (!address.includes("@")) return setError("Enter a valid email address.");
     if (address.toLowerCase() === email.toLowerCase()) return setError("That's already your address.");
+    /*
+     * Typed twice, on purpose.
+     *
+     * Changing an address sends the confirmation to the *new* one. A typo here
+     * does not fail loudly — it succeeds quietly into a mailbox nobody owns,
+     * and the account is then reachable only through support. One extra field
+     * is a cheap price for an irreversible mistake.
+     */
+    if (repeat.trim().toLowerCase() !== address.toLowerCase()) {
+      return setError("The two addresses don't match.");
+    }
 
     setError("");
     setDone("");
@@ -110,6 +123,7 @@ function EmailBox({ email }: { email: string }) {
 
       setDone(`Check ${address} — the address changes once you confirm from there.`);
       setPassword("");
+      setRepeat("");
     });
   };
 
@@ -137,6 +151,13 @@ function EmailBox({ email }: { email: string }) {
             <input
               id="s-email" className="field" type="email" autoComplete="email"
               value={next} onChange={(e) => setNext(e.target.value)} placeholder="you@run.com"
+            />
+          </div>
+          <div>
+            <label htmlFor="s-email-2" className="lbl">{copy.repeatEmail}</label>
+            <input
+              id="s-email-2" className="field" type="email" autoComplete="off"
+              value={repeat} onChange={(e) => setRepeat(e.target.value)} placeholder="you@run.com"
             />
           </div>
           <div>
@@ -176,6 +197,7 @@ function PasswordBox({ email }: { email: string }) {
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
+  const [repeat, setRepeat] = useState("");
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -184,6 +206,7 @@ function PasswordBox({ email }: { email: string }) {
     setOpen((o) => !o);
     setCurrent("");
     setNext("");
+    setRepeat("");
     setError("");
     setDone(false);
   };
@@ -191,6 +214,9 @@ function PasswordBox({ email }: { email: string }) {
   const submit = () => {
     if (next.length < 8) return setError("Use at least 8 characters.");
     if (next === current) return setError("That's the password you already have.");
+    // A mistyped new password locks you out of your own account, and the field
+    // is masked so there is nothing to re-read. Typed twice.
+    if (next !== repeat) return setError("The two passwords don't match.");
 
     setError("");
     setDone(false);
@@ -208,6 +234,7 @@ function PasswordBox({ email }: { email: string }) {
       setDone(true);
       setCurrent("");
       setNext("");
+      setRepeat("");
       setOpen(false);
     });
   };
@@ -242,11 +269,18 @@ function PasswordBox({ email }: { email: string }) {
               value={next} onChange={(e) => setNext(e.target.value)} placeholder="min. 8 characters"
             />
           </div>
+          <div>
+            <label htmlFor="s-pass2" className="lbl">{copy.repeatPass}</label>
+            <input
+              id="s-pass2" className="field" type="password" autoComplete="new-password"
+              value={repeat} onChange={(e) => setRepeat(e.target.value)} placeholder="••••••••"
+            />
+          </div>
           {error ? <Note tone="bad">{error}</Note> : null}
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <button
               className="btn btn-primary" type="button" onClick={submit}
-              disabled={pending || !current || !next} style={btnPrimary}
+              disabled={pending || !current || !next || !repeat} style={btnPrimary}
             >
               {pending ? copy.saving : copy.updPass}
             </button>

@@ -87,14 +87,13 @@ export function SettingsView({
             {copy.brand}
           </span>
         </div>
-        <nav className="topnav" style={{ display: "flex", gap: "20px", fontSize: "13px", color: "var(--color-muted)" }}>
+        <h1 style={{ margin: 0, fontSize: "15px", fontWeight: 600 }}>{copy.title}</h1><nav className="topnav" style={{ display: "flex", gap: "20px", fontSize: "13px", color: "var(--color-muted)" }}>
           <a href="/dashboard" style={{ color: "var(--color-muted)" }}>{copy.navHome}</a>
-          <a href="/activities" style={{ color: "var(--color-muted)" }}>{copy.navActivities}</a>
           <a href="/plan" style={{ color: "var(--color-muted)" }}>{copy.navPlan}</a>
+          <a href="/activities" style={{ color: "var(--color-muted)" }}>{copy.navActivities}</a>
           <a href="/settings" style={{ color: "var(--color-ink)" }}>{copy.navSettings}</a>
         </nav>
         <div style={{ flex: 1 }} />
-        <h1 style={{ margin: 0, fontSize: "15px", fontWeight: 600 }}>{copy.title}</h1>
       </header>
 
       <ProfileCard profile={profile} />

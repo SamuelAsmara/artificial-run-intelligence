@@ -98,8 +98,8 @@ export function EmptyDashboard({ name }: { name?: string | null }) {
           style={{ display: "flex", gap: "20px", fontSize: "13px", color: "var(--color-muted)" }}
         >
           <a href="/dashboard" style={{ color: "var(--color-ink)" }}>{COPY.navHome}</a>
-          <a href="/activities" style={{ color: "var(--color-muted)" }}>{COPY.navActivities}</a>
           <a href="/plan" style={{ color: "var(--color-muted)" }}>{COPY.navPlan}</a>
+          <a href="/activities" style={{ color: "var(--color-muted)" }}>{COPY.navActivities}</a>
           <a href="/settings" style={{ color: "var(--color-muted)" }}>{COPY.navSettings}</a>
         </nav>
         <div style={{ flex: 1 }} />

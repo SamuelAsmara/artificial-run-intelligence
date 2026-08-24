@@ -106,7 +106,19 @@ export function ActivityDetailView({
 
   /* ---- the figures on show: the selection when there is one ---- */
   const selected = sel && streams && !coarse ? summarise(streams, sel.a, sel.b, data?.movingS) : null;
-  const shown = selected ?? data?.summary ?? (streams && !coarse ? summarise(streams) : null);
+  /*
+   * The header reports the run. Always.
+   *
+   * It used to report `selected ?? summary`, so dragging a range across the
+   * chart quietly rewrote every figure above it — and a reader glancing at
+   * "5:12/km" had no way to tell whether that was the run or the eight hundred
+   * metres they happened to be holding. The summary of a run should not depend
+   * on where the mouse is.
+   *
+   * The selection still reports, in its own row beneath the chart, where it is
+   * unmistakably about the selection.
+   */
+  const shown = data?.summary ?? (streams && !coarse ? summarise(streams) : null);
 
   // The reference run arrives without splits, so it derives its own — the same
   // function the server uses, not a second copy that could disagree.
@@ -252,11 +264,55 @@ export function ActivityDetailView({
         ) : null}
 
         {selected && sel ? (
-          <p className="num" style={{ margin: "8px 0 0", fontSize: "11px", color: "var(--color-accent)" }}>
-            Selection · {(selected.distanceM / 1000).toFixed(2)} km · {fmtLong(selected.durationS)} ·
-            {" "}pace, heart rate and climb above reflect this range; drift and calories are
-            {" "}whole-run figures — {copy.clearSel}
-          </p>
+          <div
+            style={{
+              marginBlockStart: "10px",
+              padding: "10px 14px",
+              borderRadius: "var(--radius-control)",
+              background: "var(--color-accent-soft)",
+              boxShadow: "inset 0 0 0 1px var(--color-accent)",
+              display: "flex",
+              alignItems: "center",
+              gap: "22px",
+              flexWrap: "wrap",
+            }}
+          >
+            <span
+              className="num"
+              style={{
+                fontSize: "9.5px", letterSpacing: ".08em", textTransform: "uppercase",
+                color: "var(--color-accent)", whiteSpace: "nowrap",
+              }}
+            >
+              {copy.selLabel}
+            </span>
+            {[
+              { k: copy.kDist, v: (selected.distanceM / 1000).toFixed(2), u: "km" },
+              { k: copy.kTime, v: fmtLong(selected.durationS), u: "" },
+              { k: copy.kPace, v: selected.paceSec ? formatPace(selected.paceSec) : DASH, u: "/km" },
+              { k: copy.kAvgHr, v: selected.avgHr ? String(selected.avgHr) : DASH, u: "bpm" },
+              { k: copy.kClimb, v: selected.climbM !== null ? String(selected.climbM) : DASH, u: "m" },
+            ].map((f) => (
+              <div key={f.k} style={{ display: "flex", flexDirection: "column", gap: "1px", minWidth: 0 }}>
+                <span
+                  className="num"
+                  style={{ fontSize: "9px", letterSpacing: ".07em", textTransform: "uppercase", color: "var(--color-faint)" }}
+                >
+                  {f.k}
+                </span>
+                <span className="num" style={{ fontSize: "13.5px", fontWeight: 500, whiteSpace: "nowrap" }}>
+                  {f.v}
+                  {f.u ? <span style={{ fontSize: "10px", color: "var(--color-faint)" }}> {f.u}</span> : null}
+                </span>
+              </div>
+            ))}
+            <button
+              className="btn btn-secondary" type="button" onClick={onLeave}
+              style={{ marginInlineStart: "auto", padding: "4px 10px", fontSize: "11px" }}
+            >
+              {copy.clearSel}
+            </button>
+          </div>
         ) : null}
       </section>
 
@@ -389,8 +445,8 @@ function Nav() {
       </div>
       <nav className="topnav" style={{ display: "flex", gap: "20px", fontSize: "13px", color: "var(--color-muted)" }}>
         <a href="/dashboard" style={{ color: "var(--color-muted)" }}>{copy.navHome}</a>
-        <a href="/activities" style={{ color: "var(--color-ink)" }}>{copy.navActivities}</a>
         <a href="/plan" style={{ color: "var(--color-muted)" }}>{copy.navPlan}</a>
+        <a href="/activities" style={{ color: "var(--color-ink)" }}>{copy.navActivities}</a>
         <a href="/settings" style={{ color: "var(--color-muted)" }}>{copy.navSettings}</a>
       </nav>
       <div style={{ flex: 1 }} />

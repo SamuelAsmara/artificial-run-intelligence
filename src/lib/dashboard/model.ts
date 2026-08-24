@@ -137,10 +137,42 @@ export function buildPmc(series?: { C: number[]; A: number[]; T: number[]; D?: s
     });
   }
 
-  const weekCount = Math.max(1, Math.round(n / 7));
-  const pmcWeeks = Array.from({ length: weekCount }, (_, w) => ({
-    x: X(Math.min(n - 1, w * 7)).toFixed(0), label: "W" + (w + 1),
-  }));
+  /*
+   * The x axis, in dates.
+   *
+   * It used to read W1 … W12 — twelve labels that say how many weeks the chart
+   * is wide and nothing about *when*. The athlete looking at a dip cannot tell
+   * whether it was last month or in the spring, and a screenshot of this chart
+   * in a document is undated. The real dates were already here in `D`; only
+   * the hover tooltip ever used them.
+   *
+   * Six labels rather than twelve: a date is three times the width of "W7",
+   * and twelve of them collide. The last point is always labelled, because
+   * "where does this end" is the first thing anyone asks of a trend.
+   */
+  const MO = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const dayLabel = (iso: string) => {
+    const [, m, d] = iso.split("-");
+    return `${Number(d)} ${MO[Number(m) - 1] ?? ""}`.trim();
+  };
+
+  let pmcWeeks: Pmc["pmcWeeks"];
+  if (D.length === n && n > 1) {
+    const stops = 6;
+    const idx = Array.from({ length: stops }, (_, k) =>
+      Math.round((k / (stops - 1)) * (n - 1)),
+    );
+    pmcWeeks = [...new Set(idx)].map((i) => ({
+      x: X(i).toFixed(0), label: dayLabel(D[i]),
+    }));
+  } else {
+    // The reference series has no real days behind it, so it counts weeks and
+    // says so rather than printing dates nobody ran.
+    const weekCount = Math.max(1, Math.round(n / 7));
+    pmcWeeks = Array.from({ length: weekCount }, (_, w) => ({
+      x: X(Math.min(n - 1, w * 7)).toFixed(0), label: "W" + (w + 1),
+    }));
+  }
 
   return {
     C, A, T, n, D, x0, x1, yT, yB, mn, mx,
@@ -410,7 +442,16 @@ export const COPY = {
     "You’ve done 3 hard sessions this week and your load climbed fast. I’ve downgraded tomorrow’s intervals to an easy 6 km so you arrive fresh for Saturday’s long run.",
   btnSession: "Get tomorrow’s session", btnReason: "Show reasoning",
   pmcTitle: "Fitness · Fatigue · Form",
-  pmcSub: "The long arc of the season — CTL against ATL over time.",
+  /*
+   * The subtitle carries the unit, because the axis cannot.
+   *
+   * Three series share one axis and one of them is not the same kind of
+   * number: Fitness and Fatigue are training load, Form is the difference
+   * between them and is meaningful around zero. A bare "60" on the axis is
+   * unreadable without that sentence.
+   */
+  pmcSub: "Daily training load. Form is Fitness minus Fatigue, so it reads against the zero line.",
+  pmcAxisUnit: "load",
   legCtl: "Fitness (CTL)", legAtl: "Fatigue (ATL)", legTsb: "Form (TSB)",
   planTitle: "Training plan", planMeta: "",
   legDone: "Completed", legPlanned: "Planned", legMissed: "Missed",

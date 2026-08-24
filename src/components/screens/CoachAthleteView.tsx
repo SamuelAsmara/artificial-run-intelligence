@@ -12,7 +12,7 @@ import { useMemo, useState, useTransition } from "react";
 import { CoachNav } from "@/components/coach/CoachNav";
 import { useRouter } from "next/navigation";
 import { removeAthlete, updateWorkout, type AthleteDetail, type AthleteWorkout } from "@/actions/coach";
-import { formatDuration } from "@/lib/format/pace";
+import { formatDuration, formatPace } from "@/lib/format/pace";
 import { RACE_LABEL } from "@/lib/coach/templates";
 import { Avatar } from "@/components/ui/Avatar";
 import {
@@ -27,6 +27,19 @@ const WORKOUT_TYPES = ["easy", "long", "interval", "rest"] as const;
 type WorkoutTypeName = (typeof WORKOUT_TYPES)[number];
 
 const km = (m: number | null) => (m === null ? "—" : `${(m / 1000).toFixed(1)} km`);
+
+/**
+ * Seconds per kilometre, from the two figures the row already carried.
+ *
+ * The coach's run list showed distance, time and heart rate and left the
+ * athlete to divide one by the other in their head — while the athlete's own
+ * list two clicks away printed the pace outright. Pace is the number a coach
+ * actually scans a week of running for; nothing needed fetching to show it.
+ */
+const pace = (distanceM: number | null, durationS: number | null) => {
+  if (!distanceM || !durationS || distanceM <= 0 || durationS <= 0) return "—";
+  return `${formatPace(durationS / (distanceM / 1000))}/km`;
+};
 
 export function CoachAthleteView({ detail, today }: { detail: AthleteDetail; today: string }) {
   const { athlete, trend, workouts, recentRuns, flags, email, level, age, targetTime } = detail;
@@ -501,13 +514,16 @@ export function CoachAthleteView({ detail, today }: { detail: AthleteDetail; tod
                 key={r.id}
                 className="dc-hover-bg"
                 href={`/activities/${r.id}?coach=1`}
-                style={{ display: "grid", gridTemplateColumns: "96px 1fr auto auto", alignItems: "center", gap: "12px", padding: "7px 0", borderBlockEnd: "1px solid var(--color-line)" }}
+                style={{ display: "grid", gridTemplateColumns: "96px 1fr auto auto auto", alignItems: "center", gap: "12px", padding: "7px 0", borderBlockEnd: "1px solid var(--color-line)" }}
               >
                 <span className="num" style={{ fontSize: "11px", color: "var(--color-faint)" }}>
                   {r.startedAt ? r.startedAt.slice(0, 10) : "—"}
                 </span>
                 <span className="num" style={{ fontSize: "12.5px", fontWeight: 500 }}>{km(r.distanceM)}</span>
                 <span className="num" style={{ fontSize: "12px", color: "var(--color-muted)" }}>{formatDuration(r.durationS)}</span>
+                <span className="num" style={{ fontSize: "12px", color: "var(--color-ink)", minWidth: "62px", textAlign: "end" }}>
+                  {pace(r.distanceM, r.durationS)}
+                </span>
                 <span className="num" style={{ fontSize: "11.5px", color: "var(--color-faint)", minWidth: "54px", textAlign: "end" }}>
                   {r.avgHr ? `${r.avgHr} bpm` : "—"}
                 </span>

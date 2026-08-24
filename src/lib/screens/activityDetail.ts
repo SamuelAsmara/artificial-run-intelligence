@@ -133,7 +133,10 @@ export const AD_COPY = {
   driftLbl: "DRIFT ONSET",
   axKm: "km",
   axTime: "time",
-  clearSel: "click the chart to clear",
+  clearSel: "Clear",
+  selLabel: "Selection",
+  kDist: "Distance",
+  kTime: "Time",
 
   segTitle: "Kilometre splits",
   aiTag: "AI Coach",
