@@ -7,6 +7,7 @@
  */
 
 import { COACH_COPY } from "@/lib/screens/coachHome";
+import { BrandMark } from "@/components/ui";
 
 export function CoachNav({
   active,
@@ -26,7 +27,7 @@ export function CoachNav({
   return (
     <header style={{ display: "flex", alignItems: "center", gap: "24px", paddingBlock: "6px 10px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
-        <span style={{ width: "10px", height: "10px", background: "var(--color-accent)", borderRadius: "2px", display: "inline-block" }} />
+        <BrandMark />
         <span className="num" style={{ fontWeight: 500, fontSize: "16px", letterSpacing: ".12em" }}>
           {COACH_COPY.brand}
         </span>

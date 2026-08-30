@@ -185,7 +185,7 @@ const longest: Question = {
         ...(best.avgHr !== null ? [{ label: "Average heart rate", value: `${best.avgHr} bpm` }] : []),
         ...(second ? [{ label: "Next longest", value: `${km(second.distanceKm)} · ${second.dateLabel}` }] : []),
       ],
-      caveat: "Over the runs ARI holds, which may not be your whole running life.",
+      caveat: "Over the runs Runi holds, which may not be your whole running life.",
     });
   },
 };
@@ -495,7 +495,7 @@ const adherence: Question = {
     if (recent.length === 0) {
       return nothing(
         "No planned sessions in the last four weeks.",
-        "Set a goal race and ARI will build a plan; this question reads what it built against what you ran.",
+        "Set a goal race and Runi will build a plan; this question reads what it built against what you ran.",
       );
     }
 
@@ -511,7 +511,7 @@ const adherence: Question = {
       detail:
         missed === 0
           ? "Every session in the last four weeks was run."
-          : `${missed} ${missed === 1 ? "session was" : "sessions were"} not run. A plan is a proposal, and life happens; ARI reshapes what is still ahead rather than asking you to catch up.`,
+          : `${missed} ${missed === 1 ? "session was" : "sessions were"} not run. A plan is a proposal, and life happens; Runi reshapes what is still ahead rather than asking you to catch up.`,
       tone: share >= 80 ? "positive" : share >= 60 ? "caution" : "negative",
       rows: [
         { label: "Completed", value: String(done.length), tone: "positive" },
@@ -570,7 +570,7 @@ const goalRace: Question = {
     if (!data.race) {
       return nothing(
         "No goal race set.",
-        "Set one in Settings and ARI will build a plan backwards from it — and this question will compare where you are against where it needs you to be.",
+        "Set one in Settings and Runi will build a plan backwards from it — and this question will compare where you are against where it needs you to be.",
       );
     }
     const daysOut = Math.round(

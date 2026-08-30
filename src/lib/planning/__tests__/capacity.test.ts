@@ -146,8 +146,8 @@ describe("weekLongRunM", () => {
 });
 
 describe("the plan agrees with the safety model", () => {
-  // This is the point of the whole module: ARI must not prescribe a session
-  // that ARI itself would flag. sessionSpikeVsRecentMax defines "no elevated
+  // This is the point of the whole module: Runi must not prescribe a session
+  // that Runi itself would flag. sessionSpikeVsRecentMax defines "no elevated
   // hazard" as within 10% of the athlete's recent maximum, and the long-run
   // ramp is set to exactly that.
   it("never prescribes a long run that spikes beyond the safe band", () => {

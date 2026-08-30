@@ -8,7 +8,7 @@ import { getCoachWorkspace } from "@/actions/coach";
 import { CoachHomeView } from "@/components/screens/CoachHomeView";
 import { todayIso } from "@/lib/time/week";
 
-export const metadata = { title: "Coach · ARI" };
+export const metadata = { title: "Coach · Runi" };
 
 export default async function CoachPage() {
   // A year either side, because the calendar's year view asks for one.

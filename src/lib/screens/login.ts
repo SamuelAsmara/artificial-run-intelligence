@@ -22,7 +22,7 @@
 export const MIN_PASSWORD = 8;
 
 export const LOGIN_COPY = {
-  brand: "ARI",
+  brand: "Runi",
 
   /**
    * The one line the product gets to explain itself.
@@ -40,7 +40,7 @@ export const LOGIN_COPY = {
   signup: "Sign up",
 
   fUser: "Username",
-  fUserPh: "what should ARI call you?",
+  fUserPh: "what should Runi call you?",
   fEmail: "Email",
   fEmailPh: "you@run.com",
   fPass: "Password",

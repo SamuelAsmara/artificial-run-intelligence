@@ -130,7 +130,7 @@ export async function generatePlanAction(
   }
 
   // The plan must be sized against this athlete. Generating from the generic
-  // per-race table produces first-week long runs that ARI's own spike check
+  // per-race table produces first-week long runs that Runi's own spike check
   // flags as elevated risk — see src/lib/planning/capacity.ts.
   const { data: history } = await supabase
     .from("activities")

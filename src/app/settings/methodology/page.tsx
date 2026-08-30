@@ -1,7 +1,7 @@
 import { MethodologyView } from "@/components/screens/MethodologyView";
 import { isCoach } from "@/lib/auth/role";
 
-export const metadata = { title: "How the numbers work · ARI" };
+export const metadata = { title: "How the numbers work · Runi" };
 
 /*
  * One page for both audiences.

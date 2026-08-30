@@ -2,7 +2,7 @@
  * Coach screens — copy and appearance.
  *
  * The coach's home is not a smaller version of the athlete's home. An athlete
- * opens ARI to be told what to do today; a coach opens it to find out which of
+ * opens Runi to be told what to do today; a coach opens it to find out which of
  * thirty people needs them. Those are different questions, so this file holds
  * different words and a different visual grammar from `lib/screens/*` for the
  * athlete side.
@@ -23,7 +23,7 @@ import type { RaceType } from "@/types/database.types";
 export const COACH_COPY = {
   editedByCoach: "changed by you",
   editedByAthlete: "changed by the athlete",
-  brand: "ARI",
+  brand: "Runi",
   coachTag: "Coach",
   navHome: "Home",
   navAthletes: "Athletes",
@@ -48,7 +48,7 @@ export const COACH_COPY = {
     "No athletes yet. Share your join code — they enter it in Settings and appear here.",
   rosterFiltered: "Nobody matches those filters.",
   editNote:
-    "A session you change is yours — ARI will not adjust it automatically afterwards.",
+    "A session you change is yours — Runi will not adjust it automatically afterwards.",
   removeTitle: "Remove from roster",
   removeBody:
     "They keep their own training and history — you stop seeing it, and they stop having a coach. They can join you again with your code.",
@@ -100,7 +100,7 @@ export const COACH_COPY = {
   tPhases: "Phases",
   tMix: "Week shape",
   tRunningDays: "running days",
-  usingDefault: "ARI default",
+  usingDefault: "Runi default",
   yourOwn: "Yours",
   resetDefault: "Reset to default",
   templateSaved: "Saved — future plans will use this.",

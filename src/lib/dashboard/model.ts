@@ -241,7 +241,7 @@ export interface Day {
   date?: string;
   status: string; done: boolean; missed: boolean; today: boolean;
   /**
-   * Why ARI reduced this session, in the athlete's own words.
+   * Why Runi reduced this session, in the athlete's own words.
    *
    * The plan screen has had a slot for this line since the prototype and filled
    * it with an invented sentence about a long run that never happened. Written
@@ -447,7 +447,7 @@ export const pbs = [
 /* ------------------------------------------------------------------ */
 
 export const COPY = {
-  brand: "ARI",
+  brand: "Runi",
   greeting: "Good morning, Samuel",
   context: "Tuesday · Week 4 of 12 · Marathon",
   streak: "6 day streak",
@@ -485,7 +485,7 @@ export const COPY = {
    */
   nextTitleEmpty: "No next session",
   nextBodyEmpty:
-    "Once you have a training plan, the session ARI wants you to run next appears here — with its structure, its target pace, and the reason behind any change to it.",
+    "Once you have a training plan, the session Runi wants you to run next appears here — with its structure, its target pace, and the reason behind any change to it.",
   nextCtaEmpty: "Build a plan",
   nextMeta: "Today · 9.6 km · ~49 min",
   adjTag: "Adjusted",
@@ -502,7 +502,7 @@ export const COPY = {
   raceProgLabel: "Plan progress · Week 4 of 12", raceProgPct: "33%",
   raceTarget: "3:45:00", raceTargetLabel: "Target", raceDaysUnit: "days",
   racePred: "3:47:10", racePredLabel: "Predicted · closing",
-  askBtn: "Ask ARI",
+  askBtn: "Ask Runi",
   milestone: "New personal best — 10 km in 47:12.",
   milestoneSub: "Set during Thursday’s tempo run; your previous best stood for 5 months.",
 };
@@ -515,7 +515,7 @@ export const COPY = {
  * to the athlete reading the screen. The panel that used them was hidden on a
  * real dashboard, so the feature was a mock-up that could never run.
  *
- * "Ask ARI" now opens `components/insights/InsightsPanel`, which answers ten
+ * "Ask Runi" now opens `components/insights/InsightsPanel`, which answers ten
  * questions from the athlete's own runs through tested pure functions. It
  * demonstrates the intelligence the product has instead of implying one it
  * does not.

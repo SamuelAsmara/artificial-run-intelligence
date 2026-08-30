@@ -112,7 +112,7 @@ export interface PacePoint {
 
 export const ACT_COPY = {
   pbTitle: "This run set a personal best on the day you ran it.",
-  brand: "ARI", navHome: "Home", navActivities: "Activities",
+  brand: "Runi", navHome: "Home", navActivities: "Activities",
   navPlan: "Plan", navSettings: "Settings",
   title: "Activities", subtitle: "Training history · last 4 weeks",
   volTitle: "Weekly distance", paceTitle: "Easy-run pace trend",

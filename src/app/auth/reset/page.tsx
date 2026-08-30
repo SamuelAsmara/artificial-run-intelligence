@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { ResetPasswordView } from "@/components/screens/ResetPasswordView";
 
-export const metadata = { title: "Set a new password · ARI" };
+export const metadata = { title: "Set a new password · Runi" };
 
 /**
  * Where a password-recovery link lands.

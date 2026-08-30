@@ -7,7 +7,7 @@ import { getCoachWorkspace } from "@/actions/coach";
 import { CoachCyclesView } from "@/components/screens/CoachCyclesView";
 import { todayIso } from "@/lib/time/week";
 
-export const metadata = { title: "Cycles · ARI" };
+export const metadata = { title: "Cycles · Runi" };
 
 export default async function CoachCyclesPage() {
   const data = await getCoachWorkspace();

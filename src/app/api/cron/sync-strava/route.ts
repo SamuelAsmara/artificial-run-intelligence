@@ -10,7 +10,7 @@ import { runPlanAdjustment } from "@/lib/planning/runAdjustment";
  * Nothing in the interface starts the Strava OAuth flow: the Strava tile on
  * Settings routes to the intervals.icu panel, because intervals.icu is the
  * aggregator every device (Garmin, Polar, Coros, Strava itself) already reaches
- * ARI through. So `strava_connections` is never written, and this job iterated
+ * Runi through. So `strava_connections` is never written, and this job iterated
  * an empty list at 03:30 every night while holding one of the two cron slots a
  * Hobby project gets.
  *

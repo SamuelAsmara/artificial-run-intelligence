@@ -1,5 +1,6 @@
 /** The shared kit — every screen draws from here rather than re-styling. */
 export { StatTile, STAT_ICONS, type StatTone } from "./StatTile";
+export { BrandMark } from "./BrandMark";
 export { MiniBars } from "./MiniBars";
 export { DayCell, DayCellFull, type DayCellProps } from "./DayCell";
 export { FilterChip, ActionChip, StatusChip, CHIP_ICONS, type StatusTone } from "./Chip";

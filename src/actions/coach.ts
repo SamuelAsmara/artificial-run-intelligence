@@ -292,7 +292,7 @@ export async function saveCoachTemplate(t: CoachTemplate): Promise<Result<null>>
   // The distance has to be one of the four. `validateTemplate` checks weeks and
   // the weekly mix but not this, and it arrives from the browser.
   if (!RACE_TYPES.includes(t.raceType)) {
-    return { ok: false, error: "That is not a distance ARI plans for." };
+    return { ok: false, error: "That is not a distance Runi plans for." };
   }
 
   const fields = {

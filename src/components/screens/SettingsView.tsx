@@ -57,7 +57,7 @@ import {
   requiredPace,
 } from "@/lib/screens/settings";
 import type { RaceType } from "@/types/database.types";
-import { SectionHeader } from "@/components/ui";
+import { BrandMark, SectionHeader } from "@/components/ui";
 import { METHOD_COPY } from "@/lib/screens/methodology";
 
 const copy = SET_COPY;
@@ -81,10 +81,7 @@ export function SettingsView({
     }}>
       <header style={{ display: "flex", alignItems: "center", gap: "24px", paddingBlock: "6px 10px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
-          <span style={{
-            width: "10px", height: "10px", background: "var(--color-accent)",
-            borderRadius: "2px", display: "inline-block",
-          }} />
+          <BrandMark />
           <span className="num" style={{ fontWeight: 500, fontSize: "16px", letterSpacing: ".12em" }}>
             {copy.brand}
           </span>
@@ -664,7 +661,7 @@ function IntervalsPanel({
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ margin: 0, fontSize: "13px", fontWeight: 500 }}>{copy.icuName}</p>
           <p style={{ margin: "1px 0 0", fontSize: "10.5px", color: "var(--color-muted)" }}>
-            {via ? `${via} reaches ARI through intervals.icu` : copy.icuDesc}
+            {via ? `${via} reaches Runi through intervals.icu` : copy.icuDesc}
           </p>
         </div>
         <span className="tag" style={{

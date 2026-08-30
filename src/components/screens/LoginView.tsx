@@ -28,6 +28,7 @@
  */
 
 import { useState, useTransition } from "react";
+import { BrandMark } from "@/components/ui";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { LOGIN_COPY, MIN_PASSWORD } from "@/lib/screens/login";
@@ -117,7 +118,7 @@ export function LoginView({ initialMode = "login" }: { initialMode?: "login" | "
 
   const submit = (event?: React.FormEvent) => {
     event?.preventDefault();
-    if (isSignup && !username.trim()) return setErr("Tell ARI what to call you.");
+    if (isSignup && !username.trim()) return setErr("Tell Runi what to call you.");
     if (!email.includes("@")) return setErr("That doesn't look like an email address.");
     /*
      * The eight-character rule is a rule about *choosing* a password, not about
@@ -262,6 +263,14 @@ export function LoginView({ initialMode = "login" }: { initialMode?: "login" | "
           display: "flex", flexDirection: "column", gap: "15px",
         }}>
           <div>
+            {/* the mark and the name, above the tagline — the card is the
+                first thing a new athlete sees, so the brand lives here too */}
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBlockEnd: "10px" }}>
+              <BrandMark size={22} />
+              <span className="num" style={{ fontWeight: 500, fontSize: "15px", letterSpacing: ".14em", color: "var(--color-ink)" }}>
+                {copy.brand}
+              </span>
+            </div>
             <h1 style={{
               margin: 0, fontFamily: "'Archivo Black', var(--font-sans)",
               fontSize: "20px", lineHeight: 1, fontWeight: 400,
@@ -303,7 +312,7 @@ export function LoginView({ initialMode = "login" }: { initialMode?: "login" | "
 
             Typing an email and a password and pressing Enter is how everybody
             signs in to everything. With the controls loose in a div, Enter did
-            nothing at all — the athlete's first interaction with ARI was a key
+            nothing at all — the athlete's first interaction with Runi was a key
             press the page ignored. Submitting through the form also gives the
             browser its password-manager hooks for free.
           */}

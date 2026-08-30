@@ -2,7 +2,7 @@ import { getCoachTemplates, getCoachWorkspace } from "@/actions/coach";
 import { CoachTemplatesView } from "@/components/screens/CoachTemplatesView";
 import { todayIso } from "@/lib/time/week";
 
-export const metadata = { title: "Templates · ARI" };
+export const metadata = { title: "Templates · Runi" };
 
 export default async function CoachTemplatesPage() {
   /*

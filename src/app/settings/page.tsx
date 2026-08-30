@@ -8,7 +8,7 @@ import { getIntervalsIcuConnection } from "@/actions/providers";
 import { getAthleteProfile } from "@/actions/profile";
 import { getMyCoach } from "@/actions/coach";
 
-export const metadata = { title: "Settings · ARI" };
+export const metadata = { title: "Settings · Runi" };
 
 export default async function SettingsPage() {
   // Read on the server so the intervals.icu key never has to leave it — the

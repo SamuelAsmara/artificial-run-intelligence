@@ -25,7 +25,7 @@ import { isCoach } from "@/lib/auth/role";
 import { CoachModeBar } from "@/components/coach/CoachModeBar";
 
 export const metadata: Metadata = {
-  title: "Artificial Run Intelligence",
+  title: "Runi — Run with Intelligence",
   description:
     "A data-driven running coach — adaptive periodization and recovery-aware training",
 };

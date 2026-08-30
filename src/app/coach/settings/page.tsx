@@ -3,7 +3,7 @@ import { getAthleteProfile } from "@/actions/profile";
 import { getIntervalsIcuConnection } from "@/actions/providers";
 import { CoachSettingsView } from "@/components/screens/CoachSettingsView";
 
-export const metadata = { title: "Settings · ARI" };
+export const metadata = { title: "Settings · Runi" };
 
 /*
  * One settings page for a coach.

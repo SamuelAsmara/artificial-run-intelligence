@@ -68,3 +68,38 @@ Plans built before the migration have no phases and the bar hides
 itself rather than inventing an arc; rebuilding a plan brings it back.
 
 809 tests pass.
+
+---
+
+Rebrand: ARI becomes Runi — Run with Intelligence.
+
+Every user-facing string, page title and narrative sentence now says
+Runi; "Ask ARI" is "Ask Runi". Comments that reference the Claude Design
+handoff files keep their original names, because those are file paths,
+not branding. The six submission documents are renamed and rebranded,
+and the deck is now Runi_presentation.pptx with its four UI screenshots
+re-rendered from the rebranded build — including the plan slide, which
+now shows the month calendar and the phase timeline instead of the
+retired week list. Old ARI-named documents are archived in
+docs/_archive_ari, not deleted.
+
+Also corrected in the deck while re-rendering: 20 migrations (was 19)
+and 39 server actions (was 38 on the architecture slide).
+
+809 tests pass.
+
+---
+
+The Runi mark, everywhere the brand appears.
+
+A new BrandMark kit component draws the logo — the R as a runner, silver
+gradient, accent stride — inline in every header that used to carry the
+plain blue square: dashboard, plan, activities, activity detail, settings,
+methodology, the empty states and the coach nav. The login card gets the
+mark and the name above its tagline. src/app/icon.svg and a regenerated
+favicon.ico make it the browser icon. The presentation's title slide
+carries the mark, and both the deck and the product-spec document now
+point at runi-coach.vercel.app — added as a production domain alongside
+the old one, which keeps working.
+
+809 tests pass.

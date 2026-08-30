@@ -168,7 +168,7 @@ export const PROVIDER_TILES: ProviderTile[] = [
 ];
 
 /**
- * The providers whose data reaches ARI through intervals.icu.
+ * The providers whose data reaches Runi through intervals.icu.
  *
  * Selecting any of them shows the intervals.icu panel, because that is the
  * truthful answer to "is my Garmin connected?" — it is, by way of a service the
@@ -181,7 +181,7 @@ export const reachesUsViaIntervals = (id: string): boolean =>
   (VIA_INTERVALS as readonly string[]).includes(id);
 
 export const SET_COPY = {
-  brand: "ARI",
+  brand: "Runi",
   navHome: "Home",
   navActivities: "Activities",
   navPlan: "Plan",

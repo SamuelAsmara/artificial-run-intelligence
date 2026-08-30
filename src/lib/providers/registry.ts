@@ -1,12 +1,12 @@
 /**
- * The data sources ARI can draw an athlete's training from.
+ * The data sources Runi can draw an athlete's training from.
  *
  * ## Sources are interchangeable, not cumulative
  *
  * This is the idea the rest of the app is built around, and it is easy to get
  * backwards. An athlete does not connect five services and receive the union of
  * them. They connect *one* that already holds their history, and that one
- * answers both questions ARI needs: what did you run, and how did you sleep.
+ * answers both questions Runi needs: what did you run, and how did you sleep.
  *
  * intervals.icu is that source today because it is itself an aggregator — the
  * athlete has already linked Garmin, Polar, Suunto, Coros or Wahoo *there*, so
@@ -133,7 +133,7 @@ export const PROVIDERS: ProviderDefinition[] = [
     status: "gated",
     summary: "Runs and recovery from Suunto watches",
     blockedReason:
-      "Needs a Suunto partner application. Suunto already reaches ARI through " +
+      "Needs a Suunto partner application. Suunto already reaches Runi through " +
       "intervals.icu today.",
     exclusive: true,
   },

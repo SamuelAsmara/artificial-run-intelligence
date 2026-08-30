@@ -30,7 +30,7 @@ export interface PlanDay {
   /** ISO date, YYYY-MM-DD — what the month grid places the cell by */
   date: string;
   status: string; done: boolean; missed: boolean; today: boolean;
-  /** why ARI reduced this session — see `Day.reason` in dashboard/model.ts */
+  /** why Runi reduced this session — see `Day.reason` in dashboard/model.ts */
   reason?: string | null;
   /** true when a coach or the athlete set these numbers, not the generator */
   byPerson?: boolean;
@@ -125,7 +125,7 @@ export const MONTH_NAMES: Record<number, string> = {
 };
 
 export const PLAN_COPY = {
-  brand: "ARI", navHome: "Home", navActivities: "Activities",
+  brand: "Runi", navHome: "Home", navActivities: "Activities",
   navPlan: "Plan", navSettings: "Settings",
   title: "Marathon Plan", subtitle: "Oct 11, 2026 · Target 3:45:00",
   /* the two ways to look at a plan: the working list, and its shape */
@@ -207,10 +207,10 @@ export function realPlanWeeks(weeks: ModelWeek[]): PlanWeek[] {
 export const PLAN_EMPTY = {
   title: "No plan yet",
   body:
-    "A training plan needs a goal race — the distance and the date. Set one in Settings and ARI will build the weeks between now and then from what you are already running.",
+    "A training plan needs a goal race — the distance and the date. Set one in Settings and Runi will build the weeks between now and then from what you are already running.",
   /** Shown once the race exists, when the only thing left to do is press build. */
   bodyWithRace:
-    "ARI will build the weeks between today and race day from what you are already running — the long run grows from your current long run, not from a table.",
+    "Runi will build the weeks between today and race day from what you are already running — the long run grows from your current long run, not from a table.",
   cta: "Go to Settings",
   build: "Build my plan",
   building: "Building\u2026",
@@ -225,7 +225,7 @@ export const PLAN_EMPTY = {
    */
   raceHeading: "What are you training for?",
   raceBody:
-    "A plan is built backwards from a race. Pick the distance and the day, and ARI sizes the weeks between now and then from what you are already running.",
+    "A plan is built backwards from a race. Pick the distance and the day, and Runi sizes the weeks between now and then from what you are already running.",
   raceDistance: "Distance",
   raceDate: "Race day",
   raceTarget: "Target time",

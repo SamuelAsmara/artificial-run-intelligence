@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * The methodology page — every figure in ARI, explained.
+ * The methodology page — every figure in Runi, explained.
  *
  * One page for both audiences, at two depths. The plain sentence, the bands
  * and the limit are always visible; the formula is a disclosure, open by
@@ -14,7 +14,7 @@
 
 import { useState } from "react";
 import { METHODS, METHOD_COPY, type Method } from "@/lib/screens/methodology";
-import { SectionHeader } from "@/components/ui";
+import { BrandMark, SectionHeader } from "@/components/ui";
 import { FORMULAS } from "./methodologyFormulas";
 
 const NAV = { home: "Home", plan: "Plan", activities: "Activities", settings: "Settings" };
@@ -24,8 +24,8 @@ export function MethodologyView({ isCoach = false }: { isCoach?: boolean }) {
     <div style={{ maxWidth: "1280px", marginInline: "auto", padding: "16px 24px 40px", display: "flex", flexDirection: "column", gap: "12px" }}>
       <header style={{ display: "flex", alignItems: "center", gap: "24px", paddingBlock: "6px 10px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
-          <span style={{ width: "10px", height: "10px", background: "var(--color-accent)", borderRadius: "2px", display: "inline-block" }} />
-          <span className="num" style={{ fontWeight: 500, fontSize: "16px", letterSpacing: ".12em" }}>ARI</span>
+          <BrandMark />
+          <span className="num" style={{ fontWeight: 500, fontSize: "16px", letterSpacing: ".12em" }}>Runi</span>
         </div>
         <div style={{ textAlign: "start" }}>
           <h1 style={{ margin: 0, fontSize: "15px", fontWeight: 600 }}>{METHOD_COPY.title}</h1>

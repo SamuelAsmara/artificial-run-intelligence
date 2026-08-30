@@ -8,7 +8,7 @@ import { getAthleteDetail } from "@/actions/coach";
 import { CoachAthleteView } from "@/components/screens/CoachAthleteView";
 import { todayIso } from "@/lib/time/week";
 
-export const metadata = { title: "Athlete · ARI" };
+export const metadata = { title: "Athlete · Runi" };
 
 export default async function CoachAthletePage({
   params,

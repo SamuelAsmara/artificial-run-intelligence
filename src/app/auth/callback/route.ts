@@ -13,7 +13,7 @@ import { createClient } from "@/lib/supabase/server";
  * so the session cookie is set on a response the browser will keep.
  *
  * Without a route to do the exchange the redirect simply lands on a path the
- * app does not serve, and a new user's first experience of ARI is a 404 with
+ * app does not serve, and a new user's first experience of Runi is a 404 with
  * their account created but unusable. That is exactly what happened: signup
  * worked, the row appeared in `auth.users`, and the email link went nowhere.
  *

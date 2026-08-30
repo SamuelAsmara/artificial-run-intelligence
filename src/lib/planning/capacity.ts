@@ -8,7 +8,7 @@
  * it. For an athlete currently running 28 km a week whose longest run in the
  * last month is 10.3 km, that plan opens with a 14 km long run and climbs to 28.
  *
- * That is not a small inaccuracy. ARI's own safety model
+ * That is not a small inaccuracy. Runi's own safety model
  * (`sessionSpikeVsRecentMax`) would flag the very first long run of that plan as
  * a 36% jump over recent maximum — the "moderate" band, hazard ratio 1.52. The
  * app would have been generating sessions it then warns you about.

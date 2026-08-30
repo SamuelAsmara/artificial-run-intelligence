@@ -1,5 +1,5 @@
 /**
- * What every number in ARI actually means.
+ * What every number in Runi actually means.
  *
  * The product shows an athlete a readiness score, a form figure, a load ratio
  * and a cardiac-drift percentage, and until now explained none of them. That is
@@ -152,7 +152,7 @@ export const METHODS: Method[] = [
       { value: "> 10%", meaning: "the run was harder than it looked" },
     ],
     limit:
-      "It is only meaningful on a steady effort. On intervals or a progression run the figure is arithmetic without a meaning, so ARI does not show one.",
+      "It is only meaningful on a steady effort. On intervals or a progression run the figure is arithmetic without a meaning, so Runi does not show one.",
     source: "Coyle & González-Alonso (2001), cardiovascular drift.",
   },
   {
@@ -193,7 +193,7 @@ export const METHODS: Method[] = [
 
 export const METHOD_COPY = {
   title: "How the numbers work",
-  subtitle: "Every figure in ARI, what it means, and where it stops being true",
+  subtitle: "Every figure in Runi, what it means, and where it stops being true",
   intro:
     "Nothing here is a black box. Each number below is computed from your own data by a published method, and each one has a limit worth knowing.",
   seenOn: "Where you see it",

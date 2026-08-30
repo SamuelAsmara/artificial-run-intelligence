@@ -1,7 +1,7 @@
 "use server";
 
 /**
- * The data behind "Ask ARI".
+ * The data behind "Ask Runi".
  *
  * ## One fetch, and only when asked
  *

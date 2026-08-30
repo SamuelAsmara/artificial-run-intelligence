@@ -28,7 +28,7 @@ import {
   calendarDots, raceCountdown, runStreak, weeklyVolume, weeklyVolumeSummary,
 } from "@/lib/dashboard/rail";
 
-export const metadata = { title: "Dashboard · ARI" };
+export const metadata = { title: "Dashboard · Runi" };
 
 export default async function DashboardPage({
   searchParams,

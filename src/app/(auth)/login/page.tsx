@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { LoginView } from "@/components/screens/LoginView";
 
-export const metadata = { title: "Log in · ARI" };
+export const metadata = { title: "Log in · Runi" };
 
 /**
  * Wrapped in Suspense because LoginView reads `?redirectTo=` — the destination

@@ -29,6 +29,7 @@
  */
 
 import * as React from "react";
+import { BrandMark } from "@/components/ui";
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
   AXIS_KM_Y, AXIS_TIME_Y, BAND_BOTTOM, BAND_TOP, VIEW, X0, X1,
@@ -440,7 +441,7 @@ function Nav({ runTitle }: { runTitle?: string }) {
   return (
     <header style={{ display: "flex", alignItems: "center", gap: "24px", paddingBlock: "6px 10px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
-        <span style={{ width: "10px", height: "10px", background: "var(--color-accent)", borderRadius: "2px", display: "inline-block" }} />
+        <BrandMark />
         <span className="num" style={{ fontWeight: 500, fontSize: "16px", letterSpacing: ".12em" }}>{copy.brand}</span>
       </div>
       {/*

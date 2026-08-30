@@ -1,7 +1,7 @@
-# Artificial Run Intelligence
+# Runi — Run with Intelligence
 
 מאמן ריצה מבוסס AI — תכנון periodization קדימה ומודעות להתאוששות (ACWR + cardiac drift).
-תרגיל סיום | Internet Technologies | RUNI CS 2026 | דדליין: 06.09.2026
+תרגיל סיום | Internet Technologies | Runi CS 2026 | דדליין: 06.09.2026
 
 מסמכי האפיון המלאים נמצאים ב-`docs/`. מסמך המעקב: `התקדמות הפרויקט.md`.
 

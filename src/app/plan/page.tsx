@@ -6,7 +6,7 @@ import { PlanView } from "@/components/screens/PlanView";
 import { getPlanScreen } from "@/actions/plan";
 import { todayIso } from "@/lib/time/week";
 
-export const metadata = { title: "Plan · ARI" };
+export const metadata = { title: "Plan · Runi" };
 
 export default async function PlanPage() {
   const { plan, race } = await getPlanScreen();

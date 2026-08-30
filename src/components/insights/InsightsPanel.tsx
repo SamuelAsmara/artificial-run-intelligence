@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * "Ask ARI" — the panel that answers questions about the athlete's own data.
+ * "Ask Runi" — the panel that answers questions about the athlete's own data.
  *
  * ## Why this is a list of questions and not a text box
  *
@@ -33,13 +33,13 @@ import type { AnswerBar, InsightAnswer, InsightData, Tone } from "@/lib/insights
 
 const COPY = {
   tag: "Your data",
-  title: "Ask ARI",
+  title: "Ask Runi",
   close: "Close",
   filterPlaceholder: "Filter questions…",
   loading: "Reading your training…",
   noMatch: "No question matches that.",
   noMatchHint:
-    "ARI answers a fixed set of questions from your own numbers. Clear the box to see all of them.",
+    "Runi answers a fixed set of questions from your own numbers. Clear the box to see all of them.",
   back: "All questions",
   footer: "Every figure is computed from your own runs. Nothing here is generated.",
   intro: "Pick a question. Each one is answered from your own runs.",
@@ -306,7 +306,7 @@ export function InsightsPanel({ onClose }: { onClose: () => void }) {
         zIndex: 50,
         boxShadow: "0 0 48px rgba(0,0,0,.6)",
       }}
-      aria-label="Ask ARI about your data"
+      aria-label="Ask Runi about your data"
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", borderBlockEnd: "1px solid var(--color-line)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>

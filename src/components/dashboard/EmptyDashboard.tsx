@@ -23,7 +23,7 @@
  */
 
 const COPY = {
-  brand: "ARI",
+  brand: "Runi",
   navHome: "Home",
   navActivities: "Activities",
   navPlan: "Plan",
@@ -34,7 +34,7 @@ const COPY = {
   readinessCaption: "Readiness · needs 7 days of data",
   narrative:
     "Welcome! I don’t know anything about your running yet. Connect intervals.icu " +
-    "and ARI will read your runs, your sleep and your heart-rate variability — " +
+    "and Runi will read your runs, your sleep and your heart-rate variability — " +
     "then build you a plan around them.",
   ctaConnect: "Connect intervals.icu",
   ctaBuild: "Build my training plan",
@@ -46,7 +46,7 @@ const COPY = {
     "Your runs will be listed here — distance, pace, heart rate and the shape of " +
     "each session.",
   pbTitle: "Personal Records",
-  pbSub: "Your bests will appear here as soon as ARI has seen the distance.",
+  pbSub: "Your bests will appear here as soon as Runi has seen the distance.",
 } as const;
 
 /** The four headline metrics, shown blank so the shape of the page is legible. */
@@ -80,15 +80,7 @@ export function EmptyDashboard({ name }: { name?: string | null }) {
     >
       <header style={{ display: "flex", alignItems: "center", gap: "24px", paddingBlock: "6px 10px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
-          <span
-            style={{
-              width: "10px",
-              height: "10px",
-              background: "var(--color-accent)",
-              borderRadius: "2px",
-              display: "inline-block",
-            }}
-          />
+          <BrandMark />
           <span className="num" style={{ fontWeight: 500, fontSize: "16px", letterSpacing: ".12em" }}>
             {COPY.brand}
           </span>

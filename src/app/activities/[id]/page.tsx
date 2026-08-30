@@ -7,7 +7,7 @@ import { notFound } from "next/navigation";
 import { ActivityDetailView } from "@/components/screens/ActivityDetailView";
 import { getActivityDetail } from "@/actions/activities";
 
-export const metadata = { title: "Activity · ARI" };
+export const metadata = { title: "Activity · Runi" };
 
 export default async function ActivityPage({
   params,

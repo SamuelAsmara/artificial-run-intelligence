@@ -12,7 +12,7 @@
  * where this product's athletes are — the working week runs Sunday to Saturday,
  * and a board that puts Sunday on the far right is simply wrong for them.
  *
- * So the start day is a constant rather than an assumption. When ARI reaches
+ * So the start day is a constant rather than an assumption. When Runi reaches
  * users elsewhere this becomes a per-user or per-region setting, and every
  * screen follows it without further work, because every screen asks here.
  *

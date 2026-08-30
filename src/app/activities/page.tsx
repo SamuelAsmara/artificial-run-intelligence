@@ -19,7 +19,7 @@ import { summariseRuns, withinDays, SUMMARY_DAYS } from "@/lib/activity/window";
 import { classify, medianPace as medianPaceOf, paceOf, SESSION_NAME } from "@/lib/activity/classify";
 import { isoDate, weekStart, zonedNow } from "@/lib/time/week";
 
-export const metadata = { title: "Activities · ARI" };
+export const metadata = { title: "Activities · Runi" };
 
 /*
  * `classify` and `medianPace` used to be written here, in the page.
