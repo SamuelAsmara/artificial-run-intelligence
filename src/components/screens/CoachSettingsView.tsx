@@ -28,7 +28,7 @@ import { RACE_LABEL, RACE_TYPES } from "@/lib/coach/templates";
 import { COACH_COPY } from "@/lib/screens/coachHome";
 import { ProfileCard, ConnectionsCard } from "@/components/screens/SettingsView";
 import { AccountSecurity } from "@/components/settings/AccountSecurity";
-import { SectionHeader } from "@/components/ui";
+import { Entrance, SectionHeader } from "@/components/ui";
 import { METHOD_COPY } from "@/lib/screens/methodology";
 import type { AthleteProfileView } from "@/actions/profile";
 import type { ProviderConnectionView } from "@/actions/providers";
@@ -60,6 +60,14 @@ export function CoachSettingsView({
 }) {
   const [prefs, setPrefs] = useState<CoachPreferences>(preferences);
   const [note, setNote] = useState("");
+  /*
+   * The colour pickers are folded away by default. Four colour inputs are the
+   * least-touched control on this page — most coaches set them once or never —
+   * and open they pushed the thresholds, the profile and the account below
+   * the fold. The header row still shows the four current colours, so the
+   * closed state answers "what are my colours" without opening anything.
+   */
+  const [colorsOpen, setColorsOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const set = (patch: Partial<CoachPreferences>) => {
@@ -77,44 +85,15 @@ export function CoachSettingsView({
   const restore = () => set({ ...DEFAULT_PREFERENCES, raceColors: {} });
 
   return (
-    <div style={{ maxWidth: "1080px", marginInline: "auto", padding: "16px 24px 40px", display: "flex", flexDirection: "column", gap: "12px" }}>
+    <div data-entrance-root style={{ maxWidth: "1080px", marginInline: "auto", padding: "16px 24px 40px", display: "flex", flexDirection: "column", gap: "12px" }}><Entrance />
       <CoachNav active="settings" />
 
       <h1 style={{ margin: 0, fontSize: "17px", fontWeight: 600 }}>Coach settings</h1>
 
-      <section className="card" style={{ padding: "18px 22px" }}>
-        <h2 style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>{COACH_COPY.prefsTitle}</h2>
-        <p style={{ margin: "2px 0 14px", fontSize: "11.5px", color: "var(--color-faint)" }}>{COACH_COPY.prefsSub}</p>
-
-        <div style={{ display: "flex", gap: "18px", flexWrap: "wrap" }}>
-          {RACE_TYPES.map((r) => (
-            <label key={r} style={{ display: "flex", alignItems: "center", gap: "9px" }}>
-              <input
-                type="color"
-                value={colorFor(r, prefs.raceColors)}
-                onChange={(e) => set({ raceColors: { ...prefs.raceColors, [r]: e.target.value } })}
-                style={{ width: "34px", height: "28px", padding: 0, border: "1px solid var(--color-line-strong)", borderRadius: "6px", background: "transparent", cursor: "pointer" }}
-                aria-label={`${RACE_LABEL[r]} colour`}
-              />
-              <span style={{ fontSize: "12.5px" }}>{RACE_LABEL[r]}</span>
-              {prefs.raceColors[r] && prefs.raceColors[r] !== DEFAULT_RACE_COLORS[r] && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const next = { ...prefs.raceColors };
-                    delete next[r];
-                    set({ raceColors: next });
-                  }}
-                  className="num"
-                  style={{ fontSize: "9.5px", color: "var(--color-faint)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
-                >
-                  reset
-                </button>
-              )}
-            </label>
-          ))}
-        </div>
-      </section>
+      {/* The coach's own details first — the same cards every athlete sees,
+          in the same place they expect them. Coaching preferences follow. */}
+      <ProfileCard profile={profile} />
+      <ConnectionsCard connection={icuConnection} />
 
       <section className="card" style={{ padding: "18px 22px" }}>
         <h2 style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>{COACH_COPY.thresholdsTitle}</h2>
@@ -145,6 +124,73 @@ export function CoachSettingsView({
         </div>
       </section>
 
+      <section className="card" style={{ padding: 0, overflow: "hidden" }}>
+        <button
+          type="button"
+          onClick={() => setColorsOpen((v) => !v)}
+          aria-expanded={colorsOpen}
+          className="dc-hover-bg"
+          style={{
+            width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+            gap: "12px", padding: "14px 22px", background: colorsOpen ? "var(--color-elevated)" : "transparent",
+            border: "none", cursor: "pointer", fontFamily: "inherit", color: "var(--color-ink)", textAlign: "start",
+          }}
+        >
+          <div>
+            <h2 style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>{COACH_COPY.prefsTitle}</h2>
+            <p style={{ margin: "2px 0 0", fontSize: "11.5px", color: "var(--color-faint)" }}>{COACH_COPY.prefsSub}</p>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            {/* the four current colours, visible without opening anything */}
+            <span style={{ display: "flex", gap: "5px" }}>
+              {RACE_TYPES.map((r) => (
+                <span key={r} style={{ width: "12px", height: "12px", borderRadius: "3px", background: colorFor(r, prefs.raceColors) }} />
+              ))}
+            </span>
+            <svg
+              width="14" height="14" viewBox="0 0 24 24" fill="none"
+              stroke="var(--color-faint)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+              style={{ transform: colorsOpen ? "rotate(180deg)" : "none", transition: "transform .15s" }}
+              aria-hidden
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </div>
+        </button>
+        {colorsOpen ? (
+          <div style={{ borderBlockStart: "1px solid var(--color-line)", padding: "16px 22px 18px" }}>
+        <div style={{ display: "flex", gap: "18px", flexWrap: "wrap" }}>
+          {RACE_TYPES.map((r) => (
+            <label key={r} style={{ display: "flex", alignItems: "center", gap: "9px" }}>
+              <input
+                type="color"
+                value={colorFor(r, prefs.raceColors)}
+                onChange={(e) => set({ raceColors: { ...prefs.raceColors, [r]: e.target.value } })}
+                style={{ width: "34px", height: "28px", padding: 0, border: "1px solid var(--color-line-strong)", borderRadius: "6px", background: "transparent", cursor: "pointer" }}
+                aria-label={`${RACE_LABEL[r]} colour`}
+              />
+              <span style={{ fontSize: "12.5px" }}>{RACE_LABEL[r]}</span>
+              {prefs.raceColors[r] && prefs.raceColors[r] !== DEFAULT_RACE_COLORS[r] && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = { ...prefs.raceColors };
+                    delete next[r];
+                    set({ raceColors: next });
+                  }}
+                  className="num"
+                  style={{ fontSize: "9.5px", color: "var(--color-faint)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                >
+                  reset
+                </button>
+              )}
+            </label>
+          ))}
+        </div>
+          </div>
+        ) : null}
+      </section>
+
       <section className="card" style={{ padding: "18px 22px" }}>
         <h2 style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>Training templates</h2>
         <p style={{ margin: "2px 0 12px", fontSize: "11.5px", color: "var(--color-faint)", maxWidth: "70ch", lineHeight: 1.6 }}>
@@ -159,10 +205,6 @@ export function CoachSettingsView({
       <div style={{ width: "min(360px, 100%)" }}>
         <JoinCode code={code} />
       </div>
-
-      {/* The coach's own profile, connections and account — here, not elsewhere. */}
-      <ProfileCard profile={profile} />
-      <ConnectionsCard connection={icuConnection} />
 
       <a
         className="card dc-hover-border"

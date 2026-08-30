@@ -29,7 +29,7 @@
  */
 
 import * as React from "react";
-import { BrandMark } from "@/components/ui";
+import { Entrance, BrandMark } from "@/components/ui";
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
   AXIS_KM_Y, AXIS_TIME_Y, BAND_BOTTOM, BAND_TOP, VIEW, X0, X1,
@@ -187,10 +187,10 @@ export function ActivityDetailView({
   const runTitle = data ? `${data.dateLabel} · ${(data.summary.distanceM / 1000).toFixed(1)} km` : "Reference run";
 
   return (
-    <div style={{
+    <div data-entrance-root style={{
       maxWidth: "1280px", marginInline: "auto", padding: "16px 24px 40px",
       display: "flex", flexDirection: "column", gap: "12px",
-    }}>
+    }}><Entrance />
       {coachView ? (
         <div style={{
           display: "flex", alignItems: "center", gap: "14px", padding: "10px 16px",

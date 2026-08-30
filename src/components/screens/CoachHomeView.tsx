@@ -20,7 +20,7 @@ import {
   buildHighlights, COACH_COPY, FLAG_LIMIT, initials, KIND_LABEL, toneColor, untilLabel, untilParts,
 } from "@/lib/screens/coachHome";
 import { weekDates } from "@/lib/coach/roster";
-import { StatTile, STAT_ICONS, EmptyState } from "@/components/ui";
+import { Entrance, StatTile, STAT_ICONS, EmptyState } from "@/components/ui";
 
 /** two figures — the roster is people before it is anything else */
 const ROSTER_ICON = "M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM2 20a7 7 0 0 1 14 0M17 11a3 3 0 1 0 0-6M16 20h6a5 5 0 0 0-4-4.9";
@@ -66,7 +66,7 @@ export function CoachHomeView({ data, today }: { data: CoachWorkspace; today: st
   const shownFlags = flags.slice(0, FLAG_LIMIT);
 
   return (
-    <div style={{ maxWidth: "1280px", marginInline: "auto", padding: "16px 24px 40px", display: "flex", flexDirection: "column", gap: "12px" }}>
+    <div data-entrance-root style={{ maxWidth: "1280px", marginInline: "auto", padding: "16px 24px 40px", display: "flex", flexDirection: "column", gap: "12px" }}><Entrance />
       <CoachNav active="home" />
 
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
@@ -107,62 +107,15 @@ export function CoachHomeView({ data, today }: { data: CoachWorkspace; today: st
         />
       </section>
 
+      {/*
+          Reordered by the coach's actual morning: the figures, then the week
+          itself — the calendar with the reminders pad beside it — and only
+          then the narrative sections. "Worth knowing" and "Needs you" are
+          prose; the calendar is the thing a coach checks before answering a
+          single message.
+      */}
       <div className="rail-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 288px", gap: "12px", alignItems: "start" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "12px", minWidth: 0 }}>
-          {highlights.length > 0 && (
-            <section className="card" style={{ padding: "14px 20px" }}>
-              <h2 style={{ margin: "0 0 8px", fontSize: "13px", fontWeight: 600 }}>{COACH_COPY.highlightsTitle}</h2>
-              <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
-                {highlights.map((h, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: "9px" }}>
-                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: TONE[h.tone], flex: "none" }} />
-                    <span style={{ fontSize: "12.5px", color: "var(--color-ink)" }}>{h.text}</span>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {shownFlags.length > 0 && (
-            <section className="card" style={{ padding: "16px 20px" }}>
-              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
-                <h2 style={{ margin: 0, fontSize: "13px", fontWeight: 600 }}>{COACH_COPY.attentionTitle}</h2>
-                {flags.length > shownFlags.length && (
-                  <span className="num" style={{ fontSize: "10.5px", color: "var(--color-faint)" }}>
-                    {flags.length - shownFlags.length} more on their pages
-                  </span>
-                )}
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "3px", marginBlockStart: "10px" }}>
-                {shownFlags.map((f, i) => (
-                  <a
-                    key={`${f.athleteId}-${f.kind}-${i}`}
-                    className="dc-hover-bg flagrow"
-                    href={`/coach/athletes/${f.athleteId}`}
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "auto minmax(110px,auto) 1fr auto",
-                      alignItems: "center",
-                      gap: "12px",
-                      padding: "8px 12px",
-                      borderRadius: "var(--radius-control)",
-                      borderInlineStart: `2px solid ${toneColor(f.tone)}`,
-                    }}
-                  >
-                    <span className="num" style={{ width: "24px", height: "24px", flex: "none", borderRadius: "50%", background: "var(--color-elevated)", color: "var(--color-muted)", fontSize: "9.5px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      {initials(f.athleteName)}
-                    </span>
-                    <span style={{ fontSize: "12.5px", fontWeight: 500 }}>{f.athleteName}</span>
-                    <span className="flagwhy" style={{ fontSize: "12px", color: "var(--color-muted)" }}>{f.text}</span>
-                    <span className="num" style={{ fontSize: "10px", letterSpacing: ".05em", textTransform: "uppercase", color: toneColor(f.tone) }}>
-                      {KIND_LABEL[f.kind]}
-                    </span>
-                  </a>
-                ))}
-              </div>
-            </section>
-          )}
-
           {athletes.length === 0 ? (
             <EmptyState
               icon={ROSTER_ICON}
@@ -189,6 +142,61 @@ export function CoachHomeView({ data, today }: { data: CoachWorkspace; today: st
           <JoinCode code={code} />
         </div>
       </div>
+
+      {highlights.length > 0 && (
+        <section className="card" style={{ padding: "14px 20px" }}>
+          <h2 style={{ margin: "0 0 8px", fontSize: "13px", fontWeight: 600 }}>{COACH_COPY.highlightsTitle}</h2>
+          <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+            {highlights.map((h, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: "9px" }}>
+                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: TONE[h.tone], flex: "none" }} />
+                <span style={{ fontSize: "12.5px", color: "var(--color-ink)" }}>{h.text}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {shownFlags.length > 0 && (
+        <section className="card" style={{ padding: "16px 20px" }}>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+            <h2 style={{ margin: 0, fontSize: "13px", fontWeight: 600 }}>{COACH_COPY.attentionTitle}</h2>
+            {flags.length > shownFlags.length && (
+              <span className="num" style={{ fontSize: "10.5px", color: "var(--color-faint)" }}>
+                {flags.length - shownFlags.length} more on their pages
+              </span>
+            )}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "3px", marginBlockStart: "10px" }}>
+            {shownFlags.map((f, i) => (
+              <a
+                key={`${f.athleteId}-${f.kind}-${i}`}
+                className="dc-hover-bg flagrow"
+                href={`/coach/athletes/${f.athleteId}`}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "auto minmax(110px,auto) 1fr auto",
+                  alignItems: "center",
+                  gap: "12px",
+                  padding: "8px 12px",
+                  borderRadius: "var(--radius-control)",
+                  borderInlineStart: `2px solid ${toneColor(f.tone)}`,
+                }}
+              >
+                <span className="num" style={{ width: "24px", height: "24px", flex: "none", borderRadius: "50%", background: "var(--color-elevated)", color: "var(--color-muted)", fontSize: "9.5px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {initials(f.athleteName)}
+                </span>
+                <span style={{ fontSize: "12.5px", fontWeight: 500 }}>{f.athleteName}</span>
+                <span className="flagwhy" style={{ fontSize: "12px", color: "var(--color-muted)" }}>{f.text}</span>
+                <span className="num" style={{ fontSize: "10px", letterSpacing: ".05em", textTransform: "uppercase", color: toneColor(f.tone) }}>
+                  {KIND_LABEL[f.kind]}
+                </span>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
+
     </div>
   );
 }

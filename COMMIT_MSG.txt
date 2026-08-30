@@ -1,105 +1,73 @@
-feat: Ask ARI, and fix the coach screens by looking at them
+fix: EmptyDashboard import, and the coach screens reorganised.
 
-Ask ARI replaces the mocked chat on the dashboard. The chat cycled three
-canned replies over a scripted exchange whose every number belonged to the
-prototype's athlete, and it was gated !isReal so it could never appear on a
-real dashboard - a feature that could not run, left in the file to be read.
+EmptyDashboard used BrandMark without importing it — the one file in the
+rebrand with no import section at all, so the automated pass had nowhere
+to append and silently skipped it. One import line.
 
-What replaces it answers ten questions from the athlete's own runs: how much
-they have improved this month, whether they are ramping too fast, whether
-they stuck to the plan, how much of their training is easy, whether cardiac
-drift is improving. Every figure comes from a pure function with a test
-behind it, so nothing can be invented.
+Cycles: every cycle is now one full-width row — colour edge, race and
+date, head count, who needs attention, days to race — and the roster
+opens inside the row you clicked. The previous tile row wrapped into a
+ragged three-plus-one shape and the open roster appeared detached below.
 
-Deliberately a list of questions rather than a text box. A text box promises
-"ask me anything", and the first thing it cannot parse reads as broken rather
-than as mostly working. The filter above the list narrows these questions and
-never accepts free text, so everything on screen answers. One fetch, on first
-open, so an athlete who never asks loads none of it.
+Coach home: reordered to match the coach's actual morning — the stat
+tiles, then the calendar with the reminders pad and join code beside it,
+and only then "Worth knowing" and "Needs you".
 
-Every question declines honestly when it has too little data, and there is a
-test for that case on each of them.
-
-Also in this commit:
-
-- classify() and the median pace it reads move out of app/activities/page.tsx
-  into lib/activity/classify.ts with tests. It was arithmetic living in a
-  page, which is where all nine defects of the aggregation audit were found
-  and where none of the tested modules had any. The activities list and the
-  questions now share one definition of what a tempo run is.
-- two charts were scaled from zero and hid what they were drawn to show:
-  fourteen days of a load ratio between 0.8 and 1.4 became fourteen identical
-  bars. They now scale to their own range, print the floor, and say so.
-- coach screens, found by rendering them rather than by testing them: cycle
-  tiles overflowed their container, the athlete table had no column headers,
-  a stat tile was handed a whole sentence in a 25px face, and a chart caption
-  collided with the top gridline.
-- filter labels on the roster sat on two different baselines, one paragraph
-  repeated once per template, and the empty dashboard's header was ordered
-  differently from the populated one - so an athlete's first sync rearranged
-  the page.
-- slide 7 of the deck now carries a real screenshot of the coach board.
-
-809 tests pass, up from 746.
-
----
-
-Plan screen: a calendar you page through, and the arc of the plan.
-
-The plan page was an accordion of every week stacked on one screen; a
-sixteen-week plan was sixteen cards to scroll past. It is now a real
-calendar: one month at a time, previous/next, a Today shortcut, and
-tapping a date opens the same session detail the week view used to show.
-On phones the seven-column grid collapses to date + distance cells (the
-type edge still carries the kind) instead of overflowing off the screen.
-
-Fixed in passing: the month grid started weeks on Monday while the whole
-product - the dashboard calendar, the generator's Friday-long-run and
-Saturday-rest placement, lib/time/week itself - starts them on Sunday,
-so every month view drew each day one column off. Sunday-first now.
-
-New: the phase timeline. generatePlan has computed a phase (base/build/
-peak/taper) for every workout since day one, and generatePlanAction
-dropped it on the exact line that wrote rows to the database. Migration
-0020 adds plan_workouts.phase, the action now stores it, and the plan
-screen draws a segmented timeline - proportions the generator or the
-coach's template actually decided - with a marker on the current week.
-Plans built before the migration have no phases and the bar hides
-itself rather than inventing an arc; rebuilding a plan brings it back.
+Templates: the four editors are closed by default, one summary row each
+(distance, weeks, running days). Clicking a row opens its editor in
+place; several can be open at once for comparing structures.
 
 809 tests pass.
 
+Coach settings, reordered the same way: the coach's own profile card
+first — the same component every athlete sees, in the same position —
+then connections, thresholds, and the calendar colours folded into a
+closed row. The colour pickers are the least-touched control on the
+page; the closed row still previews the four current colours, so
+"what are my colours" is answered without opening anything.
+
+The way out of a training plan. There wasn't one: buildPlanForActiveRace
+refuses while a plan exists, nothing closed one, and changing the goal
+race left the old plan standing — an athlete who built a plan once was
+in it forever. A new abandonPlan action marks the active plan
+'abandoned' (never deletes — the runs behind it are history, not
+clutter), buildPlanForActiveRace now only counts *active* plans as
+blocking, and the plan screen ends with a quiet "Leave this plan…"
+link that expands into a two-click confirm explaining that nothing is
+lost. Same principle as leaving a coach: an athlete never needs
+permission to stop.
+
 ---
 
-Rebrand: ARI becomes Runi — Run with Intelligence.
+Glass night: the approved look, and the phone dashboard un-broken.
 
-Every user-facing string, page title and narrative sentence now says
-Runi; "Ask ARI" is "Ask Runi". Comments that reference the Claude Design
-handoff files keep their original names, because those are file paths,
-not branding. The six submission documents are renamed and rebranded,
-and the deck is now Runi_presentation.pptx with its four UI screenshots
-re-rendered from the rebranded build — including the plan slide, which
-now shows the month calendar and the phase timeline instead of the
-retired week list. Old ARI-named documents are archived in
-docs/_archive_ari, not deleted.
+The background is now a fixed night gradient — a cold blue glow high
+off-canvas fading to near-black — and every card is frosted glass over
+it: 4.5% white fill, 16px backdrop blur, hairline light border. Dense
+grids opt out (month calendar, week strip) and keep their solid surface,
+because glass under forty small cells reads as noise, not depth. Browsers
+without backdrop-filter simply keep the old solid cards — the @supports
+gate means nothing breaks, it just doesn't shimmer.
 
-Also corrected in the deck while re-rendering: 20 migrations (was 19)
-and 39 server actions (was 38 on the architecture slide).
+Entrance motion, one component: cards rise 24px and fade in with an 80ms
+stagger, large numbers count up, and long SVG strokes draw themselves in.
+All of it sits behind prefers-reduced-motion — for anyone who asked their
+OS for less movement, the page simply appears.
 
-809 tests pass.
+Fixed while checking every screen at phone width: the dashboard's four
+key-metric columns are nowrap and need ~460px, so phones got a sideways-
+scrolling home screen — they now stack two by two; the hero's action
+buttons wrap instead of clipping; and the week pager spreads prev/label/
+next across its own row instead of overflowing (its legend hides — the
+day cards already say DONE and MISSED themselves).
 
----
+The entrance runs on every screen, not just the dashboard — plan,
+activities, settings, methodology, and all six coach pages mount the
+same component, so the whole app opens the same way.
 
-The Runi mark, everywhere the brand appears.
+Fixed on the way: abandonPlan wrote status "abandoned", which the
+PlanStatus type didn't allow — the build would have failed type-check.
+The type now includes it (the table has no CHECK constraint, so the
+database was already fine with it).
 
-A new BrandMark kit component draws the logo — the R as a runner, silver
-gradient, accent stride — inline in every header that used to carry the
-plain blue square: dashboard, plan, activities, activity detail, settings,
-methodology, the empty states and the coach nav. The login card gets the
-mark and the name above its tagline. src/app/icon.svg and a regenerated
-favicon.ico make it the browser icon. The presentation's title slide
-carries the mark, and both the deck and the product-spec document now
-point at runi-coach.vercel.app — added as a production domain alongside
-the old one, which keeps working.
-
-809 tests pass.
+Deck screenshots re-taken with the new look. 809 tests pass.

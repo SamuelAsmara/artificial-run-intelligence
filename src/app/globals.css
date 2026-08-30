@@ -68,7 +68,18 @@
   }
 
   body {
-    background-color: var(--color-canvas);
+    /*
+     * The night the product runs in.
+     *
+     * A flat canvas read as a void; this is a sky. One radial glow, high and
+     * off to the side like a city over the horizon, falling to near-black at
+     * the edges. Fixed, so scrolling moves the page across the light rather
+     * than dragging the light along — which is also what makes the glass
+     * cards below read as glass: they need something behind them to blur.
+     */
+    background:
+      radial-gradient(1200px 700px at 75% -10%, #1d2c4f 0%, #131c33 40%, #0a0e1a 100%)
+      fixed var(--color-canvas);
     color: var(--color-ink);
     font-family: var(--font-sans);
     font-size: 14px;
@@ -102,6 +113,32 @@
 
 @layer components {
   /*
+   * The dashboard's entrance.
+   *
+   * Cards rise 24px and fade in, each 80ms after the one before — the page
+   * assembles rather than appears. Parameters are the stagger preset the
+   * motion audit settled on: 0.5s, power2.out. The Entrance component sets
+   * the per-card delay in DOM order and triggers the run; without it (any
+   * screen that doesn't mount it, or reduced motion) nothing here applies
+   * and cards render exactly as before.
+   */
+  @media (prefers-reduced-motion: no-preference) {
+    .entering .card {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+    .entered .card {
+      opacity: 1;
+      transform: none;
+      transition:
+        opacity 0.5s cubic-bezier(0.22, 0.61, 0.36, 1),
+        transform 0.5s cubic-bezier(0.22, 0.61, 0.36, 1);
+      transition-delay: var(--enter-delay, 0s);
+    }
+  }
+
+
+  /*
    * The card.
    *
    * A flat fill read as a box drawn on a page. The gradient is barely a
@@ -115,6 +152,14 @@
    * board of twenty athletes answers the pointer.
    */
   .card {
+    /*
+     * Glass, not paint.
+     *
+     * A translucent white film over the night gradient, blurred so whatever
+     * sits behind it smears into frosted depth. The border is a light edge
+     * rather than a drawn line — glass catches light at its rim. Solid
+     * fallback first for browsers without backdrop-filter.
+     */
     background: linear-gradient(180deg, #161a21, #12151b);
     border: 1px solid var(--color-line);
     border-radius: var(--radius-card);
@@ -122,6 +167,29 @@
       inset 0 1px 0 rgb(255 255 255 / 3.5%),
       0 12px 34px rgb(0 0 0 / 35%);
     transition: box-shadow 0.18s, border-color 0.18s;
+  }
+
+  @supports (backdrop-filter: blur(1px)) {
+    .card {
+      background: rgb(255 255 255 / 4.5%);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-color: rgb(255 255 255 / 9%);
+    }
+    /*
+     * Where glass is wrong: a month grid is up to 42 cards, and 42 live blur
+     * surfaces are both a compositor bill and visual noise — a calendar wants
+     * quiet cells, not forty candles. Same for the small day cells the plan
+     * and coach screens share. These stay solid.
+     */
+    .cal-grid .card,
+    .week-grid .card,
+    .wk-days .card {
+      background: var(--color-surface);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      border-color: var(--color-line);
+    }
   }
 
   .card:hover {
@@ -430,6 +498,13 @@
   .wk-days { grid-template-columns: 1fr 1fr !important; }
   .wk-row { grid-template-columns: 72px 1fr auto !important; }
   .sumrow { flex-wrap: wrap; gap: 18px !important; }
+  /* The hero's four key metrics: four nowrap columns need ~460px, so a
+     phone got a sideways-scrolling dashboard. Two by two instead. */
+  .kpi-grid { grid-template-columns: 1fr 1fr !important; row-gap: 14px; }
+  /* The week pager's label reserves 170px so paging doesn't jiggle on
+     desktop; at phone width that reservation is the jiggle. */
+  .plan-pager { flex: 1 1 100%; justify-content: space-between; }
+  .plan-pager span.num { min-width: 0 !important; }
   .hide-m { display: none !important; }
   header { flex-wrap: wrap; gap: 12px !important; }
 }

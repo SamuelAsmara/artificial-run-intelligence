@@ -10,6 +10,7 @@
  */
 
 import { useMemo, useState, useTransition } from "react";
+import { Entrance } from "@/components/ui";
 import { CoachNav } from "@/components/coach/CoachNav";
 import { saveCoachTemplate } from "@/actions/coach";
 import {
@@ -32,6 +33,19 @@ export function CoachTemplatesView({
 }) {
   const day = today ?? new Date().toISOString().slice(0, 10);
   const [openWeek, setOpenWeek] = useState<string | null>(null);
+  /*
+   * Which templates are open for editing. All closed by default: four full
+   * editors stacked open made the page a wall of counters, and a coach
+   * touches one distance at a time. More than one can be open at once —
+   * comparing two structures side by side is a real thing coaches do.
+   */
+  const [openTypes, setOpenTypes] = useState<Set<string>>(new Set());
+  const toggleType = (rt: string) =>
+    setOpenTypes((prev) => {
+      const next = new Set(prev);
+      if (next.has(rt)) next.delete(rt); else next.add(rt);
+      return next;
+    });
   const [drafts, setDrafts] = useState<CoachTemplate[]>(templates);
   const [note, setNote] = useState<Record<string, string>>({});
   const [pending, startTransition] = useTransition();
@@ -84,7 +98,7 @@ export function CoachTemplatesView({
   );
 
   return (
-    <div style={{ maxWidth: "1280px", marginInline: "auto", padding: "16px 24px 40px", display: "flex", flexDirection: "column", gap: "12px" }}>
+    <div data-entrance-root style={{ maxWidth: "1280px", marginInline: "auto", padding: "16px 24px 40px", display: "flex", flexDirection: "column", gap: "12px" }}><Entrance />
       <CoachNav active="templates" />
 
       <div>
@@ -100,9 +114,34 @@ export function CoachTemplatesView({
         const phaseTotal = Object.values(t.phaseStructure).reduce((a, b) => a + b, 0);
         const mixTotal = Object.values(t.weeklyMix).reduce((a, b) => a + b, 0);
 
+        const on = openTypes.has(t.raceType);
         return (
-          <section key={t.raceType} className="card" style={{ padding: "18px 22px", display: "flex", flexDirection: "column", gap: "14px" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
+          <section
+            key={t.raceType}
+            className="card"
+            style={{ padding: 0, overflow: "hidden", borderColor: on ? "var(--color-line-strong)" : undefined }}
+          >
+            <button
+              type="button"
+              onClick={() => toggleType(t.raceType)}
+              aria-expanded={on}
+              className="dc-hover-bg"
+              style={{
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: "10px",
+                padding: "14px 22px",
+                background: on ? "var(--color-elevated)" : "transparent",
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "inherit",
+                color: "var(--color-ink)",
+                textAlign: "start",
+              }}
+            >
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <h2 style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>{RACE_LABEL[t.raceType]}</h2>
                 <span
@@ -115,10 +154,23 @@ export function CoachTemplatesView({
                   {t.isDefault ? COACH_COPY.usingDefault : COACH_COPY.yourOwn}
                 </span>
               </div>
-              <span className="num" style={{ fontSize: "11px", color: "var(--color-faint)" }}>
-                {runningDays(t.weeklyMix)} {COACH_COPY.tRunningDays}
-              </span>
-            </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                <span className="num" style={{ fontSize: "11px", color: "var(--color-faint)" }}>
+                  {t.weeks} weeks · {runningDays(t.weeklyMix)} {COACH_COPY.tRunningDays}
+                </span>
+                <svg
+                  width="14" height="14" viewBox="0 0 24 24" fill="none"
+                  stroke="var(--color-faint)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                  style={{ transform: on ? "rotate(180deg)" : "none", transition: "transform .15s" }}
+                  aria-hidden
+                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </div>
+            </button>
+
+            {on ? (
+            <div style={{ borderBlockStart: "1px solid var(--color-line)", padding: "16px 22px 18px", display: "flex", flexDirection: "column", gap: "14px" }}>
 
             {/*
                 The template as a shape, and who is standing in it.
@@ -205,6 +257,8 @@ export function CoachTemplatesView({
                 {error ?? message ?? ""}
               </span>
             </div>
+            </div>
+            ) : null}
           </section>
         );
       })}

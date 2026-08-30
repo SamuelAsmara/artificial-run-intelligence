@@ -272,11 +272,15 @@ export async function buildPlanForActiveRace(): Promise<
     return { error: "Set a goal race — a distance and a date — in Settings first." };
   }
 
+  // Only an *active* plan blocks a rebuild. A plan the athlete has left is
+  // history, not an obstacle — without the status filter, leaving a plan
+  // still locked them out of ever building another for the same race.
   const { data: existing } = await supabase
     .from("training_plans")
     .select("id")
     .eq("user_id", user.id)
     .eq("goal_race_id", race.id)
+    .eq("status", "active")
     .limit(1)
     .maybeSingle();
 
@@ -285,6 +289,46 @@ export async function buildPlanForActiveRace(): Promise<
   }
 
   return generatePlanAction(race.id);
+}
+
+/**
+ * Leave the active training plan.
+ *
+ * ## Why this exists
+ *
+ * There was no way out. `buildPlanForActiveRace` refuses while a plan exists,
+ * nothing else closed one, and even changing the goal race left the old plan
+ * standing — an athlete who built a plan once was in it forever. The same
+ * class of hole as the "no plan yet" loop this file already documents, from
+ * the other side.
+ *
+ * ## Why it marks rather than deletes
+ *
+ * The rows stay, as `status = 'abandoned'`. Every screen reads plans through
+ * `status = 'active'`, so a left plan disappears from the product — but the
+ * history it represents is real (sessions were run against it) and deleting
+ * it would be rewriting the athlete's past. Leaving is also deliberately
+ * unceremonious — one action, no questions, same as leaving a coach: an
+ * athlete must never need permission to stop.
+ */
+export async function abandonPlan(): Promise<ActionResult<null>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Sign in first." };
+
+  const { error } = await supabase
+    .from("training_plans")
+    .update({ status: "abandoned" })
+    .eq("user_id", user.id)
+    .eq("status", "active");
+
+  if (error) return { error: "Could not leave the plan. Try again." };
+
+  revalidatePath("/plan");
+  revalidatePath("/dashboard");
+  return { data: null };
 }
 
 /**

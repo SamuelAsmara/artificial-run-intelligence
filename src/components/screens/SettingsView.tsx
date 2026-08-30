@@ -57,7 +57,7 @@ import {
   requiredPace,
 } from "@/lib/screens/settings";
 import type { RaceType } from "@/types/database.types";
-import { BrandMark, SectionHeader } from "@/components/ui";
+import { Entrance, BrandMark, SectionHeader } from "@/components/ui";
 import { METHOD_COPY } from "@/lib/screens/methodology";
 
 const copy = SET_COPY;
@@ -75,10 +75,10 @@ export function SettingsView({
   coach?: MyCoach | null;
 } = {}) {
   return (
-    <div style={{
+    <div data-entrance-root style={{
       maxWidth: "1080px", marginInline: "auto", padding: "16px 24px 40px",
       display: "flex", flexDirection: "column", gap: "12px",
-    }}>
+    }}><Entrance />
       <header style={{ display: "flex", alignItems: "center", gap: "24px", paddingBlock: "6px 10px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
           <BrandMark />

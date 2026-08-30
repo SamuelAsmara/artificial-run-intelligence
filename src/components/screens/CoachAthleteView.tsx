@@ -15,7 +15,7 @@ import { removeAthlete, updateWorkout, type AthleteDetail, type AthleteWorkout }
 import { formatDuration, formatPace } from "@/lib/format/pace";
 import { RACE_LABEL } from "@/lib/coach/templates";
 import { Avatar } from "@/components/ui/Avatar";
-import { StatTile, STAT_ICONS, StatusChip } from "@/components/ui";
+import { Entrance, StatTile, STAT_ICONS, StatusChip } from "@/components/ui";
 
 /** why a past day does not open */
 const PAST_HINT = "This session has already happened. Past weeks are a record, not a plan.";
@@ -466,7 +466,7 @@ export function CoachAthleteView({ detail, today }: { detail: AthleteDetail; tod
   };
 
   return (
-    <div style={{ maxWidth: "1280px", marginInline: "auto", padding: "16px 24px 40px", display: "flex", flexDirection: "column", gap: "12px" }}>
+    <div data-entrance-root style={{ maxWidth: "1280px", marginInline: "auto", padding: "16px 24px 40px", display: "flex", flexDirection: "column", gap: "12px" }}><Entrance />
       <CoachNav active="athletes" />
 
       <div style={{ display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap" }}>

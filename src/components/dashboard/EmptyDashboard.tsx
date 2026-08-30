@@ -22,7 +22,7 @@
  * what the walkthrough and the screenshots use.
  */
 
-import { BrandMark } from "@/components/ui";
+import { Entrance, BrandMark } from "@/components/ui";
 
 const COPY = {
   brand: "Runi",
@@ -70,7 +70,7 @@ const DASH = "--";
 
 export function EmptyDashboard({ name }: { name?: string | null }) {
   return (
-    <div
+    <div data-entrance-root
       style={{
         maxWidth: "1280px",
         marginInline: "auto",
@@ -79,7 +79,7 @@ export function EmptyDashboard({ name }: { name?: string | null }) {
         flexDirection: "column",
         gap: "12px",
       }}
-    >
+    ><Entrance />
       <header style={{ display: "flex", alignItems: "center", gap: "24px", paddingBlock: "6px 10px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
           <BrandMark />
@@ -88,7 +88,7 @@ export function EmptyDashboard({ name }: { name?: string | null }) {
           </span>
         </div>
         <div style={{ textAlign: "start" }}>
-          <h1 style={{ margin: 0, fontSize: "15px", fontWeight: 600 }}>
+          <h1 style={{ margin: 0, fontSize: "24px", fontWeight: 700, letterSpacing: "-0.01em", lineHeight: 1.1 }}>
             {name ? `${COPY.greeting}, ${name}` : COPY.greeting}
           </h1>
           <p style={{ margin: 0, fontSize: "11.5px", color: "var(--color-muted)" }}>{COPY.context}</p>

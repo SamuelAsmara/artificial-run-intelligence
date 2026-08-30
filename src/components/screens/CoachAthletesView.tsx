@@ -9,6 +9,7 @@
  */
 
 import { useMemo, useState } from "react";
+import { Entrance } from "@/components/ui";
 import { CoachNav } from "@/components/coach/CoachNav";
 import type { CoachWorkspace, CoachRosterRow } from "@/actions/coach";
 import { applyFilter, buildCycles, EMPTY_FILTER, type RosterFilter } from "@/lib/coach/programs";
@@ -42,7 +43,7 @@ export function CoachAthletesView({ data, today }: { data: CoachWorkspace; today
     filter.cycles.length > 0 || filter.sex !== null || filter.paceFrom !== null || filter.paceTo !== null;
 
   return (
-    <div style={{ maxWidth: "1280px", marginInline: "auto", padding: "16px 24px 40px", display: "flex", flexDirection: "column", gap: "12px" }}>
+    <div data-entrance-root style={{ maxWidth: "1280px", marginInline: "auto", padding: "16px 24px 40px", display: "flex", flexDirection: "column", gap: "12px" }}><Entrance />
       <CoachNav active="athletes" />
 
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>

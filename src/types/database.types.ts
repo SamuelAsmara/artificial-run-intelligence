@@ -8,7 +8,7 @@ export type Role = "athlete" | "coach";
 export type RaceType = "5k" | "10k" | "half" | "full";
 export type Level = "beginner" | "experienced";
 export type GoalRaceStatus = "active" | "cancelled" | "completed";
-export type PlanStatus = "active" | "completed" | "cancelled";
+export type PlanStatus = "active" | "completed" | "cancelled" | "abandoned";
 export type WorkoutType = "easy" | "interval" | "long" | "rest";
 export type WorkoutStatus = "planned" | "completed" | "missed" | "adjusted";
 /** the periodization phase a session was generated into — migration 0020 */

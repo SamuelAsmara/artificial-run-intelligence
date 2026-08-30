@@ -8,7 +8,7 @@
  * arrived?") was answered "yes" when the truth was "not yet".
  */
 
-import { BrandMark, EmptyState } from "@/components/ui";
+import { Entrance, BrandMark, EmptyState } from "@/components/ui";
 
 const COPY = {
   brand: "Runi",
@@ -27,7 +27,7 @@ const COPY = {
 
 export function EmptyActivities() {
   return (
-    <div style={{ maxWidth: "1280px", marginInline: "auto", padding: "16px 24px 40px", display: "flex", flexDirection: "column", gap: "12px" }}>
+    <div data-entrance-root style={{ maxWidth: "1280px", marginInline: "auto", padding: "16px 24px 40px", display: "flex", flexDirection: "column", gap: "12px" }}><Entrance />
       <header style={{ display: "flex", alignItems: "center", gap: "24px", paddingBlock: "6px 10px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
           <BrandMark />
