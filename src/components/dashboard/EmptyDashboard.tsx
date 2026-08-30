@@ -22,6 +22,8 @@
  * what the walkthrough and the screenshots use.
  */
 
+import { BrandMark } from "@/components/ui";
+
 const COPY = {
   brand: "Runi",
   navHome: "Home",
