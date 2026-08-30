@@ -1,73 +1,22 @@
-fix: EmptyDashboard import, and the coach screens reorganised.
+feat: the landing page — Runi has a front door.
 
-EmptyDashboard used BrandMark without importing it — the one file in the
-rebrand with no import section at all, so the automated pass had nowhere
-to append and silently skipped it. One import line.
+Ported 1:1 from the Claude Design handoff (handoff_landing/): a signed-out
+visitor at / now gets the landing page instead of a bounce to /login.
+Full-viewport hero over the long-exposure trail photograph (optimised
+from 1.9MB PNG to a 91KB progressive JPEG), blue colour grade and film
+grain as designed, the R-Trace mark and RUNI wordmark in Sora, then the
+four analysis columns, "How it works", "For coaches", and the final CTA.
+Signed-in users route exactly as before — athlete to /dashboard, coach
+to /coach.
 
-Cycles: every cycle is now one full-width row — colour edge, race and
-date, head count, who needs attention, days to race — and the roster
-opens inside the row you clicked. The previous tile row wrapped into a
-ragged three-plus-one shape and the open roster appeared detached below.
+The DC prototype harness (support.js, image-slot.js) was not ported; the
+template loops are plain arrays in the component. Grain and the hero's
+entrance are CSS only, guarded by prefers-reduced-motion. Two link
+decisions where the mock pointed at static artboards: "Pricing" became
+"The numbers" -> /methodology (a page that exists), and the demo/coach
+CTAs point at /login.
 
-Coach home: reordered to match the coach's actual morning — the stat
-tiles, then the calendar with the reminders pad and join code beside it,
-and only then "Worth knowing" and "Needs you".
-
-Templates: the four editors are closed by default, one summary row each
-(distance, weeks, running days). Clicking a row opens its editor in
-place; several can be open at once for comparing structures.
+New dependency: @fontsource/sora (600/700/800), loaded once in layout
+beside the existing Plex families.
 
 809 tests pass.
-
-Coach settings, reordered the same way: the coach's own profile card
-first — the same component every athlete sees, in the same position —
-then connections, thresholds, and the calendar colours folded into a
-closed row. The colour pickers are the least-touched control on the
-page; the closed row still previews the four current colours, so
-"what are my colours" is answered without opening anything.
-
-The way out of a training plan. There wasn't one: buildPlanForActiveRace
-refuses while a plan exists, nothing closed one, and changing the goal
-race left the old plan standing — an athlete who built a plan once was
-in it forever. A new abandonPlan action marks the active plan
-'abandoned' (never deletes — the runs behind it are history, not
-clutter), buildPlanForActiveRace now only counts *active* plans as
-blocking, and the plan screen ends with a quiet "Leave this plan…"
-link that expands into a two-click confirm explaining that nothing is
-lost. Same principle as leaving a coach: an athlete never needs
-permission to stop.
-
----
-
-Glass night: the approved look, and the phone dashboard un-broken.
-
-The background is now a fixed night gradient — a cold blue glow high
-off-canvas fading to near-black — and every card is frosted glass over
-it: 4.5% white fill, 16px backdrop blur, hairline light border. Dense
-grids opt out (month calendar, week strip) and keep their solid surface,
-because glass under forty small cells reads as noise, not depth. Browsers
-without backdrop-filter simply keep the old solid cards — the @supports
-gate means nothing breaks, it just doesn't shimmer.
-
-Entrance motion, one component: cards rise 24px and fade in with an 80ms
-stagger, large numbers count up, and long SVG strokes draw themselves in.
-All of it sits behind prefers-reduced-motion — for anyone who asked their
-OS for less movement, the page simply appears.
-
-Fixed while checking every screen at phone width: the dashboard's four
-key-metric columns are nowrap and need ~460px, so phones got a sideways-
-scrolling home screen — they now stack two by two; the hero's action
-buttons wrap instead of clipping; and the week pager spreads prev/label/
-next across its own row instead of overflowing (its legend hides — the
-day cards already say DONE and MISSED themselves).
-
-The entrance runs on every screen, not just the dashboard — plan,
-activities, settings, methodology, and all six coach pages mount the
-same component, so the whole app opens the same way.
-
-Fixed on the way: abandonPlan wrote status "abandoned", which the
-PlanStatus type didn't allow — the build would have failed type-check.
-The type now includes it (the table has no CHECK constraint, so the
-database was already fine with it).
-
-Deck screenshots re-taken with the new look. 809 tests pass.

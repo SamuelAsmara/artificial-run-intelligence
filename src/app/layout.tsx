@@ -20,6 +20,9 @@ import "@fontsource/ibm-plex-mono/500.css";
 // One weight, one screen: the sign-in headline. Archivo Black is the display
 // face the login handoff is drawn in, and nothing else in the product uses it.
 import "@fontsource/archivo-black/400.css";
+import "@fontsource/sora/600.css";
+import "@fontsource/sora/700.css";
+import "@fontsource/sora/800.css";
 import "./globals.css";
 import { isCoach } from "@/lib/auth/role";
 import { CoachModeBar } from "@/components/coach/CoachModeBar";

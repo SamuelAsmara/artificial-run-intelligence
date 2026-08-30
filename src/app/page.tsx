@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { LandingView } from "@/components/screens/LandingView";
 
 /**
- * The product has no separate marketing page — the design handoff covers the
- * app only. Signed in goes to their front door; everyone else to sign-in.
+ * Signed out gets the landing page (LandingView, from the Claude Design
+ * handoff); signed in goes to their front door.
  *
  * ## Which front door
  *
@@ -23,7 +24,7 @@ export default async function Home() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/login");
+  if (!user) return <LandingView />;
 
   const { data: profile } = await supabase
     .from("profiles")
