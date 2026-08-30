@@ -1,3 +1,8 @@
+/**
+ * One athlete, as their coach sees them: metrics, trend, the plan week, and
+ * recent runs.
+ */
+
 import { notFound } from "next/navigation";
 import { getAthleteDetail } from "@/actions/coach";
 import { CoachAthleteView } from "@/components/screens/CoachAthleteView";

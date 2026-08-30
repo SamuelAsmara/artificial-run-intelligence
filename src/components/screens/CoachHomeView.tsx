@@ -17,7 +17,7 @@ import type { CoachWorkspace } from "@/actions/coach";
 import { buildCycles } from "@/lib/coach/programs";
 import { RACE_LABEL } from "@/lib/coach/templates";
 import {
-  buildHighlights, COACH_COPY, FLAG_LIMIT, initials, KIND_LABEL, toneColor, untilLabel,
+  buildHighlights, COACH_COPY, FLAG_LIMIT, initials, KIND_LABEL, toneColor, untilLabel, untilParts,
 } from "@/lib/screens/coachHome";
 import { weekDates } from "@/lib/coach/roster";
 import { StatTile, STAT_ICONS, EmptyState } from "@/components/ui";
@@ -95,10 +95,15 @@ export function CoachHomeView({ data, today }: { data: CoachWorkspace; today: st
           label="Sessions this week"
           icon={STAT_ICONS.clock}
         />
+        {/*
+            Figure and unit, not one string.
+            `untilLabel` returns "in 8 d", which put a phrase in the slot the
+            tile sets at 25px and overflowed the cell.
+        */}
         <Stat
-          value={summary.upcoming[0] ? untilLabel(summary.upcoming[0].raceDate, today) : "—"}
+          value={summary.upcoming[0] ? untilParts(summary.upcoming[0].raceDate, today).value : null}
+          unit={summary.upcoming[0] ? untilParts(summary.upcoming[0].raceDate, today).unit : undefined}
           label={summary.upcoming[0] ? `Next race · ${RACE_LABEL[summary.upcoming[0].raceType]}` : "No race scheduled"}
-          divided
         />
       </section>
 
@@ -132,7 +137,7 @@ export function CoachHomeView({ data, today }: { data: CoachWorkspace; today: st
                 {shownFlags.map((f, i) => (
                   <a
                     key={`${f.athleteId}-${f.kind}-${i}`}
-                    className="dc-hover-bg"
+                    className="dc-hover-bg flagrow"
                     href={`/coach/athletes/${f.athleteId}`}
                     style={{
                       display: "grid",
@@ -148,7 +153,7 @@ export function CoachHomeView({ data, today }: { data: CoachWorkspace; today: st
                       {initials(f.athleteName)}
                     </span>
                     <span style={{ fontSize: "12.5px", fontWeight: 500 }}>{f.athleteName}</span>
-                    <span style={{ fontSize: "12px", color: "var(--color-muted)" }}>{f.text}</span>
+                    <span className="flagwhy" style={{ fontSize: "12px", color: "var(--color-muted)" }}>{f.text}</span>
                     <span className="num" style={{ fontSize: "10px", letterSpacing: ".05em", textTransform: "uppercase", color: toneColor(f.tone) }}>
                       {KIND_LABEL[f.kind]}
                     </span>
@@ -195,9 +200,9 @@ export function CoachHomeView({ data, today }: { data: CoachWorkspace; today: st
  * are their own cards now, so the gap does that work and the prop is kept only
  * so the call sites did not all have to change.
  */
-function Stat({ value, label, icon }: { value: string; label: string; divided?: boolean; icon?: string }) {
+function Stat({ value, label, icon, unit }: { value: string | null; label: string; divided?: boolean; icon?: string; unit?: string }) {
   // An em dash is what the callers pass when there is nothing to report; the
   // tile understands null, so hand it through rather than printing a dash the
   // tile would then colour as if it were a reading.
-  return <StatTile value={value === "\u2014" ? null : value} label={label} icon={icon} />;
+  return <StatTile value={value === "\u2014" ? null : value} unit={unit} label={label} icon={icon} />;
 }

@@ -1,3 +1,8 @@
+/**
+ * The roster, with filters. One query for the athletes and one for their
+ * sessions — never one query per athlete.
+ */
+
 import { redirect } from "next/navigation";
 import { getCoachWorkspace } from "@/actions/coach";
 import { CoachAthletesView } from "@/components/screens/CoachAthletesView";

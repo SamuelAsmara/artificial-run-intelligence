@@ -1,32 +1,70 @@
-send coaches to the coach screen, and show them their own edits
+feat: Ask ARI, and fix the coach screens by looking at them
 
-A coach with twenty athletes opened the app on the athlete dashboard: their
-own empty training screen, dashes in every tile, and a "Connect intervals.icu
-· Build my training plan" prompt. Nothing was broken. The first thing the
-product said to a coach was that it had nothing for them.
+Ask ARI replaces the mocked chat on the dashboard. The chat cycled three
+canned replies over a scripted exchange whose every number belonged to the
+prototype's athlete, and it was gated !isReal so it could never appear on a
+real dashboard - a feature that could not run, left in the file to be read.
 
-"/" now decides the front door by role, and the two auth routes default to "/"
-rather than to /dashboard — so the rule lives in one file instead of three.
-Coaches who also run still reach their own training from the strip at the top
-of every coach screen, which is what it is for.
+What replaces it answers ten questions from the athlete's own runs: how much
+they have improved this month, whether they are ramping too fast, whether
+they stuck to the plan, how much of their training is easy, whether cardiac
+drift is improving. Every figure comes from a pure function with a test
+behind it, so nothing can be invented.
 
-Migration 0014 added origin, planned_distance_original and adjusted_reason,
-and nothing has ever read them. A coach could shorten a long run, write down
-why, come back a week later and find a number with no history —
-indistinguishable from anything the generator produced. The session editor now
-shows who changed it, from what, and the reason, and only when somebody
-actually did.
+Deliberately a list of questions rather than a text box. A text box promises
+"ask me anything", and the first thing it cannot parse reads as broken rather
+than as mostly working. The filter above the list narrows these questions and
+never accepts free text, so everything on screen answers. One fetch, on first
+open, so an athlete who never asks loads none of it.
 
-rosterFlags listed an athlete once per rule they tripped, so the one who is
-both detraining and missed a session appeared twice on the triage board: two
-rows, one person, and it reads as two problems. Each athlete keeps their
-loudest flag now. That drops information deliberately — the board's job is to
-name who to open, not to enumerate everything wrong with them.
+Every question declines honestly when it has too little data, and there is a
+test for that case on each of them.
 
-And a form of -0.4 printed as "-0" in a column where the sign carries the
-meaning, which reads as a rendering fault.
+Also in this commit:
 
-586 tests, 3 of them new.
+- classify() and the median pace it reads move out of app/activities/page.tsx
+  into lib/activity/classify.ts with tests. It was arithmetic living in a
+  page, which is where all nine defects of the aggregation audit were found
+  and where none of the tested modules had any. The activities list and the
+  questions now share one definition of what a tempo run is.
+- two charts were scaled from zero and hid what they were drawn to show:
+  fourteen days of a load ratio between 0.8 and 1.4 became fourteen identical
+  bars. They now scale to their own range, print the floor, and say so.
+- coach screens, found by rendering them rather than by testing them: cycle
+  tiles overflowed their container, the athlete table had no column headers,
+  a stat tile was handed a whole sentence in a 25px face, and a chart caption
+  collided with the top gridline.
+- filter labels on the roster sat on two different baselines, one paragraph
+  repeated once per template, and the empty dashboard's header was ordered
+  differently from the populated one - so an athlete's first sync rearranged
+  the page.
+- slide 7 of the deck now carries a real screenshot of the coach board.
 
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01SwrFRrEWTDaEjCwqEZogWx
+809 tests pass, up from 746.
+
+---
+
+Plan screen: a calendar you page through, and the arc of the plan.
+
+The plan page was an accordion of every week stacked on one screen; a
+sixteen-week plan was sixteen cards to scroll past. It is now a real
+calendar: one month at a time, previous/next, a Today shortcut, and
+tapping a date opens the same session detail the week view used to show.
+On phones the seven-column grid collapses to date + distance cells (the
+type edge still carries the kind) instead of overflowing off the screen.
+
+Fixed in passing: the month grid started weeks on Monday while the whole
+product - the dashboard calendar, the generator's Friday-long-run and
+Saturday-rest placement, lib/time/week itself - starts them on Sunday,
+so every month view drew each day one column off. Sunday-first now.
+
+New: the phase timeline. generatePlan has computed a phase (base/build/
+peak/taper) for every workout since day one, and generatePlanAction
+dropped it on the exact line that wrote rows to the database. Migration
+0020 adds plan_workouts.phase, the action now stores it, and the plan
+screen draws a segmented timeline - proportions the generator or the
+coach's template actually decided - with a marker on the current week.
+Plans built before the migration have no phases and the bar hides
+itself rather than inventing an arc; rebuilding a plan brings it back.
+
+809 tests pass.

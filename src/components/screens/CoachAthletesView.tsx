@@ -57,7 +57,7 @@ export function CoachAthletesView({ data, today }: { data: CoachWorkspace; today
         </span>
       </div>
 
-      <section className="card" style={{ padding: "14px 20px", display: "flex", gap: "18px", flexWrap: "wrap", alignItems: "flex-end" }}>
+      <section className="card" style={{ padding: "14px 20px", display: "flex", gap: "18px", flexWrap: "wrap", alignItems: "flex-start" }}>
         <Field label={COACH_COPY.fCycle}>
           <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>
             {cycles.map((c) => {

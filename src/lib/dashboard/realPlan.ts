@@ -55,6 +55,8 @@ export interface PlanWorkoutRow {
   status: string | null;
   origin?: string | null;
   adjusted_reason?: string | null;
+  /** base / build / peak / taper — null on plans built before migration 0020 */
+  phase?: string | null;
 }
 
 export interface CompletedRun {
@@ -163,6 +165,7 @@ export function buildRealPlan(
         today: isToday,
         reason: row.adjusted_reason ?? null,
         byPerson: row.origin === "coach" || row.origin === "athlete",
+        phase: (row.phase as Day["phase"]) ?? null,
       };
     });
 

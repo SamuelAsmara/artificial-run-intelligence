@@ -34,6 +34,8 @@ export interface PlanDay {
   reason?: string | null;
   /** true when a coach or the athlete set these numbers, not the generator */
   byPerson?: boolean;
+  /** base / build / peak / taper — null before migration 0020 stored it */
+  phase?: string | null;
 }
 export interface PlanWeek {
   days: PlanDay[]; km: number; phase: string; monIdx: number; monName: string;
@@ -152,9 +154,10 @@ export const MONTHS_LONG = [
  * clicked Plan. The data to do this properly already existed and was already
  * being used by the dashboard.
  *
- * `phase` is left blank rather than guessed. The generator knows its phases but
- * does not store them per week, and labelling a week "Peak" because of where it
- * sits in the list would be a claim we cannot support.
+ * `phase` comes from the stored rows. The generator has always known its
+ * phases and, as of migration 0020, they are saved with each workout — so a
+ * week's label is read back, never guessed from where the week sits in the
+ * list. Plans built before the migration have none, and stay unlabelled.
  */
 export function realPlanWeeks(weeks: ModelWeek[]): PlanWeek[] {
   return weeks.map((wk, i) => {
@@ -175,16 +178,21 @@ export function realPlanWeeks(weeks: ModelWeek[]): PlanWeek[] {
       missed: d.missed,
       reason: d.reason ?? null,
       byPerson: d.byPerson ?? false,
+      phase: d.phase ?? null,
       today: d.today,
     }));
 
     const first = days[0];
     const last = days[days.length - 1];
 
+    // The week's phase is whatever its stored days agree on — and a generated
+    // week is uniform by construction. "base" becomes "Base" for display.
+    const stored = days.find((d) => d.phase)?.phase ?? "";
+
     return {
       days,
       km: Math.round(days.reduce((s, d) => s + d.dist, 0)),
-      phase: "",
+      phase: stored ? stored.charAt(0).toUpperCase() + stored.slice(1) : "",
       monIdx: first?.monIdx ?? 0,
       monName: first ? MO[first.monIdx] : "",
       label: wk.label || `Week ${i + 1}`,

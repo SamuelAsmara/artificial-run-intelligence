@@ -12,11 +12,11 @@ describe("monthGrid", () => {
     }
   });
 
-  it("starts every grid on a Monday", () => {
+  it("starts every grid on a Sunday", () => {
     for (const m of ["2026-01", "2026-05", "2026-08", "2026-12"]) {
       const g = monthGrid(m, []);
       const d = new Date(g.cells[0].iso + "T00:00:00");
-      expect(d.getDay()).toBe(1);
+      expect(d.getDay()).toBe(0);
     }
   });
 
@@ -36,9 +36,9 @@ describe("monthGrid", () => {
 
   it("marks the borrowed days from either side as out of month", () => {
     const g = monthGrid("2026-08", []);
-    // 1 Aug 2026 is a Saturday, so five days lead in from July.
+    // 1 Aug 2026 is a Saturday, so a Sunday-first grid leads in six days from July.
     expect(g.cells[0].inMonth).toBe(false);
-    expect(g.cells[0].iso.startsWith("2026-07")).toBe(true);
+    expect(g.cells[0].iso).toBe("2026-07-26");
     expect(g.cells[g.cells.length - 1].inMonth).toBe(false);
   });
 

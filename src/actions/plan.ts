@@ -1,5 +1,22 @@
 "use server";
 
+/**
+ * Everything that creates, reads or adjusts a training plan.
+ *
+ * This is a `"use server"` file, so every exported function here is a public
+ * endpoint: signed-in callers reach them directly, with whatever arguments they
+ * like. Each one therefore establishes who is calling before it does anything,
+ * and none of them trusts an id it was handed.
+ *
+ * The division of labour with `lib/planning/` is deliberate and worth knowing:
+ * **the arithmetic is not here.** `generatePlan` decides what a plan looks
+ * like, `readCapacity` decides what the athlete can currently take, and
+ * `runAdjustment` decides what to reduce. This file reads the rows those
+ * functions need, calls them, writes the result back, and tells Next which
+ * pages to rebuild. That separation is why the plan engine has 49 tests and
+ * needs neither a database nor a browser to run them.
+ */
+
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { generatePlan, RaceTooSoonError, type PlanStructure } from "@/lib/planning/generatePlan";
@@ -185,6 +202,14 @@ export async function generatePlanAction(
     workout_type: w.workoutType,
     planned_distance: w.plannedDistance,
     planned_pace: paceLabel(w.workoutType, thresholds.thresholdSpeedMps),
+    /*
+     * The generator has computed this since day one and it was dropped right
+     * here, on this map — the one place the plan touches the ground. Stored so
+     * the plan screen can show where the athlete is in the arc of the plan
+     * without re-deriving proportions the generator (or a coach's template)
+     * already decided.
+     */
+    phase: w.phase,
   }));
 
   const { error: workoutsError } = await supabase.from("plan_workouts").insert(workoutRows);
@@ -311,7 +336,7 @@ export async function getDashboardPlan(): Promise<RealPlan | null> {
   const { data: rows } = await supabase
     .from("plan_workouts")
     .select(
-      "week_number, day_date, workout_type, planned_distance, planned_pace, status, origin, adjusted_reason",
+      "week_number, day_date, workout_type, planned_distance, planned_pace, status, origin, adjusted_reason, phase",
     )
     .eq("plan_id", plan.id)
     .order("day_date", { ascending: true });

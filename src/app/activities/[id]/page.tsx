@@ -1,3 +1,8 @@
+/**
+ * The analysis of a single run. Streams are fetched and derived on the server;
+ * the view receives a finished chart model.
+ */
+
 import { notFound } from "next/navigation";
 import { ActivityDetailView } from "@/components/screens/ActivityDetailView";
 import { getActivityDetail } from "@/actions/activities";

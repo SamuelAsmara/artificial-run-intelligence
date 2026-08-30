@@ -1,3 +1,8 @@
+/**
+ * Settings. The intervals.icu key is read on the server and never reaches the
+ * view — the component receives a status and a four-character hint.
+ */
+
 import { SettingsView } from "@/components/screens/SettingsView";
 import { getIntervalsIcuConnection } from "@/actions/providers";
 import { getAthleteProfile } from "@/actions/profile";

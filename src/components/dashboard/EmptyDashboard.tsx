@@ -93,6 +93,12 @@ export function EmptyDashboard({ name }: { name?: string | null }) {
             {COPY.brand}
           </span>
         </div>
+        <div style={{ textAlign: "start" }}>
+          <h1 style={{ margin: 0, fontSize: "15px", fontWeight: 600 }}>
+            {name ? `${COPY.greeting}, ${name}` : COPY.greeting}
+          </h1>
+          <p style={{ margin: 0, fontSize: "11.5px", color: "var(--color-muted)" }}>{COPY.context}</p>
+        </div>
         <nav
           className="topnav"
           style={{ display: "flex", gap: "20px", fontSize: "13px", color: "var(--color-muted)" }}
@@ -103,12 +109,6 @@ export function EmptyDashboard({ name }: { name?: string | null }) {
           <a href="/settings" style={{ color: "var(--color-muted)" }}>{COPY.navSettings}</a>
         </nav>
         <div style={{ flex: 1 }} />
-        <div style={{ textAlign: "end" }}>
-          <h1 style={{ margin: 0, fontSize: "15px", fontWeight: 600 }}>
-            {name ? `${COPY.greeting}, ${name}` : COPY.greeting}
-          </h1>
-          <p style={{ margin: 0, fontSize: "11.5px", color: "var(--color-muted)" }}>{COPY.context}</p>
-        </div>
       </header>
 
       {/* Hero: dashed ring instead of a score, and the one thing worth doing next. */}

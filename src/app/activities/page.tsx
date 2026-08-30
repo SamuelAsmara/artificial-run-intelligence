@@ -1,3 +1,14 @@
+/**
+ * The activity list — the runs, the four-week summary, and the trend charts.
+ *
+ * One thing here is worth reading carefully. `getActivities(60)` is a **row
+ * limit, not a date filter**, so the rows on this page can span months. The
+ * tiles above the list are labelled "4 weeks", so they are computed from
+ * `withinDays(rows, SUMMARY_DAYS, today)` and not from every row fetched —
+ * otherwise the heading would be a promise the arithmetic does not keep, which
+ * is exactly the bug the aggregation audit found here.
+ */
+
 import { ActivitiesView } from "@/components/screens/ActivitiesView";
 import { EmptyActivities } from "@/components/screens/EmptyActivities";
 import { getActivities, getPersonalRecords } from "@/actions/activities";
@@ -5,46 +16,36 @@ import { paceShapeColor, paceShapeToPath } from "@/lib/dashboard/sparkline";
 import type { Act } from "@/lib/screens/activities";
 import type { ComparableRun } from "@/lib/activity/compareRuns";
 import { summariseRuns, withinDays, SUMMARY_DAYS } from "@/lib/activity/window";
+import { classify, medianPace as medianPaceOf, paceOf, SESSION_NAME } from "@/lib/activity/classify";
 import { isoDate, weekStart, zonedNow } from "@/lib/time/week";
 
 export const metadata = { title: "Activities · ARI" };
 
-/**
- * Classifies a run for the list's filter chips.
+/*
+ * `classify` and `medianPace` used to be written here, in the page.
  *
- * We do not store a session type — intervals.icu reports everything as "Run" —
- * so it is inferred from distance and pace relative to the athlete's own
- * spread. Rough, and labelled as a filter rather than a fact.
+ * They moved to `lib/activity/classify.ts` so they could be tested and so the
+ * insight questions could reach the same definition — two screens disagreeing
+ * about what counts as a tempo run is the same class of defect the aggregation
+ * audit found nine of, every one of them in maths written inside a page.
  */
-function classify(a: { distanceKm: number; paceSec: number; medianPace: number }): string {
-  if (a.distanceKm >= 15) return "long";
-  if (a.paceSec <= a.medianPace * 0.92) return "int";
-  if (a.paceSec <= a.medianPace * 0.97) return "tempo";
-  return "easy";
-}
-
-const NAMES: Record<string, string> = {
-  easy: "Easy Run", tempo: "Tempo Run", int: "Intervals", long: "Long Run",
-};
 
 export default async function ActivitiesPage() {
   const [rows, prs] = await Promise.all([getActivities(60), getPersonalRecords()]);
   // No runs means no runs — not a month of somebody else's.
   if (rows.length === 0) return <EmptyActivities />;
 
-  const paces = rows
-    .filter((r) => r.distanceKm > 0 && r.durationSec > 0)
-    .map((r) => r.durationSec / r.distanceKm)
-    .sort((a, b) => a - b);
-  const medianPace = paces[Math.floor(paces.length / 2)] ?? 330;
+  const median = medianPaceOf(
+    rows.map((r) => ({ distanceKm: r.distanceKm, paceSec: paceOf(r) ?? 0 })),
+  );
 
   const acts: Act[] = rows.map((r) => {
-    const paceSec = r.distanceKm > 0 ? r.durationSec / r.distanceKm : 0;
-    const type = classify({ distanceKm: r.distanceKm, paceSec, medianPace });
+    const paceSec = paceOf(r) ?? 0;
+    const type = classify({ distanceKm: r.distanceKm, paceSec }, median);
     return {
       id: r.id,
       type,
-      name: NAMES[type] ?? "Run",
+      name: SESSION_NAME[type],
       date: r.dateLabel,
       km: r.distanceKm.toFixed(1),
       time: r.duration,
@@ -75,11 +76,7 @@ export default async function ActivitiesPage() {
     avgHr: r.avgHr,
     paceShape: r.paceShape,
     hrShape: r.hrShape,
-    type: classify({
-      distanceKm: r.distanceKm,
-      paceSec: r.distanceKm > 0 ? r.durationSec / r.distanceKm : 0,
-      medianPace,
-    }),
+    type: classify({ distanceKm: r.distanceKm, paceSec: paceOf(r) ?? 0 }, median),
   }));
 
   // The list's weekly bars, oldest week first.
@@ -112,9 +109,9 @@ export default async function ActivitiesPage() {
    */
   const easyByWeek = new Map<number, { sum: number; n: number }>();
   for (const r of rows) {
-    const paceSec = r.distanceKm > 0 ? r.durationSec / r.distanceKm : 0;
-    if (paceSec <= 0) continue;
-    if (classify({ distanceKm: r.distanceKm, paceSec, medianPace }) !== "easy") continue;
+    const paceSec = paceOf(r);
+    if (paceSec === null) continue;
+    if (classify({ distanceKm: r.distanceKm, paceSec }, median) !== "easy") continue;
     const runWeek = isoDate(weekStart(new Date(`${r.date}T00:00:00`)));
     const weeksAgo = Math.round(
       (Date.parse(`${thisWeek}T00:00:00`) - Date.parse(`${runWeek}T00:00:00`)) / (7 * 86_400_000),

@@ -251,6 +251,13 @@ export interface Day {
   reason?: string | null;
   /** true when a coach or the athlete set these numbers, not the generator */
   byPerson?: boolean;
+  /**
+   * The periodization phase this session was generated into. Stored by the
+   * generator as of migration 0020; null on rows written before it and absent
+   * on the reference dataset — the phase timeline hides itself rather than
+   * guessing.
+   */
+  phase?: "base" | "build" | "peak" | "taper" | null;
 }
 export interface Week { days: Day[]; label: string; range: string }
 
@@ -495,20 +502,21 @@ export const COPY = {
   raceProgLabel: "Plan progress · Week 4 of 12", raceProgPct: "33%",
   raceTarget: "3:45:00", raceTargetLabel: "Target", raceDaysUnit: "days",
   racePred: "3:47:10", racePredLabel: "Predicted · closing",
-  chatBtn: "Ask ARI", chatTitle: "Coach chat",
-  chatPlaceholder: "Ask about your plan…", chatSend: "Send",
+  askBtn: "Ask ARI",
   milestone: "New personal best — 10 km in 47:12.",
   milestoneSub: "Set during Thursday’s tempo run; your previous best stood for 5 months.",
 };
 
-export const CHAT_REPLIES = [
-  "Your fitness (CTL) is up 9% over the last 4 weeks — right on schedule for a sub-3:45 marathon.",
-  "Based on your recent tempo runs, I’d predict a 10k around 46:40 today.",
-  "If you feel fresh Thursday, we can add 4 strides at the end — no change to total load.",
-];
-
-export const INITIAL_MSGS = [
-  { role: "ai", text: "Morning. Your readiness is solid and tomorrow’s session was downgraded to an easy 6 km. Anything you want to know about the plan?" },
-  { role: "user", text: "Why did you change tomorrow’s intervals?" },
-  { role: "ai", text: "Three hard sessions in 6 days pushed your acute load up 12%. Swapping tomorrow to easy running keeps your ACWR at 1.08 — inside the safe range — and protects Saturday’s long run." },
-];
+/*
+ * `CHAT_REPLIES` and `INITIAL_MSGS` lived here.
+ *
+ * They were a scripted exchange and three canned answers cycled against
+ * whatever you typed — every number in them invented, none of them belonging
+ * to the athlete reading the screen. The panel that used them was hidden on a
+ * real dashboard, so the feature was a mock-up that could never run.
+ *
+ * "Ask ARI" now opens `components/insights/InsightsPanel`, which answers ten
+ * questions from the athlete's own runs through tested pure functions. It
+ * demonstrates the intelligence the product has instead of implying one it
+ * does not.
+ */

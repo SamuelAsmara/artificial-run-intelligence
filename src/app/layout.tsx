@@ -1,3 +1,16 @@
+/**
+ * The shell every page renders inside.
+ *
+ * Three jobs, and no more: load the fonts once for the whole product, paint the
+ * two fixed accent washes that sit behind everything, and — for a coach — show
+ * the mode bar that says whether the numbers on screen are their athletes' or
+ * their own.
+ *
+ * The role is read here rather than per page so the question "is this user a
+ * coach" is asked once per navigation. It is presentation only: the coaching
+ * *data* is protected by row-level security on `coach_athletes`, not by this.
+ */
+
 import type { Metadata } from "next";
 import "@fontsource/ibm-plex-sans/400.css";
 import "@fontsource/ibm-plex-sans/500.css";

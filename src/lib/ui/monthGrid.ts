@@ -7,7 +7,12 @@
  * visible — where the long runs fall, how the hard days are spaced, which week
  * is light.
  *
- * Monday-first, like every other week in the product.
+ * Sunday-first, like every other week in the product. `lib/time/week`'s
+ * `WEEK_STARTS_ON` is 0 (Sunday) — this used to start the grid on Monday
+ * instead, so the plan's own month view drew every week one day out of step
+ * with the dashboard's calendar, the week strip and the generator's own
+ * Friday-long-run/Saturday-rest placement, all of which agree the week starts
+ * Sunday.
  *
  * Dates are handled as strings wherever possible. Parsing a plan date into a
  * `Date` and reading `getMonth()` back out is how a plan generated in one
@@ -32,10 +37,10 @@ export type MonthGrid<T> = {
   rows: number;
 };
 
-/** Monday = 0, so the grid starts where the product's weeks start. */
-function mondayIndex(iso: string): number {
+/** Sunday = 0, matching `WEEK_STARTS_ON` — `Date#getDay()` already agrees. */
+function weekStartIndex(iso: string): number {
   const d = new Date(iso + "T00:00:00");
-  return (d.getDay() + 6) % 7;
+  return d.getDay();
 }
 
 function shift(iso: string, days: number): string {
@@ -63,7 +68,7 @@ export function monthGrid<T extends { date: string }>(
 ): MonthGrid<T> {
   const first = `${month}-01`;
   const total = daysInMonth(month);
-  const lead = mondayIndex(first);
+  const lead = weekStartIndex(first);
 
   // Enough whole weeks to hold the lead-in and every day of the month.
   const rows = Math.ceil((lead + total) / 7);

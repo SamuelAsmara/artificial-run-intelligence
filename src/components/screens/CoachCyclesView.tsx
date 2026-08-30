@@ -100,7 +100,16 @@ export function CoachCyclesView({ data, today }: { data: CoachWorkspace; today: 
               the accordion — one row, click a tile, that cycle's athletes open
               below it.
           */}
-          <div style={{ display: "flex", gap: "8px", overflowX: "auto", paddingBlockEnd: "2px" }}>
+          <div style={{
+            display: "grid",
+            // auto-fill, not auto-fit: with four cycles the row holds four
+            // equal tiles and stops. auto-fit would stretch those four across
+            // the whole width, and a coach with five would then see four wide
+            // tiles and one narrow one on the next line — the exact ragged
+            // shape this row was rebuilt to get rid of.
+            gridTemplateColumns: "repeat(auto-fill, minmax(178px, 1fr))",
+            gap: "8px",
+          }}>
             {cycles.map((c, ci) => {
               const on = isOpen(c.id, ci);
               const color = colorFor(c.raceType, preferences.raceColors);
@@ -115,8 +124,6 @@ export function CoachCyclesView({ data, today }: { data: CoachWorkspace; today: 
                     cursor: "pointer",
                     textAlign: "start",
                     fontFamily: "inherit",
-                    flex: "1 1 0",
-                    minWidth: "168px",
                     padding: "11px 13px",
                     display: "flex",
                     flexDirection: "column",
@@ -218,14 +225,37 @@ function AthleteRows({
   today: string;
   flaggedIds: ReadonlySet<string>;
 }) {
+  const COLS = "minmax(150px,1.4fr) .7fr .7fr .9fr .9fr";
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
+      {/*
+          A header row.
+          Without it the coach reads "93 · 14 · 0.88 · Yesterday" and has to
+          remember which column is which — and the whole point of this screen
+          is scanning it quickly.
+      */}
+      <div
+        className="num"
+        style={{
+          display: "grid", gridTemplateColumns: COLS, gap: "10px",
+          padding: "0 6px 7px", borderBlockEnd: "1px solid var(--color-line)",
+          marginBlockEnd: "2px",
+          fontSize: "9px", letterSpacing: ".09em", textTransform: "uppercase",
+          color: "var(--color-faint)",
+        }}
+      >
+        <span>{COACH_COPY.colAthlete}</span>
+        <span style={{ textAlign: "end" }}>{COACH_COPY.colReadiness}</span>
+        <span style={{ textAlign: "end" }}>{COACH_COPY.colForm}</span>
+        <span style={{ textAlign: "end" }}>{COACH_COPY.colLoad}</span>
+        <span style={{ textAlign: "end" }}>{COACH_COPY.colLastRun}</span>
+      </div>
       {athletes.map((a) => (
         <a
           key={a.id}
           className="dc-hover-bg"
           href={`/coach/athletes/${a.id}`}
-          style={{ display: "grid", gridTemplateColumns: "minmax(150px,1.4fr) .7fr .7fr .9fr .9fr", gap: "10px", alignItems: "center", padding: "8px 10px", borderRadius: "var(--radius-control)" }}
+          style={{ display: "grid", gridTemplateColumns: COLS, gap: "10px", alignItems: "center", padding: "8px 10px", borderRadius: "var(--radius-control)" }}
         >
           <span style={{ display: "flex", alignItems: "center", gap: "9px", minWidth: 0 }}>
             <span className="num" style={{ width: "26px", height: "26px", flex: "none", borderRadius: "50%", background: "var(--color-elevated)", color: "var(--color-muted)", fontSize: "10px", display: "flex", alignItems: "center", justifyContent: "center" }}>

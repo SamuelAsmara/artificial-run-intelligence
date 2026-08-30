@@ -343,8 +343,82 @@
   .grid > * { grid-column: span 12; }
   .grid > .c3 { grid-column: span 6; }
   .hero-grid { grid-template-columns: 1fr !important; }
-  .topnav { display: none !important; }
+  /*
+   * The navigation used to be hidden here, and nothing replaced it.
+   *
+   * `.topnav` is the only navigation in the product — nine screens use it and
+   * there is no menu behind a burger — so on a phone the app had no way to move
+   * between Home, Plan, Activities and Settings at all. You landed on whatever
+   * page you opened and stayed there.
+   *
+   * It now wraps onto its own row under the brand and the greeting, scrolling
+   * sideways if the links do not fit. Nothing about the desktop header moves.
+   */
+  header { flex-wrap: wrap; row-gap: 8px; }
+
+  .topnav {
+    display: flex !important;
+    order: 10;
+    flex-basis: 100%;
+    gap: 18px !important;
+    font-size: 12.5px !important;
+    overflow-x: auto;
+    padding-block-start: 8px;
+    border-block-start: 1px solid var(--color-line);
+    scrollbar-width: none;
+  }
+
+  .topnav::-webkit-scrollbar { display: none; }
+
+  .topnav > a { white-space: nowrap; }
+
+  /*
+   * A flagged athlete is a name, a reason and a verdict. Three columns and an
+   * avatar inside 390px gave the reason about seven characters, so "ramping
+   * faster than they have absorbed" wrapped over six lines beside a one-line
+   * name. Two rows instead: who and what it is, then why.
+   */
+  .flagrow {
+    grid-template-columns: auto 1fr auto !important;
+    row-gap: 3px;
+  }
+
+  /* Placed explicitly: auto-placement puts the verdict on a third row of its
+     own, under the avatar, where it reads as a heading for nothing. */
+  .flagrow > :nth-child(1) { grid-column: 1; grid-row: 1; }
+  .flagrow > :nth-child(2) { grid-column: 2; grid-row: 1; }
+  .flagrow > :nth-child(4) { grid-column: 3; grid-row: 1; }
+  .flagrow > .flagwhy      { grid-column: 2 / -1; grid-row: 2; }
   .week-grid { grid-template-columns: 1fr 1fr !important; }
+
+  /*
+   * The plan's month calendar. Seven columns of full cards cannot fit words
+   * at phone width, so each cell collapses to its date and its distance —
+   * the session-type edge colour keeps saying what kind of day it is, the
+   * same vocabulary as everywhere else. The name comes back on tap, in the
+   * detail card under the grid.
+   */
+  .cal-grid { gap: 3px !important; }
+  .cal-grid .card {
+    min-height: 54px !important;
+    padding: 6px 4px !important;
+    min-width: 0;
+  }
+  .cal-grid .card > div:nth-of-type(2) {
+    padding: 3px 2px !important;
+    margin-block-start: 4px !important;
+  }
+  .cal-grid .card > div:nth-of-type(2) > p:first-of-type { display: none; }
+  /* "TODAY" has no room beside a two-digit date in a 44px cell; the accent
+     ring and date colour already say it. */
+  .cal-grid .card > div:first-of-type > :not(:first-child) { display: none; }
+  .cal-grid .card p.num {
+    font-size: 9px !important;
+    white-space: nowrap;
+  }
+  /* In a 44px cell the unit is the difference between fitting and clipping,
+     and everything here is kilometres anyway. */
+  .cal-grid .cal-unit { display: none; }
   .pb-grid { grid-template-columns: 1fr 1fr !important; row-gap: 16px; }
   .grid2 { grid-template-columns: 1fr !important; }
   .stat-grid { grid-template-columns: 1fr 1fr !important; row-gap: 14px; }

@@ -1,3 +1,18 @@
+/**
+ * The athlete's home screen — a Server Component, and the clearest example in
+ * the project of how data reaches a page.
+ *
+ * Everything is fetched here, on the server, in parallel: the profile, the
+ * readiness snapshots, the recent runs, the plan. Postgres filters those reads
+ * by row-level security, so the page cannot see another athlete's rows even if
+ * this code asked for them. The raw rows are then turned into a view model —
+ * chart geometry, streak, weekly volume, the sentence of explanation — and
+ * handed to `DashboardView` as props.
+ *
+ * `DashboardView` fetches nothing. That is the rule the whole codebase follows:
+ * pages read, components display.
+ */
+
 import { DashboardView, type DashboardData } from "@/components/dashboard/DashboardView";
 import { EmptyDashboard } from "@/components/dashboard/EmptyDashboard";
 import { getDashboardNarrative, getReadinessSeries } from "@/actions/readiness";

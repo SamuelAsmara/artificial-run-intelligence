@@ -11,6 +11,8 @@ export type GoalRaceStatus = "active" | "cancelled" | "completed";
 export type PlanStatus = "active" | "completed" | "cancelled";
 export type WorkoutType = "easy" | "interval" | "long" | "rest";
 export type WorkoutStatus = "planned" | "completed" | "missed" | "adjusted";
+/** the periodization phase a session was generated into — migration 0020 */
+export type PlanPhase = "base" | "build" | "peak" | "taper";
 /**
  * Whose decision the current numbers on a session are — see migration 0014.
  *
@@ -90,9 +92,9 @@ export interface Database {
         Relationships: [];
       };
       plan_workouts: {
-        Row: { id: string; plan_id: string; week_number: number; day_date: string; workout_type: WorkoutType; planned_distance: number | null; planned_pace: string | null; status: WorkoutStatus; origin: WorkoutOrigin; planned_distance_original: number | null; adjusted_reason: string | null; adjusted_at: string | null };
-        Insert: { id?: string; plan_id: string; week_number: number; day_date: string; workout_type: WorkoutType; planned_distance?: number | null; planned_pace?: string | null; status?: WorkoutStatus; origin?: WorkoutOrigin; planned_distance_original?: number | null; adjusted_reason?: string | null; adjusted_at?: string | null };
-        Update: Upd<{ id: string; plan_id: string; week_number: number; day_date: string; workout_type: WorkoutType; planned_distance: number | null; planned_pace: string | null; status: WorkoutStatus; origin: WorkoutOrigin; planned_distance_original: number | null; adjusted_reason: string | null; adjusted_at: string | null }>;
+        Row: { id: string; plan_id: string; week_number: number; day_date: string; workout_type: WorkoutType; planned_distance: number | null; planned_pace: string | null; status: WorkoutStatus; origin: WorkoutOrigin; planned_distance_original: number | null; adjusted_reason: string | null; adjusted_at: string | null; phase: PlanPhase | null };
+        Insert: { id?: string; plan_id: string; week_number: number; day_date: string; workout_type: WorkoutType; planned_distance?: number | null; planned_pace?: string | null; status?: WorkoutStatus; origin?: WorkoutOrigin; planned_distance_original?: number | null; adjusted_reason?: string | null; adjusted_at?: string | null; phase?: PlanPhase | null };
+        Update: Upd<{ id: string; plan_id: string; week_number: number; day_date: string; workout_type: WorkoutType; planned_distance: number | null; planned_pace: string | null; status: WorkoutStatus; origin: WorkoutOrigin; planned_distance_original: number | null; adjusted_reason: string | null; adjusted_at: string | null; phase: PlanPhase | null }>;
         Relationships: [];
       };
       activities: {

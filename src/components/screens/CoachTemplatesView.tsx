@@ -89,7 +89,7 @@ export function CoachTemplatesView({
 
       <div>
         <h1 style={{ margin: 0, fontSize: "17px", fontWeight: 600 }}>{COACH_COPY.templatesTitle}</h1>
-        <p style={{ margin: "2px 0 0", fontSize: "12px", color: "var(--color-muted)", maxWidth: "62ch" }}>
+        <p style={{ margin: "2px 0 0", fontSize: "12px", color: "var(--color-muted)", maxWidth: "78ch", textWrap: "pretty" }}>
           {COACH_COPY.templatesSub}
         </p>
       </div>
@@ -330,12 +330,11 @@ function WeekStrip({
       ) : null}
 
       {/*
-          Said once per template, not once per week: an edit reaches the people
-          who have not got there yet, and nobody else.
+          The "an edit reaches only the weeks still ahead" note used to sit here,
+          which meant a coach read the same sentence four times on one screen —
+          once per distance. It is said once now, at the foot of the page, where
+          it belongs to the screen rather than to any one template.
       */}
-      <p style={{ margin: "8px 0 0", fontSize: "11px", color: "var(--color-faint)", lineHeight: 1.6, textWrap: "pretty" }}>
-        {COACH_COPY.tForwardOnly}
-      </p>
     </div>
   );
 }

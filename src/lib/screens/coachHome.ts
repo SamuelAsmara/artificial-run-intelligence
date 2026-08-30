@@ -114,12 +114,16 @@ export const COACH_COPY = {
   tWeekN: "Week",
   tWeekEmpty: "Nobody is in this week yet.",
   tPastWeek: "Everyone on this distance is already past this week — changing it will not affect their training.",
-  tForwardOnly:
-    "Editing a template changes plans built from now on. An athlete who has already run a week keeps what they ran; the change reaches the weeks still ahead of them.",
   /* the vertical axis of the fitness/fatigue chart — training load, not km */
   trendUnit: "load",
   /* the badge on a closed cycle row */
   flagOne: "needs you",
+  /* the column headings on the cycle roster */
+  colAthlete: "Athlete",
+  colReadiness: "Readiness",
+  colForm: "Form",
+  colLoad: "Load",
+  colLastRun: "Last run",
   accountTitle: "Account",
   accountSub: "Your email, your password, and signing out.",
   /* the read-only card for a session that has already happened */
@@ -332,6 +336,37 @@ export function initials(name: string): string {
 }
 
 const DAY_MS = 86_400_000;
+
+/**
+ * The same fact split into a figure and a unit, for a stat tile.
+ *
+ * A tile sets its figure at 25px and its unit at 11px, so handing it the whole
+ * sentence — "3 days ago" — puts a sentence in the slot meant for a number and
+ * overflows the cell. "Today" and "Never" have no figure at all, so they come
+ * back as a unit with a null figure and the tile draws its em dash.
+ */
+export function sinceParts(
+  iso: string | null,
+  today: string,
+): { value: string | null; unit: string } {
+  if (!iso) return { value: null, unit: COACH_COPY.never.toLowerCase() };
+  const days = Math.round((Date.parse(today) - Date.parse(iso.slice(0, 10))) / DAY_MS);
+  if (days <= 0) return { value: "0", unit: "days ago" };
+  return { value: String(days), unit: days === 1 ? "day ago" : "days ago" };
+}
+
+/** Likewise for a race ahead: "47" + "days to go". */
+export function untilParts(
+  iso: string | null,
+  today: string,
+): { value: string | null; unit: string } {
+  if (!iso) return { value: null, unit: "no race set" };
+  const days = Math.round((Date.parse(iso) - Date.parse(today)) / DAY_MS);
+  if (days === 0) return { value: "0", unit: "race day" };
+  return days > 0
+    ? { value: String(days), unit: days === 1 ? "day to go" : "days to go" }
+    : { value: String(-days), unit: "days ago" };
+}
 
 /** "Today", "Yesterday", "4 days ago", or "Never". */
 export function sinceLabel(iso: string | null, today: string): string {

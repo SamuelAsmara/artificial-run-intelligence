@@ -1,3 +1,8 @@
+/**
+ * The coach's morning screen: the calendar, who needs attention today, and the
+ * private reminders. Reachable only by a coach — `coach/layout.tsx` is the gate.
+ */
+
 import { redirect } from "next/navigation";
 import { getCoachWorkspace } from "@/actions/coach";
 import { CoachHomeView } from "@/components/screens/CoachHomeView";

@@ -1,5 +1,18 @@
 "use server";
 
+/**
+ * Today's readiness — computing it, and reading it back.
+ *
+ * Readiness is one number from four inputs: form, load ratio, resting heart
+ * rate and HRV, each scored against *the athlete's own* thirty-day baseline
+ * rather than against a population. `computeReadiness` in `lib/planning/` does
+ * that arithmetic; this file gathers what it needs and stores what it says.
+ *
+ * A missing input is dropped from the weighted sum rather than counted as
+ * zero — an athlete with no HRV strap gets a score built from what is actually
+ * known, and the explanation panel says which parts were available.
+ */
+
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { recomputeForUser } from "@/lib/readiness/recompute";

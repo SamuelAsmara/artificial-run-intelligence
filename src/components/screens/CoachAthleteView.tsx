@@ -24,7 +24,7 @@ import {
 } from "@/lib/time/week";
 import {
   COACH_COPY, formColor, KIND_LABEL, loadColor,
-  raceLabel, readinessColor, sinceLabel, toneColor, untilLabel,
+  raceLabel, readinessColor, sinceLabel, sinceParts, toneColor, untilLabel,
 } from "@/lib/screens/coachHome";
 
 const WORKOUT_TYPES = ["easy", "long", "interval", "rest"] as const;
@@ -143,7 +143,9 @@ export function CoachAthleteView({ detail, today }: { detail: AthleteDetail; tod
   // A gutter on the left for the axis figures, and a row at the bottom for the
   // dates. The plot itself keeps the height it had.
   const px = (i: number) => 34 + (i / Math.max(1, trend.length - 1)) * 558;
-  const py = (v: number) => 8 + (1 - (v - lo) / span) * 84;
+  // The plot starts below the unit caption. At y=8 the top gridline's figure
+  // and the word "load" were drawn on top of each other.
+  const py = (v: number) => 20 + (1 - (v - lo) / span) * 76;
 
   /** three lines: the bottom of the range, the middle, the top */
   const gridlines = [lo, (lo + hi) / 2, hi].map((v) => ({
@@ -181,6 +183,18 @@ export function CoachAthleteView({ detail, today }: { detail: AthleteDetail; tod
    * which is what keeps the coach's board and the athlete's home reading the
    * same way about the same number.
    */
+  /**
+   * A tile whose figure carries a unit — "3 · days ago" rather than the whole
+   * sentence in the 25px slot, which overflowed the cell.
+   */
+  const metricUnit = (
+    label: string,
+    parts: { value: string | null; unit: string },
+    icon?: string,
+  ) => (
+    <StatTile key={label} value={parts.value} unit={parts.unit} label={label} icon={icon} />
+  );
+
   const metric = (label: string, value: string, color: string, icon?: string) => (
     <StatTile
       key={label}
@@ -479,7 +493,7 @@ export function CoachAthleteView({ detail, today }: { detail: AthleteDetail; tod
         {metric(COACH_COPY.hReadiness, athlete.readiness === null ? "—" : String(athlete.readiness), readinessColor(athlete.readiness), STAT_ICONS.gauge)}
         {metric(COACH_COPY.hForm, athlete.form === null ? "—" : athlete.form.toFixed(0), formColor(athlete.form), STAT_ICONS.chart)}
         {metric(COACH_COPY.hLoad, athlete.loadRatio === null ? "—" : athlete.loadRatio.toFixed(2), loadColor(athlete.loadRatio), STAT_ICONS.warning)}
-        {metric(COACH_COPY.hLastRun, sinceLabel(athlete.lastRunAt, today), "var(--color-ink)", STAT_ICONS.clock)}
+        {metricUnit(COACH_COPY.hLastRun, sinceParts(athlete.lastRunAt, today), STAT_ICONS.clock)}
       </section>
 
       {flags.length > 0 && (
@@ -512,7 +526,7 @@ export function CoachAthleteView({ detail, today }: { detail: AthleteDetail; tod
                 </text>
               </g>
             ))}
-            <text x="28" y="5" fill="var(--color-faint)" fontSize="8" fontFamily="var(--font-mono)" textAnchor="end">
+            <text x="28" y="10" fill="var(--color-faint)" fontSize="8" fontFamily="var(--font-mono)" textAnchor="end">
               {COACH_COPY.trendUnit}
             </text>
             <path d={path((t) => t.ctl)} fill="none" stroke="var(--color-accent)" strokeWidth="1.8" />

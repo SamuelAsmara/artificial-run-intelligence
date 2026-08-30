@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { dayCellStyle, SESSION_EDGE, type DayState, type SessionType } from "@/lib/ui/dayCell";
 
 /**
@@ -15,8 +15,9 @@ export type DayCellProps = {
   state: DayState;
   type: SessionType;
   name: string;
-  /** "8 km · 5:38" — the one line of detail */
-  meta?: string;
+  /** "8 km · 5:38" — the one line of detail. A node, so the calendar can
+   * wrap the unit in a span the phone stylesheet hides. */
+  meta?: ReactNode;
   /** what the session used to say before the coach changed it */
   wasMeta?: string;
   statusLabel?: string;
