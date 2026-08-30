@@ -419,6 +419,10 @@
   /* In a 44px cell the unit is the difference between fitting and clipping,
      and everything here is kilometres anyway. */
   .cal-grid .cal-unit { display: none; }
+  /* The phase timeline's SVG labels scale with the chart; at phone width
+     they become unreadable smudge. The coloured band and the "Week 11 of 22
+     · Build" line above it carry the same information. */
+  .pt-svg text { display: none; }
   .pb-grid { grid-template-columns: 1fr 1fr !important; row-gap: 16px; }
   .grid2 { grid-template-columns: 1fr !important; }
   .stat-grid { grid-template-columns: 1fr 1fr !important; row-gap: 14px; }

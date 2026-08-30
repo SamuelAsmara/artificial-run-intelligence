@@ -109,20 +109,25 @@ function phaseText(phase: string): string {
 }
 
 /**
- * The arc of the plan — base → build → peak → taper — as one slim timeline
- * with a marker riding the current week.
+ * The arc of the plan — one bar per week, its height the week's real planned
+ * kilometres, its colour the phase it belongs to.
  *
- * Built from the phases stored on the plan's own rows (migration 0020), so the
- * segment widths are the proportions the generator — or the coach's template —
- * actually decided, not a re-derivation. A plan whose rows predate the
- * migration has no phases, and the bar hides itself rather than inventing an
- * arc; rebuilding the plan brings it back.
+ * This is deliberately the same visual language as the dashboard's PMC chart:
+ * an SVG with a soft glow on the thing that matters and no axis furniture.
+ * Nothing here is drawn from a curve we invented — the bars are the plan's own
+ * volumes, so the ramp, the step-back weeks and the taper's drop are simply
+ * visible, and the phase band underneath names the blocks. Past weeks dim,
+ * the current week glows under a dashed marker.
+ *
+ * Built from the phases stored on the plan's own rows (migration 0020). A
+ * plan whose rows predate the migration has no phases, and the whole card
+ * hides itself rather than inventing an arc.
  */
 function PhaseTimeline({
   weeks,
   currentWeek,
 }: {
-  weeks: { phase: string }[];
+  weeks: { phase: string; km: number }[];
   currentWeek: number;
 }) {
   const spans = useMemo(() => {
@@ -140,66 +145,94 @@ function PhaseTimeline({
 
   const now = Math.min(Math.max(0, currentWeek), total - 1);
   const current = weeks[now]?.phase ?? "";
-  const pct = ((now + 0.5) / total) * 100;
+
+  /* Geometry, all in viewBox units — the SVG scales with the card. */
+  const LEFT = 4, RIGHT = 1216, GAP = 3;
+  const BAR_TOP = 12, BAR_BOTTOM = 74;
+  const BAND_Y = 82, BAND_H = 6, LABEL_Y = 106;
+  const barW = (RIGHT - LEFT - GAP * (total - 1)) / total;
+  const maxKm = Math.max(1, ...weeks.map((w) => w.km));
+  const x = (i: number) => LEFT + i * (barW + GAP);
+  const barH = (km: number) => Math.max(4, ((BAR_BOTTOM - BAR_TOP) * km) / maxKm);
+  const markerX = x(now) + barW / 2;
 
   return (
-    <section className="card" style={{ padding: "14px 20px 12px" }} aria-label="Plan phases">
+    <section className="card" style={{ padding: "16px 20px 12px" }} aria-label="Plan phases">
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
-        <span style={{ fontSize: "10px", fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--color-faint)" }}>
-          Where you are in the plan
-        </span>
-        <span className="num" style={{ fontSize: "11.5px", color: phaseText(current) }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>Where you are in the plan</h2>
+          <p style={{ margin: "2px 0 0", fontSize: "11.5px", color: "var(--color-faint)" }}>
+            Each bar is a week&apos;s planned volume; the colour is its phase.
+          </p>
+        </div>
+        <span className="num" style={{ fontSize: "12px", color: phaseText(current) }}>
           Week {now + 1} of {total} · {current}
         </span>
       </div>
-      <div style={{ position: "relative", marginBlockStart: "12px", paddingBlockStart: "6px" }}>
-        <div style={{ display: "flex", gap: "3px" }}>
-          {spans.map((s) => (
-            <div
-              key={s.from}
-              title={`${s.phase} · W${s.from + 1}${s.to === s.from ? "" : `–${s.to + 1}`}`}
-              style={{
-                flexGrow: s.to - s.from + 1,
-                flexBasis: 0,
-                height: "7px",
-                borderRadius: "var(--radius-pill)",
-                background: PHASE_COLOR[s.phase] ?? "var(--color-line-strong)",
-                opacity: s.from <= now && now <= s.to ? 1 : 0.38,
-              }}
-            />
-          ))}
-        </div>
-        {/* the "you are here" dot, centred on the current week */}
-        <div
-          aria-hidden
-          style={{
-            position: "absolute", top: "5px", left: `${pct}%`, transform: "translateX(-50%)",
-            width: "9px", height: "9px", borderRadius: "50%",
-            background: "var(--color-ink)", border: "2px solid var(--color-canvas)",
-            boxShadow: "0 0 0 1px var(--color-line-strong)",
-          }}
-        />
-      </div>
-      <div style={{ display: "flex", gap: "3px", marginBlockStart: "7px" }}>
-        {spans.map((s) => {
-          const weeksIn = s.to - s.from + 1;
-          const on = s.from <= now && now <= s.to;
-          // A one-week sliver has no room for a caption; its tooltip carries it.
-          const roomy = weeksIn / total >= 0.14;
+      <svg
+        className="pt-svg"
+        viewBox="0 0 1220 118"
+        style={{ width: "100%", height: "auto", display: "block", marginBlockStart: "12px" }}
+        role="img"
+        aria-label={`Plan phases: ${spans.map((s) => `${s.phase} weeks ${s.from + 1} to ${s.to + 1}`).join(", ")}. Currently week ${now + 1}, ${current}.`}
+      >
+        <defs>
+          <filter id="ptGlow" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="4" />
+          </filter>
+        </defs>
+
+        {/* the floor the bars stand on */}
+        <line x1={LEFT} x2={RIGHT} y1={BAR_BOTTOM} y2={BAR_BOTTOM} stroke="var(--color-line)" strokeWidth="1" />
+
+        {/* one bar per week: the plan's own volumes, coloured by phase */}
+        {weeks.map((w, i) => {
+          const hgt = barH(w.km);
+          const fill = PHASE_COLOR[w.phase] ?? "var(--color-line-strong)";
+          const isNow = i === now;
           return (
-            <div key={s.from} style={{ flexGrow: weeksIn, flexBasis: 0, minWidth: 0, overflow: "hidden", whiteSpace: "nowrap" }}>
-              {roomy ? (
-                <>
-                  <span style={{ fontSize: "10.5px", fontWeight: on ? 600 : 500, color: phaseText(s.phase) }}>{s.phase}</span>
-                  <span className="num" style={{ fontSize: "9.5px", color: "var(--color-faint)", marginInlineStart: "5px" }}>
-                    {weeksIn === 1 ? `W${s.from + 1}` : `W${s.from + 1}–${s.to + 1}`}
-                  </span>
-                </>
+            <g key={i}>
+              {isNow ? (
+                <rect x={x(i)} y={BAR_BOTTOM - hgt} width={barW} height={hgt} rx="2" fill={fill} opacity="0.9" filter="url(#ptGlow)" />
               ) : null}
-            </div>
+              <rect x={x(i)} y={BAR_BOTTOM - hgt} width={barW} height={hgt} rx="2" fill={fill} opacity={isNow ? 1 : i < now ? 0.32 : 0.78}>
+                <title>{`W${i + 1} · ${w.km} km · ${w.phase}`}</title>
+              </rect>
+            </g>
           );
         })}
-      </div>
+
+        {/* the "you are here" marker, PMC-style */}
+        <line x1={markerX} x2={markerX} y1="4" y2={BAND_Y + BAND_H + 2} stroke="var(--color-ink)" strokeWidth="1" strokeDasharray="3 3" opacity="0.7" />
+        <circle cx={markerX} cy="4" r="3.5" fill="var(--color-ink)" />
+
+        {/* the phase band and its names */}
+        {spans.map((s) => {
+          const bx = x(s.from);
+          const bw = x(s.to) + barW - bx;
+          const on = s.from <= now && now <= s.to;
+          const fill = PHASE_COLOR[s.phase] ?? "var(--color-line-strong)";
+          const label = `${s.phase}`;
+          const range = s.from === s.to ? `W${s.from + 1}` : `W${s.from + 1}\u2013${s.to + 1}`;
+          // A sliver has no room for text; its bars still carry tooltips.
+          const roomy = bw >= 64;
+          return (
+            <g key={s.from}>
+              <rect x={bx} y={BAND_Y} width={bw} height={BAND_H} rx="3" fill={fill} opacity={on ? 1 : 0.45}>
+                <title>{`${s.phase} · ${range}`}</title>
+              </rect>
+              {roomy ? (
+                <text x={bx + 1} y={LABEL_Y} fontSize="12" fontWeight={on ? 600 : 500} fill={phaseText(s.phase)}>
+                  {label}
+                  <tspan fontSize="10.5" fill="var(--color-faint)" fontFamily="var(--font-mono)" fontWeight="400">
+                    {"  " + range}
+                  </tspan>
+                </text>
+              ) : null}
+            </g>
+          );
+        })}
+      </svg>
     </section>
   );
 }
