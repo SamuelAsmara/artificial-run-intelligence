@@ -148,6 +148,10 @@ export interface Database {
     };
     Views: Record<string, never>;
     Functions: {
+      /** puts an athlete on the caller's roster into one of the caller's cycles (null = none); true when a row changed */
+      set_athlete_cycle: { Args: { p_athlete: string; p_cycle: string | null }; Returns: boolean };
+      /** clears cycle membership for every athlete in one of the caller's cycles; returns how many */
+      clear_cycle_members: { Args: { p_cycle: string }; Returns: number };
       /**
        * This user's join code, or null when they have never asked for one.
        * Read-only since migration 0013 — it used to mint on first call, so

@@ -13,6 +13,7 @@ import { Entrance } from "@/components/ui";
 import { CoachNav } from "@/components/coach/CoachNav";
 import type { CoachWorkspace, CoachRosterRow } from "@/actions/coach";
 import { applyFilter, buildCycles, EMPTY_FILTER, type RosterFilter } from "@/lib/coach/programs";
+import type { RaceType } from "@/types/database.types";
 import { colorFor } from "@/lib/coach/calendar";
 import { RACE_LABEL } from "@/lib/coach/templates";
 import { formatMinSec } from "@/lib/format/pace";
@@ -32,15 +33,42 @@ export function CoachAthletesView({ data, today }: { data: CoachWorkspace; today
   );
 
   const [filter, setFilter] = useState<RosterFilter>(EMPTY_FILTER);
+  /*
+   * Two levels: the distance, then the cycle within it. A coach with two
+   * half-marathon groups (Tel Aviv, Jerusalem) picks "Half marathon" and sees
+   * both cycles as chips; picking one narrows to its members. Cycles the coach
+   * created come first; athletes not in one are still reachable through the
+   * derived group (same race, same date).
+   */
+  const [distance, setDistance] = useState<RaceType | null>(null);
+  const distances = useMemo(() => {
+    const set = new Set<RaceType>();
+    roster.forEach((a) => { if (a.raceType) set.add(a.raceType); });
+    return (["5k", "10k", "half", "full"] as RaceType[]).filter((rt) => set.has(rt));
+  }, [roster]);
+  const cycleChips = useMemo(() => {
+    const managed = new Map<string, { id: string; name: string; raceType: RaceType; count: number }>();
+    for (const a of roster) {
+      if (!a.managedCycleId || !a.raceType) continue;
+      const cur = managed.get(a.managedCycleId);
+      if (cur) cur.count += 1; else managed.set(a.managedCycleId, { id: a.managedCycleId, name: a.managedCycleName ?? "Cycle", raceType: a.raceType, count: 1 });
+    }
+    const derived = cycles
+      .filter((c) => c.athletes.some((x) => !(x as (typeof roster)[number]).managedCycleId))
+      .map((c) => ({ id: c.id, name: `${RACE_LABEL[c.raceType]} · ${untilLabel(c.raceDate, today)}`, raceType: c.raceType, count: c.athletes.filter((x) => !(x as (typeof roster)[number]).managedCycleId).length, derived: true as const }));
+    return [...[...managed.values()].map((m) => ({ ...m, derived: false as const })), ...derived]
+      .filter((c) => !distance || c.raceType === distance)
+      .sort((a, b) => Number(a.derived) - Number(b.derived) || a.name.localeCompare(b.name));
+  }, [roster, cycles, distance, today]);
 
   const shown = useMemo(
-    () => applyFilter(roster, filter, (a) => a.cycleId),
-    [roster, filter],
+    () => applyFilter(roster, filter, (a) => a.managedCycleId ?? a.cycleId).filter((a) => !distance || a.raceType === distance),
+    [roster, filter, distance],
   );
 
   const set = (patch: Partial<RosterFilter>) => setFilter((f) => ({ ...f, ...patch }));
   const active =
-    filter.cycles.length > 0 || filter.sex !== null || filter.paceFrom !== null || filter.paceTo !== null;
+    distance !== null || filter.cycles.length > 0 || filter.sex !== null || filter.paceFrom !== null || filter.paceTo !== null;
 
   return (
     <div data-entrance-root style={{ maxWidth: "1280px", marginInline: "auto", padding: "16px 24px 40px", display: "flex", flexDirection: "column", gap: "12px" }}><Entrance />
@@ -59,34 +87,31 @@ export function CoachAthletesView({ data, today }: { data: CoachWorkspace; today
       </div>
 
       <section className="card" style={{ padding: "14px 20px", display: "flex", gap: "18px", flexWrap: "wrap", alignItems: "flex-start" }}>
+        <Field label="Distance">
+          <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>
+            <Chip on={distance === null} onClick={() => { setDistance(null); set({ cycles: [] }); }}>All</Chip>
+            {distances.map((rt) => (
+              <Chip key={rt} on={distance === rt} onClick={() => { setDistance((d: RaceType | null) => (d === rt ? null : rt)); set({ cycles: [] }); }}>
+                <span style={{ width: "8px", height: "8px", borderRadius: "2px", background: colorFor(rt, preferences.raceColors), display: "inline-block" }} />
+                {RACE_LABEL[rt]}
+              </Chip>
+            ))}
+          </div>
+        </Field>
+
         <Field label={COACH_COPY.fCycle}>
           <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>
-            {cycles.map((c) => {
+            {cycleChips.map((c) => {
               const on = filter.cycles.includes(c.id);
               return (
-                <button
-                  key={c.id}
-                  className="tag"
-                  type="button"
-                  onClick={() =>
-                    set({
-                      cycles: on ? filter.cycles.filter((x) => x !== c.id) : [...filter.cycles, c.id],
-                    })
-                  }
-                  style={{
-                    cursor: "pointer",
-                    gap: "6px",
-                    border: `1px solid ${on ? "transparent" : "var(--color-line-strong)"}`,
-                    background: on ? "var(--color-elevated)" : "transparent",
-                    color: on ? "var(--color-ink)" : "var(--color-muted)",
-                  }}
-                >
-                  <span style={{ width: "8px", height: "8px", borderRadius: "2px", background: colorFor(c.raceType, preferences.raceColors), display: "inline-block" }} />
-                  {RACE_LABEL[c.raceType]} · {untilLabel(c.raceDate, today)}
-                </button>
+                <Chip key={c.id} on={on} onClick={() => set({ cycles: on ? filter.cycles.filter((x) => x !== c.id) : [...filter.cycles, c.id] })} title={c.derived ? "Not in a cycle yet — grouped by goal race" : "A cycle you run"}>
+                  <span style={{ width: "8px", height: "8px", borderRadius: c.derived ? "50%" : "2px", background: colorFor(c.raceType, preferences.raceColors), display: "inline-block", opacity: c.derived ? 0.6 : 1 }} />
+                  {c.name}
+                  <span className="num" style={{ fontSize: "9.5px", opacity: 0.7 }}>{c.count}</span>
+                </Chip>
               );
             })}
-            {cycles.length === 0 && <span className="num" style={{ fontSize: "11px", color: FAINT }}>—</span>}
+            {cycleChips.length === 0 && <span className="num" style={{ fontSize: "11px", color: FAINT }}>—</span>}
           </div>
         </Field>
 
@@ -127,7 +152,7 @@ export function CoachAthletesView({ data, today }: { data: CoachWorkspace; today
         </Field>
 
         {active && (
-          <button className="btn btn-secondary" type="button" onClick={() => setFilter(EMPTY_FILTER)} style={{ padding: "6px 12px", fontSize: "11.5px" }}>
+          <button className="btn btn-secondary" type="button" onClick={() => { setFilter(EMPTY_FILTER); setDistance(null); }} style={{ padding: "6px 12px", fontSize: "11.5px" }}>
             {COACH_COPY.clearAll}
           </button>
         )}
@@ -169,6 +194,26 @@ export function CoachAthletesView({ data, today }: { data: CoachWorkspace; today
         </div>
       </section>
     </div>
+  );
+}
+
+function Chip({ on, onClick, title, children }: { on: boolean; onClick: () => void; title?: string; children: React.ReactNode }) {
+  return (
+    <button
+      className="tag"
+      type="button"
+      onClick={onClick}
+      title={title}
+      aria-pressed={on}
+      style={{
+        cursor: "pointer", gap: "6px",
+        border: `1px solid ${on ? "var(--color-accent)" : "var(--color-line-strong)"}`,
+        background: on ? "var(--color-accent-soft)" : "transparent",
+        color: on ? "var(--color-ink)" : "var(--color-muted)",
+      }}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -271,9 +316,12 @@ function Row({
 
       <span style={{ minWidth: 0 }}>
         {a.raceType ? (
-          <span className="tag" style={{ background: "var(--color-elevated)", color: "var(--color-muted)", gap: "6px" }}>
-            <span style={{ width: "8px", height: "8px", borderRadius: "2px", background: colorFor(a.raceType, colors), display: "inline-block" }} />
-            {RACE_LABEL[a.raceType]}
+          <span style={{ display: "inline-flex", flexDirection: "column", gap: "3px", minWidth: 0 }}>
+            <span className="tag" style={{ background: "var(--color-elevated)", color: "var(--color-muted)", gap: "6px" }}>
+              <span style={{ width: "8px", height: "8px", borderRadius: "2px", background: colorFor(a.raceType, colors), display: "inline-block" }} />
+              {RACE_LABEL[a.raceType]}
+            </span>
+            {a.managedCycleName ? <span className="num" style={{ fontSize: "10px", color: "var(--color-faint)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "160px" }}>{a.managedCycleName}</span> : null}
           </span>
         ) : (
           <span className="num" style={{ fontSize: "11px", color: "var(--color-caution)" }}>no race</span>

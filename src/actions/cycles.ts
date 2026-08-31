@@ -232,7 +232,7 @@ export async function deleteCycle(cycleId: string): Promise<Result<{ plansClosed
   if (!cycle) return { ok: false, error: "That cycle is not yours." };
 
   const { data: closed } = await supabase.from("training_plans").update({ status: "abandoned" }).eq("cycle_id", cycleId).eq("status", "active").select("id");
-  await supabase.from("coach_athletes").update({ cycle_id: null }).eq("coach_id", user.id).eq("cycle_id", cycleId);
+  await supabase.rpc("clear_cycle_members", { p_cycle: cycleId });
   const { error } = await supabase.from("coach_cycles").delete().eq("id", cycleId).eq("coach_id", user.id);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/coach/cycles");
@@ -268,8 +268,12 @@ export async function assignToCycle(cycleId: string, athleteId: string): Promise
   const { data: cycle } = await supabase.from("coach_cycles").select("id, race_type, race_date").eq("id", cycleId).eq("coach_id", user.id).maybeSingle();
   if (!cycle) return { ok: false, error: "That cycle is not yours." };
 
-  const { error: linkError } = await supabase.from("coach_athletes").update({ cycle_id: cycleId }).eq("coach_id", user.id).eq("athlete_id", athleteId).eq("status", "active");
+  // Through the definer function (migration 0021): the roster row's UPDATE
+  // policy is athlete-only by design, and a plain update here was refused
+  // without a word — "Added" over an empty cycle.
+  const { data: changed, error: linkError } = await supabase.rpc("set_athlete_cycle", { p_athlete: athleteId, p_cycle: cycleId });
   if (linkError) return { ok: false, error: linkError.message };
+  if (!changed) return { ok: false, error: "That athlete is not on your roster." };
 
   const { data: active } = await supabase.from("training_plans").select("id").eq("user_id", athleteId).eq("status", "active").limit(1).maybeSingle();
   if (active) {
@@ -305,8 +309,9 @@ export async function removeFromCycle(athleteId: string): Promise<Result<null>> 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "You need to be signed in." };
-  const { error } = await supabase.from("coach_athletes").update({ cycle_id: null }).eq("coach_id", user.id).eq("athlete_id", athleteId);
+  const { data: changed, error } = await supabase.rpc("set_athlete_cycle", { p_athlete: athleteId, p_cycle: null });
   if (error) return { ok: false, error: error.message };
+  if (!changed) return { ok: false, error: "That athlete is not on your roster." };
   revalidatePath("/coach/cycles");
   return { ok: true, data: null };
 }

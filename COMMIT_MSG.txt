@@ -1,37 +1,12 @@
-feat: Numbers board, plan paths, coach cycles, landing page
+feat(coach): cycles under their distance; roster filters distance → cycle
 
-Landing page (from the Claude Design handoff) with OG metadata; a11y pass
-(axe clean on all screens); README and docs rewritten.
+Cycles are listed under a distance heading — two half-marathon groups
+(Tel Aviv, Jerusalem) sit under "Half marathon" — and the Athletes screen
+filters the same way: pick a distance, then a cycle within it; athletes
+not yet in a cycle stay reachable through their goal-race group. Each
+roster row names the cycle its athlete is in.
 
-Numbers — a new tab: every figure as a tile on your own data, with a
-band bar, history chart (W/M/3M/Y), typeset formula and a why. Replaces
-the methodology page. Per-figure hues and icons, shared with the home
-screen's metric row.
-
-Plan — three ways to start: a coach's code, Runi's plan previewed before
-it is applied, or your own week × N weeks with no race. Countdown card
-counts to the plan's end when there is no race, and shows the Riegel
-prediction against the target. Personal bests link to the run that set
-them.
-
-Coach — cycles are real: named, built from a template, athletes added or
-removed, each shown on their own week; edit a running cycle, rebuild its
-plans from this week, or delete it behind a double-check (members' plans
-from it close; their runs stay). Saving a template offers to rebuild the
-cycles built from it. Cycles filter by distance.
-
-Coach screens on the same standard: a sticky glass coach/athlete switch,
-hued icon chips on every stat tile (coach home, plan, activities, the
-athlete page). Settings (athlete and coach) behind one row of tabs. Ask Runi floats on
-every athlete page. One-field intervals.icu connect. "Connect your watch"
-everywhere instead of one provider's name; action errors in English.
-
-Migration 0020: drops the plan_templates uniqueness that broke coaches'
-saves, lets a plan exist without a race, adds coach_cycles and the coach's
-write access to their athletes' plans. Already applied to production.
-
-Hardening: styled error and 404 pages instead of a white screen; one
-coach at a time (a second code replaces the first); "Build plan" for a
-cycle member without one; swallowed failures now logged server-side.
-Fixes: dashboard greeting reads the saved name; zero streak hidden;
-Form tile tone follows the readiness bands. 831 tests pass.
+fix: putting an athlete in a cycle was refused silently — the roster
+row's UPDATE policy is athlete-only (0013, by design). Membership now
+goes through set_athlete_cycle / clear_cycle_members (migration 0021,
+applied), which touch cycle_id only and report whether a row changed.

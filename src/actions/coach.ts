@@ -925,8 +925,11 @@ export interface CoachRosterRow extends AthleteRow {
   targetTime: string | null;
   /** that time over that distance, in seconds per kilometre */
   targetPaceSec: number | null;
-  /** the cycle they belong to, or null when they have no goal race */
+  /** the derived group (race + date), or null when they have no goal race */
   cycleId: string | null;
+  /** the cycle the coach put them in, when any — this wins over the derived group */
+  managedCycleId: string | null;
+  managedCycleName: string | null;
 }
 
 export interface CoachWorkspace {
@@ -1017,11 +1020,14 @@ export async function getCoachWorkspace(
 
   const { data: links } = await supabase
     .from("coach_athletes")
-    .select("athlete_id")
+    .select("athlete_id, cycle_id")
     .eq("coach_id", user.id)
     .eq("status", "active");
 
   const ids = (links ?? []).map((l) => l.athlete_id);
+  const managedOf = new Map((links ?? []).map((l) => [l.athlete_id, l.cycle_id ?? null] as const));
+  const { data: cycleRows } = await supabase.from("coach_cycles").select("id, name").eq("coach_id", user.id);
+  const cycleName = new Map((cycleRows ?? []).map((c) => [c.id, c.name] as const));
 
   const [code, preferences, reminders, { data: me }] = await Promise.all([
     getMyCoachCode(),
@@ -1192,6 +1198,8 @@ export async function getCoachWorkspace(
       targetTime: race?.target_time ?? null,
       targetPaceSec: targetPaceSeconds(race?.race_type ?? null, race?.target_time ?? null),
       cycleId: race ? `${race.race_type}|${race.race_date}` : null,
+      managedCycleId: managedOf.get(a.id) ?? null,
+      managedCycleName: managedOf.get(a.id) ? cycleName.get(managedOf.get(a.id) as string) ?? null : null,
     };
   });
 

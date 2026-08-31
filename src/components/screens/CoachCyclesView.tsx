@@ -136,12 +136,32 @@ export function CoachCyclesView({ data, today, cycles: managed = [], templates =
         </div>
       ) : null}
 
+      {/*
+          Cycles sit under their distance. A coach with a Tel Aviv half and a
+          Jerusalem half sees "Half marathon" once and both cycles beneath it —
+          the distance is how they think, the cycle is how they act.
+      */}
       {shownManaged.length > 0 ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          {shownManaged.map((c) => (
-            <ManagedCycle key={c.id} cycle={c} today={today} color={colorFor(c.raceType, preferences.raceColors)} templates={templates}
-              candidates={athletes.filter((a) => !c.members.some((m) => m.athleteId === a.id))} />
-          ))}
+        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          {(["5k", "10k", "half", "full"] as RaceType[]).filter((rt) => shownManaged.some((c) => c.raceType === rt)).map((rt) => {
+            const group = shownManaged.filter((c) => c.raceType === rt);
+            const members = group.reduce((n, c) => n + c.members.length, 0);
+            return (
+              <div key={rt} style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: "10px", paddingInline: "2px" }}>
+                  <span style={{ width: "10px", height: "10px", borderRadius: "3px", background: colorFor(rt, preferences.raceColors), alignSelf: "center" }} />
+                  <h2 style={{ margin: 0, fontSize: "13px", fontWeight: 600 }}>{RACE_LABEL[rt]}</h2>
+                  <span className="num" style={{ fontSize: "10.5px", color: "var(--color-faint)" }}>
+                    {group.length} {group.length === 1 ? "cycle" : "cycles"} · {members} {members === 1 ? "athlete" : "athletes"}
+                  </span>
+                </div>
+                {group.map((c) => (
+                  <ManagedCycle key={c.id} cycle={c} today={today} color={colorFor(c.raceType, preferences.raceColors)} templates={templates}
+                    candidates={athletes.filter((a) => !c.members.some((m) => m.athleteId === a.id))} />
+                ))}
+              </div>
+            );
+          })}
         </div>
       ) : null}
 
