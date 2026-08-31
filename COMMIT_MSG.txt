@@ -68,12 +68,15 @@ a visitor got a 404. It now scrolls to a numbers strip under the hero:
 in preparation, with a footnote saying plainly that this is the seeded
 demo population, not live users.
 
-New: a connectivity diagram that draws the real architecture — Garmin,
-Suunto, Strava, Apple Health and Runkeeper fan in to intervals.icu, which
-feeds Runi, which puts out readiness, tomorrow's session and the reason
-why. It reuses the provider tiles from the settings screen (same marks,
-same colours) and an accent dash travels along each wire; under
-reduced-motion the wires are static.
+New: a connectivity diagram. Six sources — Garmin, Suunto, Strava, Apple
+Health, Runkeeper and intervals.icu — fan straight into Runi, and what
+comes out is drawn rather than listed: three miniatures of real product
+surfaces, a readiness card, the fitness/form chart and a week of the
+plan, under one word each — Insight, Process, Plan. The source tiles are
+the ones from the settings screen (same marks, same colours); an accent
+dash travels along each wire, static under reduced-motion. The diagram
+shows where the product is going (every source a source); the settings
+screen keeps telling the athlete how each one connects today.
 
 The four analysis capabilities each got a small graphic drawn in the
 product's own chart language — a heart-rate trace, rising pace bars, two
@@ -96,3 +99,8 @@ position:fixed inside it. The lightbox now portals to <body>.
 
 Scroll reveals follow the design engine's numbers (viewport enter, ~550ms,
 24px rise, 80ms stagger); zero axe violations; 809 tests pass.
+
+Also: Open Graph and Twitter card metadata in the root layout, with a
+1200x630 share image cut from the hero. A link to runi-coach.vercel.app
+pasted into WhatsApp, LinkedIn or iMessage now unfurls into the photo,
+the wordmark and one sentence instead of a bare URL.

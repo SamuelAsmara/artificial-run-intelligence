@@ -599,16 +599,29 @@
 /* connectivity diagram: sources | wire | hub | wire | Runi | wire | outputs */
 .land-diagram {
   display: grid;
-  grid-template-columns: auto 1fr auto 1fr auto 1fr auto;
+  /* [sources + wires] | Runi | [wires + outputs]. The two halves are equal
+     fractions, so the core sits on the card's exact centre line; inside each
+     half the wires flex to fill, which pushes the sources to the left edge
+     and the outputs to the right one. */
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: stretch;
-  gap: 0 8px;
-  padding: 28px 24px;
+  gap: 0 6px;
+  padding: 32px 28px;
   border-radius: 16px;
   background: var(--color-surface);
   box-shadow: inset 0 0 0 1px var(--color-line);
   overflow: hidden;
 }
-.land-wirecell { min-width: 48px; position: relative; }
+.land-side { display: flex; align-items: stretch; min-width: 0; }
+.land-wirecell { flex: 1 1 auto; min-width: 48px; position: relative; }
+.land-mini {
+  width: 156px; padding: 8px 10px; border-radius: 9px;
+  background: var(--color-surface); box-shadow: inset 0 0 0 1px var(--color-line-strong);
+  display: flex; flex-direction: column; gap: 5px;
+}
+.land-mini .mlabel { font-size: 9px; letter-spacing: .22em; }
+.land-sources { gap: 9px !important; flex: none; }
+.land-outputs { flex: none; }
 .land-wire { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
 @media (max-width: 900px) {
@@ -616,10 +629,11 @@
   .land-analysis { grid-template-columns: repeat(2, 1fr) !important; }
   /* the diagram stacks: sources, hub, Runi, outputs — wires become a rule */
   .land-diagram { grid-template-columns: 1fr; gap: 18px; justify-items: center; }
-  .land-wirecell { min-width: 0; width: 1px; height: 28px; background: var(--color-line-strong); }
+  .land-side { flex-direction: column; align-items: center; gap: 18px; }
+  .land-wirecell { flex: none; min-width: 0; width: 1px; height: 28px; background: var(--color-line-strong); }
   .land-wire { display: none; }
   .land-sources { grid-template-columns: repeat(2, auto); column-gap: 24px; }
-  .land-outputs { grid-auto-flow: column; }
+  .land-outputs { grid-auto-flow: row; }
 }
 
 @media (max-width: 700px) {

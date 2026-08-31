@@ -27,10 +27,29 @@ import "./globals.css";
 import { isCoach } from "@/lib/auth/role";
 import { CoachModeBar } from "@/components/coach/CoachModeBar";
 
+const SITE = "https://runi-coach.vercel.app";
+const DESCRIPTION =
+  "A running coach that computes instead of guessing. Connect your watch, set a goal race, and get a plan that adapts after every run — with the reason written next to it.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE),
   title: "Runi — Run with Intelligence",
-  description:
-    "A data-driven running coach — adaptive periodization and recovery-aware training",
+  description: DESCRIPTION,
+  // What a shared link looks like in WhatsApp, LinkedIn, iMessage, Slack.
+  openGraph: {
+    type: "website",
+    url: SITE,
+    siteName: "Runi",
+    title: "Runi — Run with Intelligence",
+    description: DESCRIPTION,
+    images: [{ url: "/landing/og.jpg", width: 1200, height: 630, alt: "Runi — Run with Intelligence" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Runi — Run with Intelligence",
+    description: DESCRIPTION,
+    images: ["/landing/og.jpg"],
+  },
 };
 
 

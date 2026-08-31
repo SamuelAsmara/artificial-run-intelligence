@@ -13,10 +13,15 @@
  * Content rules, because the words here are the product:
  * - The numbers strip is the seeded demo population and says so in a
  *   footnote. Nothing on this page claims users it does not have.
- * - The connectivity diagram draws the real architecture: watches reach
- *   Runi through intervals.icu (see lib/screens/settings.ts, "The providers
- *   whose data reaches Runi through intervals.icu"). Strava also connects
- *   directly. Nothing else is drawn.
+ * - The connectivity diagram shows every source as a source — six of them,
+ *   intervals.icu included, feeding Runi directly. Today most watches reach
+ *   Runi *through* intervals.icu (lib/screens/settings.ts explains, and the
+ *   settings screen says so to the athlete); the diagram draws where the
+ *   product is going, and the settings screen keeps telling the truth about
+ *   how each one connects right now.
+ * - What comes out is drawn, not listed: three miniatures of real product
+ *   surfaces — a readiness card, the fitness/fatigue/form chart, a week of
+ *   the plan — under one word each: Insight, Process, Plan.
  * - No "AI", no "brain". The product's stance everywhere else is that every
  *   figure is computed; the copy here matches. It is an engine.
  *
@@ -26,6 +31,7 @@
  * component; the only client leaves are LandingMotion and TileMark.
  */
 
+import type React from "react";
 import { BrandMark } from "@/components/ui";
 import { LandingMotion } from "@/components/landing/LandingMotion";
 import { TileMark } from "@/components/screens/SettingsView";
@@ -62,7 +68,66 @@ const COACH = [
   { n: "03", t: "Peak moments", d: "Races are where ceilings break — theirs and yours. Runi tracks each athlete's countdown, taper and readiness, so you reach the start line with them prepared, and with the numbers to show for it." },
 ];
 
-const OUTPUTS = ["Readiness", "Tomorrow's session", "The reason why"];
+/** A week of the plan, for the miniature. Edge colours = session type. */
+const MINI_WEEK = [
+  { d: "S", edge: "var(--color-positive)" },
+  { d: "M", edge: "var(--color-caution)" },
+  { d: "T", edge: "var(--color-accent)" },
+  { d: "W", edge: "var(--color-positive)", tomorrow: true },
+  { d: "T", edge: "var(--color-positive)" },
+  { d: "F", edge: "var(--color-line-strong)" },
+  { d: "S", edge: "var(--color-gold)" },
+];
+
+function MiniInsight() {
+  return (
+    <div className="land-mini">
+      <span className="mlabel" style={{ color: "var(--color-faint)" }}>Readiness</span>
+      <span className="num" data-count style={{ fontSize: "26px", lineHeight: 1, color: "var(--color-positive)", fontWeight: 500 }}>82</span>
+      <span className="num" style={{ fontSize: "9.5px", color: "var(--color-positive)" }}>Ready to load</span>
+    </div>
+  );
+}
+
+function MiniProcess() {
+  return (
+    <div className="land-mini">
+      <span className="mlabel" style={{ color: "var(--color-faint)" }}>Fitness · Form</span>
+      <svg viewBox="0 0 160 44" preserveAspectRatio="none" style={{ width: "100%", height: "34px", display: "block" }} data-draw aria-hidden>
+        <path d="M0 40 H160" stroke="var(--color-line)" strokeWidth="1" />
+        <path d="M0 30C25 29 40 26 60 24S100 18 130 16 150 14 160 12" fill="none" stroke="var(--color-accent)" strokeWidth="2" strokeLinecap="round" />
+        <path d="M0 34C20 36 30 22 50 28S80 12 100 22 130 30 160 20" fill="none" stroke="var(--color-muted)" strokeWidth="1.4" />
+        <path d="M0 38C25 37 40 40 60 36S100 30 130 34 150 30 160 28" fill="none" stroke="var(--color-caution)" strokeWidth="1.4" strokeDasharray="4 3" />
+      </svg>
+    </div>
+  );
+}
+
+function MiniPlan() {
+  return (
+    <div className="land-mini">
+      <span className="mlabel" style={{ color: "var(--color-faint)" }}>This week</span>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "3px" }}>
+        {MINI_WEEK.map((c, i) => (
+          <span key={i} className="num" style={{
+            height: "20px", borderRadius: "3px", fontSize: "8px", display: "grid", placeItems: "center",
+            background: c.tomorrow ? "var(--color-accent-soft)" : "var(--color-elevated)",
+            borderTop: `2px solid ${c.edge}`,
+            color: c.tomorrow ? "var(--color-accent)" : "var(--color-faint)",
+            boxShadow: c.tomorrow ? "inset 0 0 0 1px var(--color-accent)" : "none",
+          }}>{c.d}</span>
+        ))}
+      </div>
+      <span className="num" style={{ fontSize: "9px", color: "var(--color-muted)", whiteSpace: "nowrap" }}>Tomorrow · Easy 6 km · <span style={{ color: "var(--color-caution)" }}>adjusted</span></span>
+    </div>
+  );
+}
+
+const OUTPUTS: { k: string; el: React.ReactNode }[] = [
+  { k: "Insight", el: <MiniInsight /> },
+  { k: "Process", el: <MiniProcess /> },
+  { k: "Plan", el: <MiniPlan /> },
+];
 
 const ARROW = (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -114,23 +179,22 @@ function Graphic({ id }: { id: string }) {
 /* connectivity diagram                                                */
 /* ------------------------------------------------------------------ */
 
-const SOURCES = PROVIDER_TILES.filter((t) => t.id !== "intervals_icu");
-const HUB = PROVIDER_TILES.find((t) => t.id === "intervals_icu")!;
+const SOURCES = PROVIDER_TILES;
 
 function Chip({ tile, label }: { tile: (typeof PROVIDER_TILES)[number]; label?: string }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-      <span style={{ width: "56px", height: "32px", borderRadius: "8px", background: tile.chipBg, display: "grid", placeItems: "center", flex: "none", boxShadow: "0 0 0 1px rgb(255 255 255 / 8%)" }}>
+      <span style={{ width: "48px", height: "28px", borderRadius: "7px", background: tile.chipBg, display: "grid", placeItems: "center", flex: "none", boxShadow: "0 0 0 1px rgb(255 255 255 / 8%)", overflow: "hidden" }}>
         <TileMark tile={tile} />
       </span>
-      <span style={{ fontSize: "12.5px", color: "var(--color-muted)", whiteSpace: "nowrap" }}>{label ?? tile.name}</span>
+      <span style={{ fontSize: "12px", color: "var(--color-muted)", whiteSpace: "nowrap" }}>{label ?? tile.name}</span>
     </div>
   );
 }
 
-/** Five lines fanning in to one point; scales with the column it sits in. */
+/** Six lines fanning in to one point; scales with the column it sits in. */
 function FanIn() {
-  const ys = [10, 30, 50, 70, 90];
+  const ys = [8, 25, 42, 58, 75, 92];
   return (
     <svg className="land-wire" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
       {ys.map((y) => (
@@ -139,15 +203,6 @@ function FanIn() {
       {ys.map((y) => (
         <path key={`f${y}`} className="land-flow" d={`M0 ${y} C50 ${y} 50 50 100 50`} fill="none" stroke="var(--color-accent)" strokeWidth="1.6" vectorEffect="non-scaling-stroke" />
       ))}
-    </svg>
-  );
-}
-
-function Straight() {
-  return (
-    <svg className="land-wire" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
-      <path d="M0 50H100" fill="none" stroke="var(--color-line-strong)" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
-      <path className="land-flow" d="M0 50H100" fill="none" stroke="var(--color-accent)" strokeWidth="1.6" vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }
@@ -262,32 +317,38 @@ export function LandingView() {
             <p className="mlabel" style={{ margin: "0 0 14px", color: "var(--color-accent)" }}>Connects to what you already run with</p>
             <h2 style={{ margin: "0 0 14px", font: "700 34px/1.15 Sora, sans-serif", letterSpacing: "-0.01em", textWrap: "balance" }}>Runs in from wherever you already run.</h2>
             <p style={{ margin: 0, fontSize: "14.5px", color: "var(--color-muted)", textWrap: "pretty", lineHeight: 1.65 }}>
-              Your watch already records everything. intervals.icu collects it — runs, sleep, HRV, resting heart rate — and Runi reads the raw stream from there. Connect once; there is nothing to log by hand. Strava can also connect directly.
+              Your watch already records everything — runs, sleep, HRV, resting heart rate. Runi collects it from wherever it lives and reads the raw stream. Connect once; there is nothing to log by hand.
             </p>
           </div>
 
-          <div className="land-item land-diagram" aria-label="Data flows from Garmin, Suunto, Strava, Apple Health and Runkeeper through intervals.icu into Runi, and comes out as readiness, tomorrow's session and the reason why">
-            <div className="land-col land-sources" style={{ display: "grid", gap: "14px", alignContent: "center" }}>
-              {SOURCES.map((t) => <Chip key={t.id} tile={t} />)}
+          <div className="land-item land-diagram" aria-label="Data flows from Garmin, Suunto, Strava, Apple Health, Runkeeper and intervals.icu into Runi, and comes out as insight, process and plan">
+            {/* left half: sources flush to the card's left edge, wires fill the rest */}
+            <div className="land-side">
+              <div className="land-sources" style={{ display: "grid", gap: "9px", alignContent: "center" }}>
+                {SOURCES.map((t) => <Chip key={t.id} tile={t} />)}
+              </div>
+              <div className="land-wirecell"><FanIn /></div>
             </div>
-            <div className="land-wirecell"><FanIn /></div>
-            <div className="land-col" style={{ display: "grid", placeItems: "center" }}>
-              <Chip tile={HUB} />
-            </div>
-            <div className="land-wirecell"><Straight /></div>
+            {/* centre: exactly the card's centre line, whatever the halves weigh */}
             <div className="land-col" style={{ display: "grid", placeItems: "center" }}>
               <div style={{ display: "grid", placeItems: "center", gap: "8px" }}>
-                <span className="land-core" style={{ width: "96px", height: "96px", borderRadius: "24px", display: "grid", placeItems: "center", background: "rgb(255 255 255 / 4%)", boxShadow: "inset 0 0 0 1px rgb(255 255 255 / 10%), 0 0 60px rgb(78 142 247 / 18%)" }}>
-                  <BrandMark size={56} />
+                <span className="land-core" style={{ width: "88px", height: "88px", borderRadius: "22px", display: "grid", placeItems: "center", background: "rgb(255 255 255 / 4%)", boxShadow: "inset 0 0 0 1px rgb(255 255 255 / 10%), 0 0 60px rgb(78 142 247 / 18%)" }}>
+                  <BrandMark size={52} />
                 </span>
                 <span className="mlabel" style={{ color: "var(--color-faint)" }}>Runi</span>
               </div>
             </div>
-            <div className="land-wirecell"><FanOut /></div>
-            <div className="land-col land-outputs" style={{ display: "grid", gap: "14px", alignContent: "center" }}>
-              {OUTPUTS.map((o) => (
-                <span key={o} className="num" style={{ justifySelf: "start", fontSize: "12.5px", color: "var(--color-ink)", padding: "9px 14px", borderRadius: "999px", background: "var(--color-accent-soft)", boxShadow: "inset 0 0 0 1px rgb(78 142 247 / 35%)", whiteSpace: "nowrap" }}>{o}</span>
-              ))}
+            {/* right half: wires, then the outputs flush to the right edge */}
+            <div className="land-side">
+              <div className="land-wirecell"><FanOut /></div>
+              <div className="land-outputs" style={{ display: "grid", gap: "12px", alignContent: "center" }}>
+                {OUTPUTS.map((o) => (
+                  <div key={o.k} style={{ display: "grid", gridTemplateColumns: "auto auto", alignItems: "center", gap: "10px" }}>
+                    {o.el}
+                    <span className="mlabel" style={{ color: "var(--color-ink)", writingMode: "vertical-rl", transform: "rotate(180deg)", letterSpacing: ".2em", fontSize: "9.5px" }}>{o.k}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
