@@ -40,6 +40,11 @@ const COPY = {
     "then build you a plan around them.",
   ctaConnect: "Connect your watch",
   ctaBuild: "Build my training plan",
+  ctaPlan: "See my plan",
+  narrativeWithPlan:
+    "Your plan is ready and waiting. Connect your watch and Runi will match every run to " +
+    "its session, read your sleep and heart-rate variability, and start scoring your readiness.",
+  contextWithPlan: "Plan in progress",
   noData: "No data yet",
   chartTitle: "Fitness · Fatigue · Form will appear here",
   chartSub: "The chart starts drawing after your first synced run.",
@@ -68,7 +73,21 @@ const PBS = [
 
 const DASH = "--";
 
-export function EmptyDashboard({ name }: { name?: string | null }) {
+export interface EmptyDashboardPlan {
+  /** "Week 36 · 1 of 8" */
+  weekLabel: string | null;
+  /** "Today: Easy run · 6.0 km @ 5:49/km" */
+  nextSession: string | null;
+}
+
+/**
+ * `plan` is set when the athlete already has a plan but no runs yet — the
+ * page then points at the plan instead of offering to build one.
+ */
+export function EmptyDashboard({ name, plan }: { name?: string | null; plan?: EmptyDashboardPlan | null }) {
+  const context = plan
+    ? [COPY.contextWithPlan, plan.weekLabel].filter(Boolean).join(" · ")
+    : COPY.context;
   return (
     <div data-entrance-root
       style={{
@@ -91,7 +110,7 @@ export function EmptyDashboard({ name }: { name?: string | null }) {
           <h1 style={{ margin: 0, fontSize: "24px", fontWeight: 700, letterSpacing: "-0.01em", lineHeight: 1.1 }}>
             {name ? `${COPY.greeting}, ${name}` : COPY.greeting}
           </h1>
-          <p style={{ margin: 0, fontSize: "11.5px", color: "var(--color-muted)" }}>{COPY.context}</p>
+          <p style={{ margin: 0, fontSize: "11.5px", color: "var(--color-muted)" }}>{context}</p>
         </div>
         <nav
           className="topnav"
@@ -155,11 +174,16 @@ export function EmptyDashboard({ name }: { name?: string | null }) {
             </span>
           </div>
           <p style={{ margin: 0, fontSize: "16px", lineHeight: 1.55, maxWidth: "640px", textWrap: "pretty" }}>
-            {COPY.narrative}
+            {plan ? COPY.narrativeWithPlan : COPY.narrative}
           </p>
+          {plan?.nextSession && (
+            <p className="num" style={{ margin: 0, fontSize: "12px", color: "var(--color-muted)" }}>
+              Next session — {plan.nextSession}
+            </p>
+          )}
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBlockStart: "4px" }}>
             <a className="btn btn-primary" href="/settings#connections">{COPY.ctaConnect}</a>
-            <a className="btn btn-secondary" href="/plan">{COPY.ctaBuild}</a>
+            <a className="btn btn-secondary" href="/plan">{plan ? COPY.ctaPlan : COPY.ctaBuild}</a>
           </div>
         </div>
       </section>

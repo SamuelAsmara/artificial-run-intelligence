@@ -1,12 +1,10 @@
-feat(coach): cycles under their distance; roster filters distance → cycle
+fix: empty home acknowledges an existing plan; template copy and labels
 
-Cycles are listed under a distance heading — two half-marathon groups
-(Tel Aviv, Jerusalem) sit under "Half marathon" — and the Athletes screen
-filters the same way: pick a distance, then a cycle within it; athletes
-not yet in a cycle stay reachable through their goal-race group. Each
-roster row names the cycle its athlete is in.
+An athlete with a plan but no runs yet saw the home page offer to
+"Build my training plan". It now says the plan is in progress, names
+the plan week and the next session, and links to it — the watch is the
+one thing still missing.
 
-fix: putting an athlete in a cycle was refused silently — the roster
-row's UPDATE policy is athlete-only (0013, by design). Membership now
-goes through set_athlete_cycle / clear_cycle_members (migration 0021,
-applied), which touch cycle_id only and report whether a row changed.
+Cycle headers name Runi's built-in template as "Runi's template" rather
+than "5k template". The Templates footer no longer claims edits reach
+future plans only — saving offers to rebuild the cycles that use it.

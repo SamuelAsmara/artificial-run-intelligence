@@ -306,9 +306,10 @@ export function CoachTemplatesView({
         its shape.
       */}
       <p className="num" style={{ margin: 0, fontSize: "10.5px", color: "var(--color-faint)", maxWidth: "70ch", lineHeight: 1.6 }}>
-        Editing a template changes future plans only. Regenerating a plan an athlete is already
-        running would discard weeks of their history, so their plan keeps the structure it was
-        built with and your edit reaches the next athlete to start.
+        Editing a template does not touch plans already running — they keep the structure they
+        were built with and your edit reaches the next athlete to start. If a cycle uses this
+        template, saving offers to rebuild its members’ plans from this week on; weeks already
+        run stay as they were.
       </p>
       <p className="num" style={{ margin: 0, fontSize: "10.5px", color: "var(--color-faint)", maxWidth: "70ch", lineHeight: 1.6 }}>
         The phase lengths are read as proportions, not as a fixed schedule — a 14-week structure

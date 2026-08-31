@@ -94,7 +94,10 @@ export async function getCoachCycles(): Promise<{ cycles: CoachCycle[]; template
     };
   };
 
-  const templateName = new Map((templates ?? []).map((t) => [t.id, t.name ?? `${t.race_type} template`]));
+  const templateName = new Map((templates ?? []).map((t) => [
+    t.id,
+    t.coach_id === null ? "Runi’s template" : (t.name ?? "Your template"),
+  ]));
   const out: CoachCycle[] = (cycles ?? []).map((c) => ({
     id: c.id, name: c.name, raceType: c.race_type as RaceType, raceDate: c.race_date,
     templateId: c.template_id, templateName: c.template_id ? templateName.get(c.template_id) ?? null : null, notes: c.notes,

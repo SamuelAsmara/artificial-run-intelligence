@@ -62,7 +62,17 @@ export default async function DashboardPage({
   // and race countdown with no indication they weren't real. Show the empty
   // state instead — demo data now lives only behind ?demo=1.
   if (series.length < 2) {
-    return <EmptyDashboard name={await athleteName()} />;
+    const [name, plan] = await Promise.all([athleteName(), getDashboardPlan()]);
+    const next = plan?.next;
+    return (
+      <EmptyDashboard
+        name={name}
+        plan={plan ? {
+          weekLabel: plan.weeks[plan.currentWeek]?.label ?? null,
+          nextSession: next ? `${next.isToday ? "Today" : next.date}: ${next.name} · ${next.summary}` : null,
+        } : null}
+      />
+    );
   }
 
   const latest = series[series.length - 1];
