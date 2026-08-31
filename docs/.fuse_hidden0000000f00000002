@@ -35,7 +35,7 @@ PKCE עם `exchangeCodeForSession` בצד השרת. לא נבדק בהרצה.
 | **בדיקה** | הרצה מלאה בדפדפן |
 | **מצב** | **עובד, עם שני פערים** |
 
-עורך האימון של המאמן עובד: לחיצה על יום פותחת פאנל עם סוג האימון (EASY/LONG/INTERVAL/REST), שדה מרחק, שמירה וביטול. הנוסח מצוין: *"A session you change is yours — Runi will not adjust it automatically afterwards."*
+עורך האימון של המאמן עובד: לחיצה על יום פותחת פאנל עם סוג האימון (EASY/LONG/INTERVAL/REST), שדה מרחק, שמירה וביטול. הנוסח מצוין: *"A session you change is yours — ARI will not adjust it automatically afterwards."*
 
 **פער 1 — עריכות המאמן לא מוצגות.** במסד יש 8 אימונים לכל מאמן עם `origin='coach'`, `planned_distance_original` ו-`adjusted_reason` מלאים. **המסך מציג רק את המספר הנוכחי.** אין סימון שהאימון שונה, אין הערך המקורי, ואין הסיבה. שלושה שדות ממיגרציה 0014 שנכתבים ולא נקראים.
 
@@ -193,7 +193,7 @@ create trigger on_auth_user_email_changed
 
 ```
 COACH | Home | Cycles | Athletes | Settings | My training
-Runi   | Home | Activities | Plan  | Settings
+ARI   | Home | Activities | Plan  | Settings
 ```
 
 **שני סרגלים, שניהם עם "Home" ועם "Settings".** מסך `/dashboard` מרנדר את מעטפת הרץ בתוך מעטפת המאמן.

@@ -1,4 +1,6 @@
-fix(coach): editing a cycle sends only what changed
+docs: rewrite README in English; retire the ARI name across docs
 
-Renaming a cycle or swapping its template no longer rewrites the
-members' race day — only an actual race-day change moves it.
+The README now opens on what the product does for the athlete and the
+coach, in sections and bullets, with the architecture, setup, tests and
+documents after it. The technical guide, code map and working notes are
+renamed and reworded from ARI to Runi.

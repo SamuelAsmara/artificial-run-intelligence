@@ -1,99 +1,192 @@
+<div align="center">
+
 # Runi — Run with Intelligence
 
-מאמן ריצה שמחשב במקום לנחש. הרץ מחבר את השעון, מגדיר מרוץ יעד, ומקבל תוכנית שמתעדכנת אחרי כל ריצה לפי מה שהגוף שלו עשה בפועל — לא לפי מה שהטבלה קיוותה.
+**A training platform for runners and their coaches, where every decision is backed by the athlete's own data.**
 
-זה פרויקט הגמר שלי בקורס Internet Technologies באוניברסיטת רייכמן (2026). האפליקציה באוויר: https://runi-coach.vercel.app
+[![Live](https://img.shields.io/badge/live-runi--coach.vercel.app-0a0a0a?style=flat-square)](https://runi-coach.vercel.app)
+[![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=nextdotjs)](https://nextjs.org)
+[![React](https://img.shields.io/badge/React-19-20232a?style=flat-square&logo=react)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20Auth-3ecf8e?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com)
+[![Tests](https://img.shields.io/badge/tests-831%20passing-2bb3a3?style=flat-square)](#testing)
 
-## למה בכלל
+Final project · Internet Technologies · Reichman University · 2026
 
-רצים חובבים שמתכוננים למרוץ מתאמנים לפי תוכנית סטטית — PDF מהאינטרנט או תבנית שמישהו שלח בוואטסאפ. התוכנית לא יודעת שישנת ארבע שעות, שהדופק שלך בריצה קלה היה גבוה מהרגיל, או שהעלית נפח מהר מדי בשבועיים האחרונים. התוצאה הרגילה היא פציעה או הגעה עייפה ליום המרוץ.
+</div>
 
-מהצד השני, מאמן שמלווה עשרים רצים לא מחזיק מקום אחד שאומר לו בבוקר מי צריך אותו היום.
+---
 
-Runi מנסה לסגור את שני הפערים עם אותו מנוע.
+## Table of Contents
 
-## מה יש בפנים
+- [Overview](#overview)
+- [Features](#features)
+  - [For the Athlete](#for-the-athlete)
+  - [For the Coach](#for-the-coach)
+- [Design Principles](#design-principles)
+- [Architecture](#architecture)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+- [Testing](#testing)
+- [Documentation](#documentation)
+- [Known Limitations](#known-limitations)
 
-**לרץ.** דשבורד עם ציון מוכנות יומי, גרף כושר/עייפות/טריות (מודל PMC), יחס עומס אקוטי-כרוני, וסחיפת דופק לכל ריצה. תוכנית אימון שנבנית סביב תאריך המרוץ — בסיס, בנייה, שיא, טייפר — ומנוע התאמה שמקטין אימון כשהעומס קופץ, ומסביר במשפט אחד למה. יש גם "Ask Runi": עשר שאלות קבועות שכל אחת מהן נענית מהנתונים של הרץ עצמו, בלי מודל שפה.
+---
 
-**למאמן.** לוח עם כל הרצים, מי מסומן ולמה (עומס, שקט, מרוץ קרוב), מחזורי הכנה לפי מרוץ ותאריך, תבניות תוכנית לכל מרחק, תזכורות, וקוד הצטרפות — הרץ מזין אותו בהגדרות שלו והוא זה שנותן את הגישה, לא המאמן.
+## Overview
 
-הכלל שנאכף בכל מסך: כל מספר שמוצג חושב מריצות אמיתיות. אין שכבת AI גנרטיבית, ואין מספר שאין מאחוריו פונקציה שנבדקה.
+Runi connects a runner's watch to their training. From that point on, the plan, the load, the recovery and the progress toward race day are all grounded in the athlete's own numbers rather than in a generic table.
 
-## איך זה בנוי
+The same engine serves the coach: one place that shows, every morning, which athletes need attention, which preparation cycle each one belongs to, and what week they are in.
 
-Next.js 16 עם App Router, TypeScript, Supabase (Postgres + Auth), פריסה ב-Vercel. אין שרת נפרד — הקריאות לנתונים הן Server Components ו-Server Actions באותו פרויקט.
+---
 
-שלוש החלטות שמסבירות את רוב המבנה:
+## Features
 
-- **ההרשאה נאכפת במסד, לא בקוד.** Row Level Security על כל 16 הטבלאות (37 מדיניויות). גם אם מישהו ידלג על כל בדיקה בקוד, פוסטגרס לא יחזיר לו שורה שאינה שלו. במסמך האבטחה יש תיאור של הפרצה שמצאתי בדרך בדיוק בגלל שהסתמכתי על הקוד במקום על המסד.
-- **הלוגיקה ב-`lib/` לא יודעת ש-React קיים.** המודל הפיזיולוגי, יצירת התוכנית, מנוע ההתאמה, ההסברים — כולם פונקציות טהורות שמקבלות מספרים ומחזירות מספרים. בגלל זה 809 הבדיקות רצות ב-16 שניות בלי מסד ובלי דפדפן.
-- **אזור זמן אחד לכל המוצר.** ריצה שנגמרה ב-23:50 שייכת ליום שבו רצו אותה, לא ליום שבו השרת ב-UTC חושב שהיא נגמרה. נכוויתי מזה פעם אחת וזה הספיק.
+### For the Athlete
+
+**Home**
+- Daily readiness score with the reasons behind it
+- Four headline metrics: cardiac drift, weekly volume, load ratio and form (TSB)
+- Fitness · Fatigue · Form chart (Performance Management Chart model)
+- Countdown to race day with a Riegel-based finish-time prediction
+- Personal records, each one linked to the run that set it
+
+**Plan**
+- Three ways to start, on one screen: a code from a coach, Runi's own plan, or a plan the athlete writes
+- Runi's plan is built around the race date (base, build, peak, taper) and previewed before it is applied
+- An adaptation engine that scales a session back when load spikes, and explains why in one sentence
+- The athlete can leave a plan at any time; history is kept
+
+**Your Numbers**
+- One board with every metric the product computes: heart rate, pace, volume, recovery, training load, CTL / ATL / TSB, ACWR, grade-adjusted pace, drift and prediction
+- Each metric shows its formula, the band the athlete is currently in, and a history over a week, a month, three months or a year
+- If a number appears anywhere in the product, this is where it is explained
+
+**Ask Runi**
+- Ten fixed questions, available from every screen, each answered from the athlete's own data
+
+### For the Coach
+
+**Roster**
+- Every athlete with a flag and a reason: load, prolonged silence, race approaching
+- Filter by distance, then by cycle
+
+**Preparation Cycles**
+- Named groups of athletes preparing for the same race, e.g. *Tel Aviv Half* and *Jerusalem Half* side by side under the same distance
+- Each athlete progresses through their own week of the cycle
+- Add or remove athletes, edit name, date and template, and rebuild plans when the structure changes
+- Closing a cycle closes the plans built from it; run history stays
+
+**Templates**
+- A plan structure per distance, from which cycles are created
+- Editing a template never changes a running plan unless the coach explicitly asks to rebuild it
+
+**Join Code**
+- The coach hands the athlete a code; the athlete enters it in their own settings
+- From that moment the coach sees the athlete's runs and plan; the athlete can leave at any time
+
+---
+
+## Design Principles
+
+- **Every number is the athlete's own.** Nothing on screen is generic. Every metric is computed from that athlete's runs, sleep and heart-rate data.
+- **Every number has a tested function behind it.** The physiological model, the planner and the adaptation engine are pure functions with unit tests.
+- **Explain, do not just display.** Each metric comes with its formula and its current band; each adaptation comes with its reason.
+- **Consent flows from the athlete.** A coach can read and plan only for athletes who entered the coach's code themselves.
+- **No language model in the current version.** Ask Runi answers directly from the data. A future version will connect it to a model (Grok) that phrases answers on top of the same calculations.
+
+---
+
+## Architecture
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 16 (App Router), React 19, TypeScript |
+| Data & Auth | Supabase — Postgres with Row Level Security, Supabase Auth |
+| Hosting | Vercel, with a daily cron job for watch synchronisation |
+| Validation | Zod, at every server boundary |
+| Testing | Vitest |
+
+Three decisions shape most of the codebase:
+
+- **Authorisation lives in the database.** Row Level Security on all 17 tables. An athlete reads only their own rows; a coach reads only the athletes who joined them. Writes a coach is allowed to make go through narrow, security-definer functions rather than broad policies.
+- **Computation is separate from presentation.** All logic — planning, readiness, load, metric history — lives in `lib/` as pure functions with no knowledge of React or the database. This is what makes the test suite fast and complete.
+- **One time zone for the whole product.** `Asia/Jerusalem` everywhere, so a run that ends at 23:50 stays on the day it was run.
+
+---
+
+## Project Structure
 
 ```
 src/
-├── app/          עמודים ונקודות קצה (App Router)
-├── components/   רכיבי תצוגה בלבד — מקבלים נתונים, לא שולפים
-├── actions/      "use server" — הגבול בין הלקוח למסד
-├── lib/          לוגיקה טהורה: planning, readiness, activity, narrative, insights
-├── types/        טיפוסי המסד
-└── middleware.ts הפניה של מי שלא מחובר
-supabase/migrations/   20 מיגרציות, ממוספרות, תואמות-לאחור
-docs/                  ששת מסמכי הפרויקט (בעברית) + המצגת
+├── app/            Pages and API routes (App Router), including error and not-found pages
+├── components/     Presentational components — receive data, never fetch it
+├── actions/        Server Actions — the boundary between client and database
+├── lib/            Pure logic: planning, readiness, activity, insights, screens, time
+└── types/          Database types, derived from the schema
+supabase/migrations/   21 numbered, backward-compatible migrations
+scripts/               Manual sync, analysis and demo data
+docs/                  Project documents, technical guide and presentation
 ```
 
-## להריץ מקומית
+---
 
-צריך Node 20 ומעלה ופרויקט Supabase (החינמי מספיק).
+## Getting Started
+
+**Prerequisites:** Node 20+ and a Supabase project (the free tier is sufficient).
 
 ```bash
 npm install
-cp .env.example .env.local   # ולמלא
+cp .env.example .env.local     # every variable is documented in the file
 npm run dev
 ```
 
-משתני הסביבה שהאפליקציה קוראת:
+- **Database:** run `supabase/migrations/0001` through `0021`, in order, in the Supabase SQL Editor.
+- **Demo data:** `npm run seed:demo` creates two coaches with twenty athletes each and a full run history. Credentials are in `docs/DEMO_LOGINS.md`.
 
-| משתנה | למה |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | חיבור הלקוח ל-Supabase |
-| `SUPABASE_SERVICE_ROLE_KEY` | רק למשימת הסנכרון היומית, לעולם לא מגיע לדפדפן |
-| `CRON_SECRET` | מאמת את הקריאה של Vercel Cron ל-`/api/cron/sync-intervals` |
-| `HEALTH_WEBHOOK_SECRET`, `HEALTH_WEBHOOK_ENABLED` | קליטת נתוני התאוששות מבחוץ |
-| `NEXT_PUBLIC_APP_URL` | לקישורי אימות במייל ול-OAuth |
-| `STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET` | רק אם מפעילים את חיבור Strava |
-| `TZ` | `Asia/Jerusalem` — ראו למעלה |
-| `INTERVALS_ICU_API_KEY`, `INTERVALS_ICU_ATHLETE_ID` | רק לסקריפטים המקומיים (`analyze`, `check:wellness`). באפליקציה עצמה כל רץ מזין את שלו |
+---
 
-את המיגרציות מריצים לפי הסדר ב-SQL Editor של Supabase (`supabase/migrations/0001` עד `0020`). אין אינטגרציה אוטומטית ל-GitHub, בכוונה — במסמך הארכיטקטורה מוסבר למה.
-
-חיבור ל-intervals.icu עושים מתוך האפליקציה, במסך ההגדרות: מדביקים את מפתח ה-API האישי, והשרת מזהה לבד למי הוא שייך. המפתח נשמר בצד השרת בלבד.
-
-## בדיקות
+## Testing
 
 ```bash
-npm test          # 809 בדיקות, 54 קבצים, ~16 שניות
+npm test            # 831 tests across 56 files
 npm run test:watch
 npm run lint
 ```
 
-מה שנבדק אוטומטית זה כל מה שמחשב: המודל הפיזיולוגי, יצירת התוכנית, מנוע ההתאמה, ולידציות, אזורי זמן, גיאומטריית הגרפים. מה שלא נבדק אוטומטית — RLS, מסכים בדפדפן, ספקים חיצוניים — מתועד במסמך הבדיקות עם הסבר למה, ומה נעשה במקום.
-
-## נתוני דמו
-
-`npm run seed:demo` מייצר שני מאמנים עם עשרים רצים לכל אחד, ארבע קבוצות מרוץ למאמן, וכל רץ באמצע תוכנית עם היסטוריית ריצות מאחוריו (`seed:dry` רק מדפיס מה הוא היה עושה, `seed:reset` בונה מחדש). פרטי ההתחברות לחשבונות הדמו ב-`docs/DEMO_LOGINS.md`.
-
-## מסמכים
-
-בתיקיית `docs/`: אפיון מוצר, ארכיטקטורה, תכנון טכני מפורט, אפיון בדיקות, אבטחת מידע, סקייל וביצועים — וקובץ המצגת. כל מסמך כתוב סביב ההחלטות שהתקבלו ולמה, לא רק מה נבנה.
-
-## מה לא נעשה
-
-- אין תשלומים. הטבלאות קיימות בסכימה, הזרימה לא.
-- חיבור Strava (OAuth + משימת סנכרון) קיים בקוד, אבל הספק הראשי הוא intervals.icu ורוב הבדיקות סביבו — בחרתי בו כי הוא היחיד שנותן גם שינה, HRV ודופק מנוחה, לא רק ריצות.
-- המשימה היומית מסנכרנת רצים אחד-אחד. עד כמה מאות משתמשים זה מחזיק; אחרי זה צריך תור. מפורט במסמך הסקייל.
-- אין אפליקציית מובייל. האתר רספונסיבי ונבדק ב-390px.
+- Covered automatically: the physiological model, plan generation on all three paths, the adaptation engine, metric history, validation, time zones and chart geometry.
+- Covered manually and documented in the testing document: Row Level Security policies, browser screens and external providers.
 
 ---
 
-סמואל אסמרה · רייכמן, 2026
+## Documentation
+
+All documents are in `docs/`:
+
+| # | Document |
+|---|---|
+| 1 | Product Specification |
+| 2 | Software Architecture |
+| 3 | Detailed Technical Design |
+| 4 | Test Specification |
+| 5 | Information Security |
+| 6 | Scale and Performance |
+
+Alongside them: the technical guide (`Runi_technical_guide.html`), the code map (`Runi_code_map.html`) and the presentation (`Runi_presentation.pptx`).
+
+---
+
+## Known Limitations
+
+- **Payments** — the schema exists; the flow is not implemented.
+- **Sync throughput** — the daily job processes athletes one by one. It holds up to a few hundred users; beyond that a queue is required (see the scale document).
+- **Native app** — there is none. Runi is a web application built to be used fully from a phone.
+
+---
+
+<div align="center">
+
+Samuel Asmara · Reichman University · 2026
+
+</div>
