@@ -119,6 +119,7 @@ export function Reminders({
             if (e.key === "Enter") add();
           }}
           placeholder="Add a note…"
+          aria-label="Add a note"
           maxLength={500}
           style={{ fontSize: "12px" }}
         />
@@ -143,6 +144,7 @@ export function Reminders({
             value={due}
             onChange={(e) => setDue(e.target.value)}
             style={{ flex: 1, fontSize: "11.5px" }}
+            aria-label="Due date"
           />
           <button className="btn btn-secondary" type="button" onClick={add} disabled={pending || !body.trim()} style={{ padding: "6px 12px", fontSize: "11.5px" }}>
             Add

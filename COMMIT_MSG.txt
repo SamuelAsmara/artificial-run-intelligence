@@ -20,3 +20,40 @@ New dependency: @fontsource/sora (600/700/800), loaded once in layout
 beside the existing Plex families.
 
 809 tests pass.
+
+---
+
+Accessibility pass (WCAG 2.1 AA, axe-core on all nine screens).
+
+Found and fixed: days from an adjacent month in the plan calendar were
+dimmed to 35% opacity, putting their text at 1.7:1 contrast — they now
+dim to 55% (passing) and drop the km figure, which belongs to their own
+month's page anyway. The coach reminders' date and note inputs had no
+accessible name; labelled. The intervals.icu settings link relied on
+colour alone; underlined. The rail calendar's month buttons were 22px
+tall; now 26px (WCAG 2.5.8 minimum is 24).
+
+Also: a small "‹ Back" pill on the sign-in page, back to the landing
+page.
+
+Verified across dashboard, plan, coach home, cycles, templates, coach
+settings, roster, Ask Runi and the landing page: zero axe violations,
+reduced-motion leaves every screen fully readable with no animation,
+keyboard focus is visible everywhere (:focus-visible outline).
+
+809 tests pass.
+
+---
+
+docs: final pass before submission.
+
+Every page header still read "— Artificial Run Intelligence"; all six
+now read "— Runi". Document 5's internal title said "אבטחה בסיסית" and
+document 6's said "סקייל בסיסי" while their filenames (and page headers)
+said אבטחת מידע / סקייל וביצועים — the titles now match. Document 1's
+appendix still pointed at ari-coach.vercel.app; now runi-coach. The
+"updated" line on all six moved to 30 August. Verified across all six:
+every Hebrew paragraph is right-aligned RTL (the only LTR paragraphs are
+code blocks and the folder tree, where LTR is correct), tables render
+right-to-left, and the stated figures — 809 tests, 54 files, 20
+migrations, 39 server actions — are still accurate.

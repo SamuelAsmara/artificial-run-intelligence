@@ -214,6 +214,20 @@ export function LoginView({ initialMode = "login" }: { initialMode?: "login" | "
 
   return (
     <div style={{ position: "relative", minHeight: "100dvh" }}>
+      {/* Back to the landing page — small, quiet, top corner. */}
+      <a
+        href="/"
+        className="mlabel land-pill-ghost"
+        style={{
+          position: "absolute", top: "20px", insetInlineStart: "20px", zIndex: 3,
+          display: "inline-flex", alignItems: "center", gap: "7px", padding: "8px 16px",
+        }}
+      >
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="m15 18-6-6 6-6" />
+        </svg>
+        Back
+      </a>
       {/* The photograph, with the blurred twin underneath it. WebP first; the
           JPEG is there for anything that cannot read it. */}
       <div

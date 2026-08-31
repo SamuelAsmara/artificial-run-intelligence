@@ -780,7 +780,7 @@ function ConnectForm() {
       <p style={{ margin: 0, fontSize: "11px", color: "var(--color-faint)", textWrap: "pretty" }}>
         Both are on your{" "}
         <a href="https://intervals.icu/settings" target="_blank" rel="noreferrer"
-          style={{ color: "var(--color-accent)" }}>
+          style={{ color: "var(--color-accent)", textDecoration: "underline", textUnderlineOffset: "2px" }}>
           intervals.icu settings page
         </a>
         , under Developer. The key is stored for your account only and is never sent to your browser
