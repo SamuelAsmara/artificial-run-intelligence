@@ -1,10 +1,4 @@
-fix: empty home acknowledges an existing plan; template copy and labels
+fix(coach): editing a cycle sends only what changed
 
-An athlete with a plan but no runs yet saw the home page offer to
-"Build my training plan". It now says the plan is in progress, names
-the plan week and the next session, and links to it — the watch is the
-one thing still missing.
-
-Cycle headers name Runi's built-in template as "Runi's template" rather
-than "5k template". The Templates footer no longer claims edits reach
-future plans only — saving offers to rebuild the cycles that use it.
+Renaming a cycle or swapping its template no longer rewrites the
+members' race day — only an actual race-day change moves it.

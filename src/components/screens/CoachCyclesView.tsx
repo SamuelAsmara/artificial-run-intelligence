@@ -420,7 +420,14 @@ function ManagedCycle({ cycle, today, color, candidates, templates }: {
     setNote(null);
     const structural = raceDate !== cycle.raceDate || templateId !== cycle.templateId;
     startTransition(async () => {
-      const r = await updateCycle(cycle.id, { name, raceDate, templateId });
+      // Only what changed goes over — the race day in particular, because
+      // sending it moves every member's goal race, and a name or template
+      // edit must not touch race day.
+      const r = await updateCycle(cycle.id, {
+        ...(name !== cycle.name ? { name } : {}),
+        ...(raceDate !== cycle.raceDate ? { raceDate } : {}),
+        ...(templateId !== cycle.templateId ? { templateId } : {}),
+      });
       if (!r.ok) return setNote(r.error);
       setEditing(false);
       setOfferRebuild(structural && builtFromCycle > 0);
