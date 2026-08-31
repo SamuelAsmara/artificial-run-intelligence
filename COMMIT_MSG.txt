@@ -57,3 +57,42 @@ every Hebrew paragraph is right-aligned RTL (the only LTR paragraphs are
 code blocks and the folder tree, where LTR is correct), tables render
 right-to-left, and the stated figures — 809 tests, 54 files, 20
 migrations, 39 server actions — are still accurate.
+
+---
+
+Landing page, second pass: the numbers, the connections, the two seats.
+
+"The numbers" in the nav pointed at /methodology, which does not exist —
+a visitor got a 404. It now scrolls to a numbers strip under the hero:
+6 coaching teams, 70 coached runners, 100 independent athletes, 34 races
+in preparation, with a footnote saying plainly that this is the seeded
+demo population, not live users.
+
+New: a connectivity diagram that draws the real architecture — Garmin,
+Suunto, Strava, Apple Health and Runkeeper fan in to intervals.icu, which
+feeds Runi, which puts out readiness, tomorrow's session and the reason
+why. It reuses the provider tiles from the settings screen (same marks,
+same colours) and an accent dash travels along each wire; under
+reduced-motion the wires are static.
+
+The four analysis capabilities each got a small graphic drawn in the
+product's own chart language — a heart-rate trace, rising pace bars, two
+runs overlaid, a readiness gauge — that draw themselves in on scroll.
+
+The athlete section is now four points in the order a runner lives them:
+connect your training to the engine, understand your own numbers, you
+measured against you (the mirror — no leaderboards), break a record. The
+coach section opens with the stance — we don't replace you; we make you
+the coach who talks in numbers — and mirrors the athlete's points at the
+coach's level: every athlete at every resolution, plan against execution,
+peak moments. "Send a QR" is gone; there is no QR in the product.
+
+No "AI", no "brain" anywhere on the page. It is an engine, and every
+figure is computed.
+
+Fixed: the photo lightbox opened inside its card instead of over the page
+— backdrop-filter makes a glass card the containing block for anything
+position:fixed inside it. The lightbox now portals to <body>.
+
+Scroll reveals follow the design engine's numbers (viewport enter, ~550ms,
+24px rise, 80ms stagger); zero axe violations; 809 tests pass.

@@ -26,6 +26,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 export function initialsOf(name: string | null | undefined): string {
   const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
@@ -117,7 +118,11 @@ export function Avatar({
       >
         {circle}
       </button>
-      {open ? <Lightbox src={src as string} name={name} onClose={() => setOpen(false)} /> : null}
+      {/* Portaled to <body>: the glass cards use backdrop-filter, which makes
+          a card the containing block for anything position:fixed inside it.
+          Rendered in place, the lightbox opened inside the card instead of
+          over the page. */}
+      {open ? createPortal(<Lightbox src={src as string} name={name} onClose={() => setOpen(false)} />, document.body) : null}
     </>
   );
 }

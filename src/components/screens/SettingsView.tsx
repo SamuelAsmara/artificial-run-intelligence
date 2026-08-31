@@ -575,7 +575,7 @@ export function ConnectionsCard({ connection }: { connection: ProviderConnection
  * an offline demo can leave the chip blank. Falling back to the letter keeps
  * the row legible in the one situation where you cannot fix it — a live demo.
  */
-function TileMark({ tile }: { tile: (typeof PROVIDER_TILES)[number] }) {
+export function TileMark({ tile }: { tile: (typeof PROVIDER_TILES)[number] }) {
   const [failed, setFailed] = useState(false);
 
   if (!tile.logo || failed) {
