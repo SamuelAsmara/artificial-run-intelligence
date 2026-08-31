@@ -43,6 +43,7 @@ export function StatTile({
   interpretation,
   tone = "neutral",
   icon,
+  hue,
   style,
 }: {
   /** null means the data cannot support a figure — an em dash, never a zero */
@@ -53,6 +54,12 @@ export function StatTile({
   tone?: StatTone;
   /** an SVG path `d` — use a member of STAT_ICONS */
   icon?: string;
+  /**
+   * The figure's own colour (see NUMBERS_HUE): paints the icon chip and the
+   * label, never the value — the value keeps status colouring. Omit it and
+   * the tile stays quiet, as it was.
+   */
+  hue?: string;
   style?: CSSProperties;
 }) {
   const missing = value === null || value === undefined || value === "";
@@ -79,19 +86,18 @@ export function StatTile({
       }}
     >
       {icon && (
-        <svg
-          width="13"
-          height="13"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="var(--color-faint)"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
+        <span
           aria-hidden
+          style={{
+            width: 26, height: 26, borderRadius: "50%", display: "grid", placeItems: "center",
+            background: hue ? `color-mix(in oklab, ${hue} 16%, transparent)` : "var(--color-elevated)",
+            color: hue ?? "var(--color-faint)",
+          }}
         >
-          <path d={icon} />
-        </svg>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+            <path d={icon} />
+          </svg>
+        </span>
       )}
       <div>
         <span
@@ -119,7 +125,7 @@ export function StatTile({
           fontWeight: 500,
           letterSpacing: "0.09em",
           textTransform: "uppercase",
-          color: "var(--color-faint)",
+          color: hue ?? "var(--color-faint)",
           whiteSpace: "nowrap",
         }}
       >

@@ -21,6 +21,7 @@ import {
 } from "@/lib/screens/coachHome";
 import { weekDates } from "@/lib/coach/roster";
 import { Entrance, StatTile, STAT_ICONS, EmptyState } from "@/components/ui";
+import { NUMBERS_HUE } from "@/lib/screens/numbers";
 
 /** two figures — the roster is people before it is anything else */
 const ROSTER_ICON = "M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM2 20a7 7 0 0 1 14 0M17 11a3 3 0 1 0 0-6M16 20h6a5 5 0 0 0-4-4.9";
@@ -83,8 +84,8 @@ export function CoachHomeView({ data, today }: { data: CoachWorkspace; today: st
 
       {/* the numbers a coach quotes without thinking */}
       <section className="stat-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px,1fr))", gap: "12px" }}>
-        <Stat value={String(summary.total)} label={summary.total === 1 ? "Athlete" : "Athletes"} icon={STAT_ICONS.pulse} />
-        <Stat value={String(cycles.length)} label={cycles.length === 1 ? "Cycle" : "Cycles"} icon={STAT_ICONS.chart} />
+        <Stat value={String(summary.total)} label={summary.total === 1 ? "Athlete" : "Athletes"} icon={STAT_ICONS.pulse} hue={NUMBERS_HUE.hr} />
+        <Stat value={String(cycles.length)} label={cycles.length === 1 ? "Cycle" : "Cycles"} icon={STAT_ICONS.chart} hue={NUMBERS_HUE.acwr} />
         <Stat
           // "0/0" is not a fact about training, it is the absence of one.
           value={
@@ -94,6 +95,7 @@ export function CoachHomeView({ data, today }: { data: CoachWorkspace; today: st
           }
           label="Sessions this week"
           icon={STAT_ICONS.clock}
+          hue={NUMBERS_HUE.volume}
         />
         {/*
             Figure and unit, not one string.
@@ -104,6 +106,8 @@ export function CoachHomeView({ data, today }: { data: CoachWorkspace; today: st
           value={summary.upcoming[0] ? untilParts(summary.upcoming[0].raceDate, today).value : null}
           unit={summary.upcoming[0] ? untilParts(summary.upcoming[0].raceDate, today).unit : undefined}
           label={summary.upcoming[0] ? `Next race · ${RACE_LABEL[summary.upcoming[0].raceType]}` : "No race scheduled"}
+          icon={STAT_ICONS.trophy}
+          hue={NUMBERS_HUE.riegel}
         />
       </section>
 
@@ -208,9 +212,9 @@ export function CoachHomeView({ data, today }: { data: CoachWorkspace; today: st
  * are their own cards now, so the gap does that work and the prop is kept only
  * so the call sites did not all have to change.
  */
-function Stat({ value, label, icon, unit }: { value: string | null; label: string; divided?: boolean; icon?: string; unit?: string }) {
+function Stat({ value, label, icon, unit, hue }: { value: string | null; label: string; divided?: boolean; icon?: string; unit?: string; hue?: string }) {
   // An em dash is what the callers pass when there is nothing to report; the
   // tile understands null, so hand it through rather than printing a dash the
   // tile would then colour as if it were a reading.
-  return <StatTile value={value === "\u2014" ? null : value} unit={unit} label={label} icon={icon} />;
+  return <StatTile value={value === "\u2014" ? null : value} unit={unit} label={label} icon={icon} hue={hue} />;
 }

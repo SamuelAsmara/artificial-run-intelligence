@@ -211,6 +211,7 @@ export async function generatePlanAction(
       // מסמך אפיון בדיקות §6: תאריך קרוב מדי -> הודעה מפורשת, לא קריסה
       return { error: err.message };
     }
+    console.error("[runi] generatePlan failed", { goalRaceId, athleteId }, err);
     return { error: "Building the plan failed — try again." };
   }
 
@@ -221,6 +222,7 @@ export async function generatePlanAction(
     .single();
 
   if (planError || !plan) {
+    console.error("[runi] training_plans insert failed", planError);
     return { error: "Saving the plan failed — try again." };
   }
 
@@ -243,6 +245,7 @@ export async function generatePlanAction(
 
   const { error: workoutsError } = await supabase.from("plan_workouts").insert(workoutRows);
   if (workoutsError) {
+    console.error("[runi] plan_workouts insert failed", workoutsError);
     return { error: "Saving the plan’s sessions failed — try again." };
   }
 

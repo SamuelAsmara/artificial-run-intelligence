@@ -12,7 +12,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CoachNav } from "@/components/coach/CoachNav";
 import type { CoachWorkspace } from "@/actions/coach";
-import { assignToCycle, createCycle, removeFromCycle, type CoachCycle, type TemplateOption } from "@/actions/cycles";
+import { assignToCycle, createCycle, deleteCycle, rebuildCyclePlans, removeFromCycle, updateCycle, type CoachCycle, type TemplateOption } from "@/actions/cycles";
 import type { RaceType } from "@/types/database.types";
 import { buildCycles, cyclesSummary } from "@/lib/coach/programs";
 import { colorFor } from "@/lib/coach/calendar";
@@ -139,7 +139,7 @@ export function CoachCyclesView({ data, today, cycles: managed = [], templates =
       {shownManaged.length > 0 ? (
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           {shownManaged.map((c) => (
-            <ManagedCycle key={c.id} cycle={c} today={today} color={colorFor(c.raceType, preferences.raceColors)}
+            <ManagedCycle key={c.id} cycle={c} today={today} color={colorFor(c.raceType, preferences.raceColors)} templates={templates}
               candidates={athletes.filter((a) => !c.members.some((m) => m.athleteId === a.id))} />
           ))}
         </div>
@@ -377,14 +377,54 @@ function AthleteRows({
 /* a managed cycle                                                     */
 /* ------------------------------------------------------------------ */
 
-function ManagedCycle({ cycle, today, color, candidates }: {
-  cycle: CoachCycle; today: string; color: string; candidates: CoachWorkspace["athletes"];
+function ManagedCycle({ cycle, today, color, candidates, templates }: {
+  cycle: CoachCycle; today: string; color: string; candidates: CoachWorkspace["athletes"]; templates: TemplateOption[];
 }) {
   const [open, setOpen] = useState(true);
   const [adding, setAdding] = useState("");
   const [note, setNote] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
+
+  // editing and deleting — both behind a click, deleting behind two
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(cycle.name);
+  const [raceDate, setRaceDate] = useState(cycle.raceDate);
+  const [templateId, setTemplateId] = useState<string | null>(cycle.templateId);
+  const [offerRebuild, setOfferRebuild] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const templateOption = templates.find((t) => t.raceType === cycle.raceType) ?? null;
+  const builtFromCycle = cycle.members.filter((m) => m.planFromCycle).length;
+
+  const saveEdit = () => {
+    setNote(null);
+    const structural = raceDate !== cycle.raceDate || templateId !== cycle.templateId;
+    startTransition(async () => {
+      const r = await updateCycle(cycle.id, { name, raceDate, templateId });
+      if (!r.ok) return setNote(r.error);
+      setEditing(false);
+      setOfferRebuild(structural && builtFromCycle > 0);
+      router.refresh();
+    });
+  };
+  const rebuild = () => {
+    setNote(null);
+    startTransition(async () => {
+      const r = await rebuildCyclePlans(cycle.id);
+      if (!r.ok) return setNote(r.error);
+      setOfferRebuild(false);
+      setNote(`${r.data.rebuilt} plan${r.data.rebuilt === 1 ? "" : "s"} rebuilt from this week${r.data.skipped ? ` · ${r.data.skipped} left as they were (not built from this cycle)` : ""}${r.data.notes.length ? ` · ${r.data.notes.join(" ")}` : ""}`);
+      router.refresh();
+    });
+  };
+  const remove_ = () => {
+    setNote(null);
+    startTransition(async () => {
+      const r = await deleteCycle(cycle.id);
+      if (!r.ok) return setNote(r.error);
+      router.refresh();
+    });
+  };
 
   const add = () => {
     if (!adding) return;
@@ -423,6 +463,33 @@ function ManagedCycle({ cycle, today, color, candidates }: {
       </button>
       {open ? (
         <div style={{ borderBlockStart: "1px solid var(--color-line)", padding: "12px 18px 16px", display: "flex", flexDirection: "column", gap: "10px" }}>
+          {editing ? (
+            <div className="cy-form" style={{ paddingBlockEnd: "12px", borderBlockEnd: "1px solid var(--color-line)" }}>
+              <label className="cy-field cy-field-wide"><span>Name</span><input value={name} onChange={(e) => setName(e.target.value)} className="cy-input" /></label>
+              <label className="cy-field"><span>Race day</span><input type="date" value={raceDate} onChange={(e) => setRaceDate(e.target.value)} className="cy-input" /></label>
+              <label className="cy-field"><span>Template</span>
+                <select value={templateId ?? ""} onChange={(e) => setTemplateId(e.target.value || null)} className="cy-select">
+                  <option value="">Runi’s built-in structure</option>
+                  {templateOption?.id ? <option value={templateOption.id}>{templateOption.name} · {templateOption.weeks} wk</option> : null}
+                  {cycle.templateId && cycle.templateId !== templateOption?.id ? <option value={cycle.templateId}>{cycle.templateName ?? "current template"}</option> : null}
+                </select>
+              </label>
+              <div style={{ gridColumn: "1 / -1", display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+                <button className="btn btn-primary" type="button" onClick={saveEdit} disabled={pending} style={{ fontSize: "12px" }}>{pending ? "Saving…" : "Save"}</button>
+                <button className="btn btn-secondary" type="button" onClick={() => { setEditing(false); setName(cycle.name); setRaceDate(cycle.raceDate); setTemplateId(cycle.templateId); }} disabled={pending} style={{ fontSize: "12px" }}>Cancel</button>
+                <span className="num" style={{ fontSize: "10.5px", color: "var(--color-faint)" }}>Changing the race day or the template does not touch anyone’s plan until you say so.</span>
+              </div>
+            </div>
+          ) : null}
+          {offerRebuild ? (
+            <div className="card" style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", borderColor: "var(--color-accent-soft)", background: "var(--color-accent-soft)" }}>
+              <span style={{ fontSize: "12px", flex: 1, minWidth: "200px" }}>
+                Rebuild the {builtFromCycle} plan{builtFromCycle === 1 ? "" : "s"} built from this cycle, from this week, with the new race day and template? Sessions already run stay in their history.
+              </span>
+              <button className="btn btn-primary" type="button" onClick={rebuild} disabled={pending} style={{ fontSize: "12px" }}>{pending ? "Rebuilding…" : "Rebuild plans"}</button>
+              <button className="btn btn-secondary" type="button" onClick={() => setOfferRebuild(false)} disabled={pending} style={{ fontSize: "12px" }}>Leave them</button>
+            </div>
+          ) : null}
           {cycle.members.length === 0 ? (
             <p style={{ margin: 0, fontSize: "12px", color: "var(--color-muted)" }}>Nobody in this cycle yet. Add the first athlete below — their plan is built from the template the moment they join.</p>
           ) : (
@@ -440,7 +507,14 @@ function ManagedCycle({ cycle, today, color, candidates }: {
                       week {m.week} of {m.weeks}
                     </span>
                   ) : (
-                    <span className="num" style={{ fontSize: "10.5px", color: "var(--color-caution)" }}>no plan yet</span>
+                    <span className="cy-week" style={{ flexWrap: "wrap" }}>
+                      <span className="num" style={{ fontSize: "10.5px", color: "var(--color-caution)" }}>no plan yet</span>
+                      {/* re-running the assignment builds the plan for a member who has none — after they left one, or after a failed first attempt */}
+                      <button type="button" className="btn btn-secondary" style={{ fontSize: "11px", padding: "3px 9px" }} disabled={pending}
+                        onClick={() => { setNote(null); startTransition(async () => { const r = await assignToCycle(cycle.id, m.athleteId); if (r.ok) { setNote(r.data.note ?? "Plan built."); router.refresh(); } else setNote(r.error); }); }}>
+                        Build plan
+                      </button>
+                    </span>
                   )}
                   <button type="button" className="cy-remove" onClick={() => remove(m.athleteId)} disabled={pending} aria-label={`Remove ${m.name} from ${cycle.name}`} title="Remove from cycle">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M6 6l12 12M18 6L6 18" /></svg>
@@ -456,7 +530,25 @@ function ManagedCycle({ cycle, today, color, candidates }: {
             </select>
             <button className="btn btn-secondary" type="button" onClick={add} disabled={!adding || pending} style={{ fontSize: "12px" }}>{pending ? "Adding…" : "Add"}</button>
             {note ? <span className="num" style={{ fontSize: "11px", color: "var(--color-muted)" }}>{note}</span> : null}
+            <span style={{ flex: 1 }} />
+            {!editing ? <button type="button" className="cy-link" onClick={() => setEditing(true)}>Edit</button> : null}
+            {!confirmDelete ? <button type="button" className="cy-link cy-link-danger" onClick={() => setConfirmDelete(true)}>Delete cycle…</button> : null}
           </div>
+          {confirmDelete ? (
+            <div className="card" style={{ padding: "12px 14px", borderColor: "var(--color-negative)" }}>
+              <p style={{ margin: 0, fontSize: "12.5px", lineHeight: 1.6 }}>
+                Delete <strong>{cycle.name}</strong>?{daysAway >= 0 ? ` Race day is still ${daysAway} day${daysAway === 1 ? "" : "s"} away.` : ""}
+                {builtFromCycle > 0
+                  ? ` ${builtFromCycle} athlete${builtFromCycle === 1 ? "" : "s"} will lose the plan built from it — their runs and history stay, and they can start another plan right away.`
+                  : " Nobody’s plan is affected."}
+                {cycle.members.length - builtFromCycle > 0 ? ` ${cycle.members.length - builtFromCycle} with a plan of their own keep it.` : ""}
+              </p>
+              <div style={{ display: "flex", gap: "8px", marginBlockStart: "10px", flexWrap: "wrap" }}>
+                <button className="btn btn-secondary" type="button" onClick={remove_} disabled={pending} style={{ fontSize: "12px", color: "var(--color-negative)" }}>{pending ? "Deleting…" : "Yes, delete the cycle"}</button>
+                <button className="btn btn-primary" type="button" onClick={() => setConfirmDelete(false)} disabled={pending} style={{ fontSize: "12px" }}>Keep it</button>
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </section>

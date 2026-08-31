@@ -16,6 +16,7 @@ import { formatDuration, formatPace } from "@/lib/format/pace";
 import { RACE_LABEL } from "@/lib/coach/templates";
 import { Avatar } from "@/components/ui/Avatar";
 import { Entrance, StatTile, STAT_ICONS, StatusChip } from "@/components/ui";
+import { ICON as NB_ICON, NUMBERS_HUE } from "@/lib/screens/numbers";
 
 /** why a past day does not open */
 const PAST_HINT = "This session has already happened. Past weeks are a record, not a plan.";
@@ -191,16 +192,19 @@ export function CoachAthleteView({ detail, today }: { detail: AthleteDetail; tod
     label: string,
     parts: { value: string | null; unit: string },
     icon?: string,
+    hue?: string,
   ) => (
-    <StatTile key={label} value={parts.value} unit={parts.unit} label={label} icon={icon} />
+    <StatTile key={label} value={parts.value} unit={parts.unit} label={label} icon={icon} hue={hue} />
   );
 
-  const metric = (label: string, value: string, color: string, icon?: string) => (
+  // The same icon and hue each figure wears on the athlete's own Numbers board.
+  const metric = (label: string, value: string, color: string, icon?: string, hue?: string) => (
     <StatTile
       key={label}
       value={value === "\u2014" ? null : value}
       label={label}
       icon={icon}
+      hue={hue}
       tone={
         color === "var(--color-negative)" ? "bad"
           : color === "var(--color-caution)" ? "warning"
@@ -490,10 +494,10 @@ export function CoachAthleteView({ detail, today }: { detail: AthleteDetail; tod
       </div>
 
       <section className="stat-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px,1fr))", gap: "12px" }}>
-        {metric(COACH_COPY.hReadiness, athlete.readiness === null ? "—" : String(athlete.readiness), readinessColor(athlete.readiness), STAT_ICONS.gauge)}
-        {metric(COACH_COPY.hForm, athlete.form === null ? "—" : athlete.form.toFixed(0), formColor(athlete.form), STAT_ICONS.chart)}
-        {metric(COACH_COPY.hLoad, athlete.loadRatio === null ? "—" : athlete.loadRatio.toFixed(2), loadColor(athlete.loadRatio), STAT_ICONS.warning)}
-        {metricUnit(COACH_COPY.hLastRun, sinceParts(athlete.lastRunAt, today), STAT_ICONS.clock)}
+        {metric(COACH_COPY.hReadiness, athlete.readiness === null ? "—" : String(athlete.readiness), readinessColor(athlete.readiness), NB_ICON.ready, readinessColor(athlete.readiness))}
+        {metric(COACH_COPY.hForm, athlete.form === null ? "—" : athlete.form.toFixed(0), formColor(athlete.form), NB_ICON.form, NUMBERS_HUE.tsb)}
+        {metric(COACH_COPY.hLoad, athlete.loadRatio === null ? "—" : athlete.loadRatio.toFixed(2), loadColor(athlete.loadRatio), NB_ICON.ratio, NUMBERS_HUE.acwr)}
+        {metricUnit(COACH_COPY.hLastRun, sinceParts(athlete.lastRunAt, today), NB_ICON.pace, NUMBERS_HUE.pace)}
       </section>
 
       {flags.length > 0 && (

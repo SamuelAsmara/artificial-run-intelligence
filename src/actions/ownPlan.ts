@@ -97,6 +97,7 @@ export async function previewRuniPlan(input: RuniPlanInput): Promise<ActionResul
   try {
     generated = generatePlan(input.raceType, new Date(input.raceDate), zonedNow(), capacity);
   } catch (err) {
+    if (!(err instanceof RaceTooSoonError)) console.error("[runi] previewRuniPlan failed", err);
     return { error: err instanceof RaceTooSoonError ? err.message : "Could not lay the plan out for that date." };
   }
 
@@ -205,7 +206,10 @@ export async function createOwnPlan(input: OwnPlanInput): Promise<ActionResult<{
     origin: "athlete" as const,
     phase: null,
   })));
-  if (rowsError) return { error: "Saving the plan’s sessions failed — try again." };
+  if (rowsError) {
+    console.error("[runi] own plan rows insert failed", rowsError);
+    return { error: "Saving the plan’s sessions failed — try again." };
+  }
 
   revalidatePath("/plan");
   revalidatePath("/dashboard");

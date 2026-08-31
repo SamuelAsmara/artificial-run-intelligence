@@ -100,8 +100,23 @@ export async function joinCoach(code: string): Promise<Result<{ coachName: strin
   }
 
   const row = Array.isArray(data) ? data[0] : null;
+
+  /*
+   * One coach at a time. `join_coach` upserts on (coach, athlete), so redeeming
+   * a second coach's code used to leave the athlete on two rosters — two
+   * coaches editing one plan, and every "my coach" read picking whichever row
+   * came first. The new link wins; the old one goes.
+   */
+  if (row?.coach_id) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from("coach_athletes").delete().eq("athlete_id", user.id).neq("coach_id", row.coach_id);
+    }
+  }
+
   revalidatePath("/settings");
   revalidatePath("/dashboard");
+  revalidatePath("/plan");
   return { ok: true, data: { coachName: row?.coach_name ?? "your coach" } };
 }
 
@@ -281,7 +296,7 @@ export async function getCoachTemplates(): Promise<CoachTemplate[]> {
 }
 
 /** Saves a coach's template for one distance. Affects future plans only. */
-export async function saveCoachTemplate(t: CoachTemplate): Promise<Result<null>> {
+export async function saveCoachTemplate(t: CoachTemplate): Promise<Result<{ id: string | null }>> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "You need to be signed in." };
@@ -329,14 +344,14 @@ export async function saveCoachTemplate(t: CoachTemplate): Promise<Result<null>>
     .eq("race_type", t.raceType)
     .maybeSingle();
 
-  const { error } = existing
-    ? await supabase.from("plan_templates").update(fields).eq("id", existing.id)
-    : await supabase.from("plan_templates").insert(fields);
+  const { data: saved, error } = existing
+    ? await supabase.from("plan_templates").update(fields).eq("id", existing.id).select("id").single()
+    : await supabase.from("plan_templates").insert(fields).select("id").single();
 
   if (error) return { ok: false, error: `Could not save: ${error.message}` };
 
   revalidatePath("/coach");
-  return { ok: true, data: null };
+  return { ok: true, data: { id: saved?.id ?? existing?.id ?? null } };
 }
 
 /* ------------------------------------------------------------------ */

@@ -13,6 +13,7 @@ import { useMemo, useState, useTransition } from "react";
 import { Entrance } from "@/components/ui";
 import { CoachNav } from "@/components/coach/CoachNav";
 import { saveCoachTemplate } from "@/actions/coach";
+import { cyclesUsingTemplate, rebuildCyclePlans } from "@/actions/cycles";
 import {
   MAX_WEEKS, MIN_WEEKS, PHASES, RACE_LABEL, SESSIONS,
   defaultTemplate, runningDays, validateTemplate, type CoachTemplate,
@@ -49,6 +50,20 @@ export function CoachTemplatesView({
   const [drafts, setDrafts] = useState<CoachTemplate[]>(templates);
   const [note, setNote] = useState<Record<string, string>>({});
   const [pending, startTransition] = useTransition();
+  /*
+   * A saved template reaches the next plan to be built — and, if the coach
+   * wants, the plans already running in the cycles built from it. After a
+   * save the cycles using this template are listed with one button each;
+   * nothing is rebuilt without that click.
+   */
+  const [usage, setUsage] = useState<Record<string, { id: string; name: string; members: number }[]>>({});
+  const rebuild = (raceType: string, cycleId: string) => {
+    startTransition(async () => {
+      const r = await rebuildCyclePlans(cycleId);
+      setNote((n) => ({ ...n, [raceType]: r.ok ? `${r.data.rebuilt} plan${r.data.rebuilt === 1 ? "" : "s"} rebuilt from this week.${r.data.notes.length ? " " + r.data.notes.join(" ") : ""}` : r.error }));
+      setUsage((u) => ({ ...u, [raceType]: (u[raceType] ?? []).filter((c) => c.id !== cycleId) }));
+    });
+  };
 
   const patch = (raceType: string, next: Partial<CoachTemplate>) => {
     setDrafts((ds) => ds.map((d) => (d.raceType === raceType ? { ...d, ...next } : d)));
@@ -71,6 +86,8 @@ export function CoachTemplatesView({
       setNote((n) => ({ ...n, [t.raceType]: result.ok ? COACH_COPY.templateSaved : result.error }));
       if (result.ok) {
         setDrafts((ds) => ds.map((d) => (d.raceType === t.raceType ? { ...d, isDefault: false } : d)));
+        const cycles = result.data.id ? await cyclesUsingTemplate(result.data.id) : [];
+        setUsage((u) => ({ ...u, [t.raceType]: cycles.filter((c) => c.members > 0) }));
       }
     });
   };
@@ -261,6 +278,17 @@ export function CoachTemplatesView({
                 {error ?? message ?? ""}
               </span>
             </div>
+            {(usage[t.raceType] ?? []).length > 0 ? (
+              <div className="card" style={{ marginBlockStart: "12px", padding: "10px 14px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", borderColor: "var(--color-accent-soft)", background: "var(--color-accent-soft)" }}>
+                <span style={{ fontSize: "12px" }}>Cycles built from this template — rebuild their plans from this week?</span>
+                {(usage[t.raceType] ?? []).map((c) => (
+                  <button key={c.id} className="btn btn-secondary" type="button" onClick={() => rebuild(t.raceType, c.id)} disabled={pending} style={{ fontSize: "12px" }}>
+                    {c.name} · {c.members}
+                  </button>
+                ))}
+                <button className="btn btn-secondary" type="button" onClick={() => setUsage((u) => ({ ...u, [t.raceType]: [] }))} disabled={pending} style={{ fontSize: "12px" }}>Leave them</button>
+              </div>
+            ) : null}
             </div>
             ) : null}
           </section>

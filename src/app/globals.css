@@ -834,6 +834,9 @@
 .cy-remove:focus-visible, .cy-select:focus-visible, .cy-input:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
 .cy-select, .cy-input { height: 34px; padding: 0 10px; border-radius: var(--radius-control); border: 1px solid var(--color-line-strong); background: var(--color-elevated); color: var(--color-ink); font: inherit; font-size: 12.5px; min-width: 0; }
 .cy-input { font-family: var(--font-mono); }
+.cy-link { font: inherit; font-size: 11.5px; color: var(--color-muted); background: none; border: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; padding: 4px 2px; }
+.cy-link:hover { color: var(--color-ink); }
+.cy-link-danger:hover { color: var(--color-negative); }
 .cy-form { display: grid; grid-template-columns: 150px 170px minmax(0, 1fr) 220px; gap: 12px; align-items: end; }
 .cy-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .cy-field > span:first-child { font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--color-faint); }
@@ -841,7 +844,7 @@
   .cy-form { grid-template-columns: 1fr 1fr; }
   .cy-field-wide { grid-column: 1 / -1; }
   .cy-member { grid-template-columns: minmax(0, 1fr) 28px; }
-  .cy-week { grid-column: 1; }
+  .cy-week { grid-column: 1; white-space: normal; }
 }
 
 /* ==================================================================== */
@@ -871,6 +874,23 @@
 
 .cs-two { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 12px; align-items: start; }
 @media (max-width: 800px) { .cs-two { grid-template-columns: 1fr; } }
+
+/* ==================================================================== */
+/* Coach ⇄ athlete mode bar                                              */
+/* ==================================================================== */
+
+/* sticky glass strip: the switch is always one glance away, and the page
+   shows through it the way it shows through the cards */
+.modebar { position: sticky; top: 0; z-index: 30; border-block-end: 1px solid var(--color-line); background: color-mix(in oklab, var(--color-canvas) 72%, transparent); }
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .modebar { -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2); }
+}
+.modebar-inner { max-width: 1280px; margin-inline: auto; padding: 7px 24px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.modebar-seg { padding: 3px; }
+.modebar-half { display: inline-flex; align-items: center; gap: 7px; padding: 5px 13px; font-family: inherit; font-size: 12px; font-weight: 500; letter-spacing: 0; text-decoration: none; transition: background .15s, color .15s; }
+.modebar .modebar-half.is-on { color: var(--color-accent); box-shadow: inset 0 0 0 1px var(--color-accent); background: var(--color-accent-soft); }
+.modebar-note { font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; }
+@media (max-width: 560px) { .modebar-note { display: none; } }
 
 /* ==================================================================== */
 /* Ask Runi — the floating launcher                                      */

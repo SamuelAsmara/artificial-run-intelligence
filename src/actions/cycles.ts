@@ -131,13 +131,124 @@ export async function createCycle(input: { name: string; raceType: RaceType; rac
 }
 
 export async function renameCycle(id: string, name: string): Promise<Result<null>> {
+  return updateCycle(id, { name });
+}
+
+/**
+ * Edit a cycle that is running. Name, race day, template and notes; the
+ * distance is fixed because every member's goal race carries it. Changing
+ * the race day or the template does not touch anyone's plan by itself —
+ * `rebuildCyclePlans` does that, and the screen offers it right after.
+ */
+export async function updateCycle(id: string, patch: { name?: string; raceDate?: string; templateId?: string | null; notes?: string | null }): Promise<Result<null>> {
   const supabase = await createClient();
-  const trimmed = name.trim();
-  if (!trimmed) return { ok: false, error: "A cycle needs a name." };
-  const { error } = await supabase.from("coach_cycles").update({ name: trimmed }).eq("id", id);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "You need to be signed in." };
+  const fields: { name?: string; race_date?: string; template_id?: string | null; notes?: string | null } = {};
+  if (patch.name !== undefined) {
+    const trimmed = patch.name.trim();
+    if (!trimmed) return { ok: false, error: "A cycle needs a name." };
+    fields.name = trimmed;
+  }
+  if (patch.raceDate !== undefined) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(patch.raceDate)) return { ok: false, error: "Pick a race day." };
+    fields.race_date = patch.raceDate;
+  }
+  if (patch.templateId !== undefined) fields.template_id = patch.templateId;
+  if (patch.notes !== undefined) fields.notes = patch.notes?.trim() || null;
+  if (Object.keys(fields).length === 0) return { ok: true, data: null };
+
+  const { data, error } = await supabase.from("coach_cycles").update(fields).eq("id", id).eq("coach_id", user.id).select("id");
   if (error) return { ok: false, error: error.message };
+  if (!data || data.length === 0) return { ok: false, error: "That cycle is not yours." };
+
+  // members' goal races follow the cycle's race day
+  if (fields.race_date) {
+    const { data: links } = await supabase.from("coach_athletes").select("athlete_id").eq("coach_id", user.id).eq("cycle_id", id).eq("status", "active");
+    const ids = (links ?? []).map((l) => l.athlete_id);
+    if (ids.length) await supabase.from("goal_races").update({ race_date: fields.race_date }).in("user_id", ids).eq("status", "active");
+  }
   revalidatePath("/coach/cycles");
   return { ok: true, data: null };
+}
+
+/**
+ * Rebuild the plans of a cycle's members from this week, from the cycle's
+ * current template and race day.
+ *
+ * Only plans that were built for this cycle are replaced; a plan an athlete
+ * brought with them is left alone. The old plan is closed, not deleted — the
+ * sessions already run against it are history — and the new one starts on
+ * the current week, so nobody is sent back to week one.
+ */
+export async function rebuildCyclePlans(cycleId: string): Promise<Result<{ rebuilt: number; skipped: number; notes: string[] }>> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "You need to be signed in." };
+  const { data: cycle } = await supabase.from("coach_cycles").select("id, race_type, race_date").eq("id", cycleId).eq("coach_id", user.id).maybeSingle();
+  if (!cycle) return { ok: false, error: "That cycle is not yours." };
+
+  const { data: links } = await supabase.from("coach_athletes").select("athlete_id").eq("coach_id", user.id).eq("cycle_id", cycleId).eq("status", "active");
+  let rebuilt = 0, skipped = 0;
+  const notes: string[] = [];
+  for (const { athlete_id: athleteId } of links ?? []) {
+    const { data: active } = await supabase.from("training_plans").select("id, cycle_id").eq("user_id", athleteId).eq("status", "active").limit(1).maybeSingle();
+    if (active && active.cycle_id !== cycleId) { skipped += 1; continue; }
+    if (active) await supabase.from("training_plans").update({ status: "abandoned" }).eq("id", active.id);
+
+    let raceId: string | null = null;
+    const { data: race } = await supabase.from("goal_races").select("id, race_type, race_date").eq("user_id", athleteId).eq("status", "active").order("race_date", { ascending: true }).limit(1).maybeSingle();
+    if (race && race.race_type === cycle.race_type) {
+      raceId = race.id;
+      if (race.race_date !== cycle.race_date) await supabase.from("goal_races").update({ race_date: cycle.race_date }).eq("id", race.id);
+    } else {
+      if (race) await supabase.from("goal_races").update({ status: "cancelled" }).eq("id", race.id);
+      const { data: created } = await supabase.from("goal_races").insert({ user_id: athleteId, race_type: cycle.race_type as RaceType, race_date: cycle.race_date }).select("id").single();
+      raceId = created?.id ?? null;
+    }
+    if (!raceId) { notes.push("A goal race could not be written for one athlete."); continue; }
+    const r = await generatePlanAction(raceId, { cycleId, forUserId: athleteId, fallbackCapacity: { currentWeeklyM: 20_000, longestRecentM: 8_000 } });
+    if (r.error) notes.push(r.error); else rebuilt += 1;
+  }
+  revalidatePath("/coach/cycles");
+  revalidatePath("/coach");
+  return { ok: true, data: { rebuilt, skipped, notes: [...new Set(notes)] } };
+}
+
+/**
+ * Delete a cycle.
+ *
+ * The cycle row goes; the members' links to it are cleared by the foreign
+ * key. The plans that were built for the cycle are closed — an athlete whose
+ * cycle no longer exists should not keep following it — but closed, not
+ * deleted: the sessions they ran are theirs. Plans they brought with them
+ * are not touched. The screen asks twice before calling this.
+ */
+export async function deleteCycle(cycleId: string): Promise<Result<{ plansClosed: number }>> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "You need to be signed in." };
+  const { data: cycle } = await supabase.from("coach_cycles").select("id").eq("id", cycleId).eq("coach_id", user.id).maybeSingle();
+  if (!cycle) return { ok: false, error: "That cycle is not yours." };
+
+  const { data: closed } = await supabase.from("training_plans").update({ status: "abandoned" }).eq("cycle_id", cycleId).eq("status", "active").select("id");
+  await supabase.from("coach_athletes").update({ cycle_id: null }).eq("coach_id", user.id).eq("cycle_id", cycleId);
+  const { error } = await supabase.from("coach_cycles").delete().eq("id", cycleId).eq("coach_id", user.id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/coach/cycles");
+  revalidatePath("/coach");
+  return { ok: true, data: { plansClosed: closed?.length ?? 0 } };
+}
+
+/** The cycles built from one template, for the "rebuild their plans?" prompt after a template is saved. */
+export async function cyclesUsingTemplate(templateId: string): Promise<{ id: string; name: string; members: number }[]> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data: cycles } = await supabase.from("coach_cycles").select("id, name").eq("coach_id", user.id).eq("template_id", templateId);
+  if (!cycles?.length) return [];
+  const { data: links } = await supabase.from("coach_athletes").select("cycle_id").eq("coach_id", user.id).eq("status", "active").in("cycle_id", cycles.map((c) => c.id));
+  return cycles.map((c) => ({ id: c.id, name: c.name, members: (links ?? []).filter((l) => l.cycle_id === c.id).length }));
 }
 
 /**

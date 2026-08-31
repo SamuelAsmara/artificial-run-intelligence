@@ -106,7 +106,7 @@ function CoachPath({ info }: { info: PlanStartInfo }) {
         <h3 style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>You are coached by {info.coach.name}</h3>
         <p style={{ margin: "8px 0 0", fontSize: "12.5px", color: "var(--color-muted)", lineHeight: 1.65, maxWidth: "60ch" }}>
           {info.coach.cycleName
-            ? <>You are in <strong style={{ color: "var(--color-ink)", fontWeight: 600 }}>{info.coach.cycleName}</strong>. Your plan appears here the moment your coach starts it for you.</>
+            ? <>You are in <strong style={{ color: "var(--color-ink)", fontWeight: 600 }}>{info.coach.cycleName}</strong>. Your plan appears here the moment your coach builds it — if it has not, ask them to press “Build plan” next to your name. You can also start one of your own below meanwhile.</>
             : <>Your coach has not put you in a cycle yet. When they do, the plan appears here — built from their template, starting on your week one. Until then you can still build your own below.</>}
         </p>
       </section>

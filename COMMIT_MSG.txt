@@ -15,9 +15,14 @@ prediction against the target. Personal bests link to the run that set
 them.
 
 Coach — cycles are real: named, built from a template, athletes added or
-removed, each shown on their own week. Cycles filter by distance.
+removed, each shown on their own week; edit a running cycle, rebuild its
+plans from this week, or delete it behind a double-check (members' plans
+from it close; their runs stay). Saving a template offers to rebuild the
+cycles built from it. Cycles filter by distance.
 
-Settings (athlete and coach) behind one row of tabs. Ask Runi floats on
+Coach screens on the same standard: a sticky glass coach/athlete switch,
+hued icon chips on every stat tile (coach home, plan, activities, the
+athlete page). Settings (athlete and coach) behind one row of tabs. Ask Runi floats on
 every athlete page. One-field intervals.icu connect. "Connect your watch"
 everywhere instead of one provider's name; action errors in English.
 
@@ -25,5 +30,8 @@ Migration 0020: drops the plan_templates uniqueness that broke coaches'
 saves, lets a plan exist without a race, adds coach_cycles and the coach's
 write access to their athletes' plans. Already applied to production.
 
+Hardening: styled error and 404 pages instead of a white screen; one
+coach at a time (a second code replaces the first); "Build plan" for a
+cycle member without one; swallowed failures now logged server-side.
 Fixes: dashboard greeting reads the saved name; zero streak hidden;
 Form tile tone follows the readiness bands. 831 tests pass.
