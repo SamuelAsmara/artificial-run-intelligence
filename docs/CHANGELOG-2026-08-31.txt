@@ -1,0 +1,319 @@
+feat: the landing page — Runi has a front door.
+
+Ported 1:1 from the Claude Design handoff (handoff_landing/): a signed-out
+visitor at / now gets the landing page instead of a bounce to /login.
+Full-viewport hero over the long-exposure trail photograph (optimised
+from 1.9MB PNG to a 91KB progressive JPEG), blue colour grade and film
+grain as designed, the R-Trace mark and RUNI wordmark in Sora, then the
+four analysis columns, "How it works", "For coaches", and the final CTA.
+Signed-in users route exactly as before — athlete to /dashboard, coach
+to /coach.
+
+The DC prototype harness (support.js, image-slot.js) was not ported; the
+template loops are plain arrays in the component. Grain and the hero's
+entrance are CSS only, guarded by prefers-reduced-motion. Two link
+decisions where the mock pointed at static artboards: "Pricing" became
+"The numbers" -> /methodology (a page that exists), and the demo/coach
+CTAs point at /login.
+
+New dependency: @fontsource/sora (600/700/800), loaded once in layout
+beside the existing Plex families.
+
+809 tests pass.
+
+---
+
+Accessibility pass (WCAG 2.1 AA, axe-core on all nine screens).
+
+Found and fixed: days from an adjacent month in the plan calendar were
+dimmed to 35% opacity, putting their text at 1.7:1 contrast — they now
+dim to 55% (passing) and drop the km figure, which belongs to their own
+month's page anyway. The coach reminders' date and note inputs had no
+accessible name; labelled. The intervals.icu settings link relied on
+colour alone; underlined. The rail calendar's month buttons were 22px
+tall; now 26px (WCAG 2.5.8 minimum is 24).
+
+Also: a small "‹ Back" pill on the sign-in page, back to the landing
+page.
+
+Verified across dashboard, plan, coach home, cycles, templates, coach
+settings, roster, Ask Runi and the landing page: zero axe violations,
+reduced-motion leaves every screen fully readable with no animation,
+keyboard focus is visible everywhere (:focus-visible outline).
+
+809 tests pass.
+
+---
+
+docs: final pass before submission.
+
+Every page header still read "— Artificial Run Intelligence"; all six
+now read "— Runi". Document 5's internal title said "אבטחה בסיסית" and
+document 6's said "סקייל בסיסי" while their filenames (and page headers)
+said אבטחת מידע / סקייל וביצועים — the titles now match. Document 1's
+appendix still pointed at ari-coach.vercel.app; now runi-coach. The
+"updated" line on all six moved to 30 August. Verified across all six:
+every Hebrew paragraph is right-aligned RTL (the only LTR paragraphs are
+code blocks and the folder tree, where LTR is correct), tables render
+right-to-left, and the stated figures — 809 tests, 54 files, 20
+migrations, 39 server actions — are still accurate.
+
+---
+
+Landing page, second pass: the numbers, the connections, the two seats.
+
+"The numbers" in the nav pointed at /methodology, which does not exist —
+a visitor got a 404. It now scrolls to a numbers strip under the hero:
+6 coaching teams, 70 coached runners, 100 independent athletes, 34 races
+in preparation, with a footnote saying plainly that this is the seeded
+demo population, not live users.
+
+New: a connectivity diagram. Six sources — Garmin, Suunto, Strava, Apple
+Health, Runkeeper and intervals.icu — fan straight into Runi, and what
+comes out is drawn rather than listed: three miniatures of real product
+surfaces, a readiness card, the fitness/form chart and a week of the
+plan, under one word each — Insight, Process, Plan. The source tiles are
+the ones from the settings screen (same marks, same colours); an accent
+dash travels along each wire, static under reduced-motion. The diagram
+shows where the product is going (every source a source); the settings
+screen keeps telling the athlete how each one connects today.
+
+The four analysis capabilities each got a small graphic drawn in the
+product's own chart language — a heart-rate trace, rising pace bars, two
+runs overlaid, a readiness gauge — that draw themselves in on scroll.
+
+The athlete section is now four points in the order a runner lives them:
+connect your training to the engine, understand your own numbers, you
+measured against you (the mirror — no leaderboards), break a record. The
+coach section opens with the stance — we don't replace you; we make you
+the coach who talks in numbers — and mirrors the athlete's points at the
+coach's level: every athlete at every resolution, plan against execution,
+peak moments. "Send a QR" is gone; there is no QR in the product.
+
+No "AI", no "brain" anywhere on the page. It is an engine, and every
+figure is computed.
+
+Fixed: the photo lightbox opened inside its card instead of over the page
+— backdrop-filter makes a glass card the containing block for anything
+position:fixed inside it. The lightbox now portals to <body>.
+
+Scroll reveals follow the design engine's numbers (viewport enter, ~550ms,
+24px rise, 80ms stagger); zero axe violations; 809 tests pass.
+
+Also: Open Graph and Twitter card metadata in the root layout, with a
+1200x630 share image cut from the hero. A link to runi-coach.vercel.app
+pasted into WhatsApp, LinkedIn or iMessage now unfurls into the photo,
+the wordmark and one sentence instead of a bare URL.
+
+---
+
+intervals.icu: connect with one field.
+
+The athlete used to hunt for two values on the intervals.icu settings page
+— the athlete id and the API key — and paste both. intervals.icu accepts
+`0` as "the athlete this key belongs to", so the key alone identifies the
+account. The form is now one field: the settings page opens in a small
+window beside Runi instead of a tab that hides it, three steps say what to
+do there, the athlete pastes the key, and the server asks intervals.icu
+whose it is. The reply greets them by name with what was found —
+"Connected as Sami Asmara · 130 runs and 90 nights found". A pasted blob
+that also contains the id is split apart quietly; an id passed explicitly
+is still accepted and verified.
+
+Checked against the real intervals.icu settings page: Developer Settings
+has no anchor to deep-link to, and the key sits behind "(view)" next to a
+pencil that regenerates it. So the steps name the right control, and the
+form shows a small sketch of the block to look for. The settings window
+opens at 980px so their two-column layout holds and the section stays
+where the steps say it is. 809 tests pass.
+
+---
+
+Your numbers: a board, not a page of formulas — and a tab of its own.
+
+/settings/methodology was every formula in Runi as prose and equations,
+correct and unread. It is now /numbers, a top-level tab beside Home, Plan
+and Activities: thirteen tiles, each carrying the athlete's own current
+value and a status band, laid out as the pipeline they actually form —
+what comes in (heart rate, pace, weekly volume, recovery) → load →
+fitness & fatigue → form & load ratio → readiness, with the per-run
+figures (GAP, cardiac drift, Riegel) in a row beneath. Wires between the
+lanes meet the tiles' centres; readiness is lit.
+
+Click a tile and one panel under the board explains it in four short
+blocks: the letters, your numbers (the arithmetic with the athlete's own
+values substituted — "47 − 39 = +8"), the formula in one line, and why
+that formula, with the source in a word. Readiness is open on arrival.
+The selected tile lives in the URL hash (/numbers#tsb) so a coach can
+link an athlete to one figure. On phones the lanes stack and the panel
+opens under the tapped tile.
+
+The values come from the same pipeline the readiness job runs
+(buildSnapshots for thresholds, sessionLoad for the last run's load), so
+a number here is the number the dashboard would show. Bands mirror the
+product's own: form zones from readinessSubscores, zones from LTHR, the
+1.5 load-ratio threshold the safety checker acts on. The race prediction
+is Riegel from the longest personal best on file — the product's first
+real prediction; the dashboard rail used to say "No prediction yet".
+
+Every athlete screen's top nav gained Numbers; the settings cards point
+there; the old address redirects.
+
+Each panel opens with the figure's scale drawn as a bar: the bands the
+product uses, tinted by what they mean (rest / go easy / ready; loaded /
+neutral / fresh / detraining; the six heart-rate zones as % of LTHR; the
+7–9% volume ramp and the step-back week), with the athlete's value
+standing on it. Two of the bars carry two markers, because the point is
+the relation: fitness and fatigue on one axis (the gap is form), and the
+Riegel prediction against the target finish time. Every band edge is the
+same threshold the code acts on, so the picture and the behaviour agree.
+819 tests pass (10 new).
+
+Numbers: history charts, typeset formulas, and a panel that reads top-down
+
+The panel under the board now opens with the title and, right under it,
+what the letters mean — the one line to read before anything else. The
+prose sits on the left (band bar, your numbers, formula, why) and the
+metric's own history sits on the right: a single line (bars for weekly
+kilometres) with W / M / 3M presets for snapshot metrics (the pipeline keeps
+90 days) and a Y preset for anything read off a run or a night. Pace is
+drawn the other way up so faster is up; where the tile's band bar shares
+the chart's unit, its bands are painted faintly behind the line. GAP and
+the race prediction have no history by design. Hover gives a crosshair
+and the exact value; on a phone the chart comes first.
+
+Formulas are set as equations (the methodology page's typesetting, reused;
+the four input tiles got theirs). The readiness equation now describes
+what lib/planning/readiness.ts actually does — weighted subscores with
+missing inputs redistributed — instead of the z-score story the old page
+told.
+
+Dashboard: the greeting reads the name saved in Settings (profiles.full_name)
+first; the sign-up username was winning before, so renaming yourself changed
+nothing up there.
+
+824 tests pass (5 new).
+
+Numbers: a hue per figure, and a panel you can close
+
+Each figure now has its own colour — on the icon, its small label, the
+selected ring and its history line, never on the value or the band bar,
+which keep meaning status. The heart is blood red and beats (icon and the
+last point of its chart alike); sleep is violet and breathes; the rest send
+a slow ring from their latest point. Fitness, fatigue and form reuse the
+dashboard chart's tokens; readiness has no hue of its own because its
+colour is its status. Every hue was checked against the dark surface and
+kept clear of the three status colours (heart red is ΔE 10 from the
+negative coral).
+
+Clicking the open tile again closes its panel; so do Escape and the × in
+its corner. The URL hash clears with it.
+
+Home screen: the metric row wears the board's icons and hues
+
+Cardiac drift, weekly volume, load ratio and form on the home screen now
+carry the same icon and colour their tiles have on the Numbers board (the
+hues moved to lib/screens/numbers.ts so both screens read one source), and
+each cell links to its tile — the home screen states the number, the board
+explains it. Icons move on hover, the same way they do on the board.
+
+Ask Runi follows the athlete; drift wears the heart's red
+
+The floating "Ask Runi" button is redrawn as a glass pill with the Runi
+mark, and it now lives once in the root layout, shown on the athlete's own
+pages (home, plan, activities, Numbers, settings) and nowhere else — not on
+the landing page, sign-in or the coach's screens. It is fixed rather than
+draggable: scrolling down folds it to the mark alone, scrolling up brings
+the label back, and on a phone it is the mark alone throughout. The panel
+it opens is unchanged and closes on route change.
+
+Cardiac drift is a heart figure, so it now shares the heart's red, and its
+icon is a monitor trace — a bright sweep runs along the line on the board
+and on the home screen alike. The home screen's other metric icons move on
+their own, slowly, and faster under the pointer.
+
+Settings' header now says what is on the page ("About you — personal
+details · goal race · connections · account & security") instead of
+repeating the tab's name.
+
+Settings behind tabs; the small things
+
+Settings is now a profile card and one row of tabs — Connections, Coach,
+Account & security, and the door to Your numbers — instead of a scroll.
+One tab open at a time; a second click on the open tab closes it, so does
+Escape; #connections / #coach / #account open a tab on arrival, and the
+"connect your watch" buttons on the empty screens land there.
+
+The zero-day streak no longer shows a flame for nothing; the indicator
+appears once a streak exists. Every "connect intervals.icu" / "connect
+Strava" left over from the first build now says "connect your watch" —
+the product reads every device the same way. The server actions' error
+strings, which were still in Hebrew from the prototype, are in the
+product's English.
+
+Three ways to a plan, and a plan of one's own
+
+/plan with no plan now offers the three routes side by side: join a coach
+(the code, right there), take Runi's plan, or write your own. Runi's plan
+is previewed before it exists — length, the four phases as an arc, one
+build-phase week with paces, the peak week and longest run it climbs to,
+and whether that is reachable in the time — all sized to the athlete. With
+no runs on file it no longer refuses: it asks for the current weekly
+distance and longest recent run, and takes paces from the target time by
+Riegel until the watch arrives. An own plan is one week described day by
+day (session, km, pace), repeated for N weeks, optionally grown 7% a week
+with a step back every fourth; it needs no race. Settings' Coach tab shows
+the active plan and lets you leave it, so a different route is one click
+away.
+
+Migration 0020: drops the (race_type, level) uniqueness on plan_templates
+that was making coaches' saves collide with the built-in defaults; lets a
+plan exist without a goal race (nullable goal_race_id, a name); adds
+coach_cycles and a cycle on the roster row; and lets a coach write a
+plan, its sessions and a goal race for athletes on their roster.
+
+830 tests pass (6 new).
+
+Coach: cycles are now something the coach runs
+
+A cycle is a named group preparing for one race day from one template —
+"Marathon prep · Tel Aviv" — created on the Cycles screen (or from a
+template's "Start a cycle" button, which arrives with the distance set)
+and filled by adding athletes from the roster. Adding someone writes the
+cycle's race as their goal race and builds their plan from the cycle's
+template starting that week, so the screen can show each member's own
+week — week 2 and week 5 side by side under the same heading, which is
+the difference that matters to a coach. Someone who already has a plan
+keeps it and the coach is told so. Removing someone leaves their plan.
+The old derived groups (same race, same date) stay underneath as
+suggestions, each with "Make this a cycle". Members' plan headers name
+the cycle.
+
+A plan with no race counts down to its last day; cycles filter by distance
+
+The home screen's countdown card used to say "— · no goal race set" for an
+athlete on a plan of their own. It now counts to the plan's last day — "23
+days · to the end of Autumn block" — with the same week-of-N progress bar.
+The coach's Cycles screen gained one row of distance chips (All · 5K · 10K
+· Half · Marathon, with counts): several cycles can share a distance now,
+and "show me everything marathon" needed an answer. 831 tests pass.
+
+Coach settings behind the same tabs
+
+The coach's settings page was still the old scroll. It is now the profile
+card and one row of tabs — Coaching (join code, templates, when to flag an
+athlete, calendar colours), Connections, Account & security, Your numbers —
+built from the same SettingsTabs the athlete's screen uses, so the two
+cannot drift.
+
+Nothing on the home screen is decorative any more
+
+Three figures that were printed without anything behind them now have a
+source. The countdown card's predicted finish had shown "—" for every real
+athlete since the prototype's 3:47:10 was removed; it is now the same
+Riegel prediction the Numbers board makes, from the longest personal best
+on file, with a word against the target (on target · closing · off
+target). Each personal best is a link to the run that set it, so a record
+opens straight onto that run's analysis. And the Form (TSB) tile no longer
+says "Fresh" in amber whatever the number: its words and colour follow the
+readiness bands (fresh / normal training / carrying load / detraining).

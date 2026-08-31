@@ -12,11 +12,11 @@ export async function createGoalRace(
   input: GoalRaceInput
 ): Promise<ActionResult<{ goalRaceId: string; planId: string }>> {
   const parsed = goalRaceSchema.safeParse(input);
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "קלט לא תקין" };
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "יש להתחבר כדי להגדיר מרוץ יעד" };
+  if (!user) return { error: "Sign in to set a goal race." };
 
   const { data: goalRace, error: insertError } = await supabase
     .from("goal_races")
@@ -29,7 +29,7 @@ export async function createGoalRace(
     .select("id")
     .single();
 
-  if (insertError || !goalRace) return { error: "יצירת מרוץ היעד נכשלה, נסה שוב" };
+  if (insertError || !goalRace) return { error: "Saving the goal race failed — try again." };
 
   const planResult = await generatePlanAction(goalRace.id);
   if (planResult.error) return { error: planResult.error };

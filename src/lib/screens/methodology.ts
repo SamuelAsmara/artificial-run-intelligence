@@ -203,6 +203,6 @@ export const METHOD_COPY = {
   showFormula: "Show the formula",
   hideFormula: "Hide the formula",
   back: "Back to settings",
-  navLink: "How the numbers work",
-  navHint: "TRIMP · CTL · ATL · form · load ratio · readiness",
+  navLink: "Your numbers",
+  navHint: "Every figure, on your data — and why",
 } as const;

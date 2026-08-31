@@ -1,106 +1,29 @@
-feat: the landing page — Runi has a front door.
+feat: Numbers board, plan paths, coach cycles, landing page
 
-Ported 1:1 from the Claude Design handoff (handoff_landing/): a signed-out
-visitor at / now gets the landing page instead of a bounce to /login.
-Full-viewport hero over the long-exposure trail photograph (optimised
-from 1.9MB PNG to a 91KB progressive JPEG), blue colour grade and film
-grain as designed, the R-Trace mark and RUNI wordmark in Sora, then the
-four analysis columns, "How it works", "For coaches", and the final CTA.
-Signed-in users route exactly as before — athlete to /dashboard, coach
-to /coach.
+Landing page (from the Claude Design handoff) with OG metadata; a11y pass
+(axe clean on all screens); README and docs rewritten.
 
-The DC prototype harness (support.js, image-slot.js) was not ported; the
-template loops are plain arrays in the component. Grain and the hero's
-entrance are CSS only, guarded by prefers-reduced-motion. Two link
-decisions where the mock pointed at static artboards: "Pricing" became
-"The numbers" -> /methodology (a page that exists), and the demo/coach
-CTAs point at /login.
+Numbers — a new tab: every figure as a tile on your own data, with a
+band bar, history chart (W/M/3M/Y), typeset formula and a why. Replaces
+the methodology page. Per-figure hues and icons, shared with the home
+screen's metric row.
 
-New dependency: @fontsource/sora (600/700/800), loaded once in layout
-beside the existing Plex families.
+Plan — three ways to start: a coach's code, Runi's plan previewed before
+it is applied, or your own week × N weeks with no race. Countdown card
+counts to the plan's end when there is no race, and shows the Riegel
+prediction against the target. Personal bests link to the run that set
+them.
 
-809 tests pass.
+Coach — cycles are real: named, built from a template, athletes added or
+removed, each shown on their own week. Cycles filter by distance.
 
----
+Settings (athlete and coach) behind one row of tabs. Ask Runi floats on
+every athlete page. One-field intervals.icu connect. "Connect your watch"
+everywhere instead of one provider's name; action errors in English.
 
-Accessibility pass (WCAG 2.1 AA, axe-core on all nine screens).
+Migration 0020: drops the plan_templates uniqueness that broke coaches'
+saves, lets a plan exist without a race, adds coach_cycles and the coach's
+write access to their athletes' plans. Already applied to production.
 
-Found and fixed: days from an adjacent month in the plan calendar were
-dimmed to 35% opacity, putting their text at 1.7:1 contrast — they now
-dim to 55% (passing) and drop the km figure, which belongs to their own
-month's page anyway. The coach reminders' date and note inputs had no
-accessible name; labelled. The intervals.icu settings link relied on
-colour alone; underlined. The rail calendar's month buttons were 22px
-tall; now 26px (WCAG 2.5.8 minimum is 24).
-
-Also: a small "‹ Back" pill on the sign-in page, back to the landing
-page.
-
-Verified across dashboard, plan, coach home, cycles, templates, coach
-settings, roster, Ask Runi and the landing page: zero axe violations,
-reduced-motion leaves every screen fully readable with no animation,
-keyboard focus is visible everywhere (:focus-visible outline).
-
-809 tests pass.
-
----
-
-docs: final pass before submission.
-
-Every page header still read "— Artificial Run Intelligence"; all six
-now read "— Runi". Document 5's internal title said "אבטחה בסיסית" and
-document 6's said "סקייל בסיסי" while their filenames (and page headers)
-said אבטחת מידע / סקייל וביצועים — the titles now match. Document 1's
-appendix still pointed at ari-coach.vercel.app; now runi-coach. The
-"updated" line on all six moved to 30 August. Verified across all six:
-every Hebrew paragraph is right-aligned RTL (the only LTR paragraphs are
-code blocks and the folder tree, where LTR is correct), tables render
-right-to-left, and the stated figures — 809 tests, 54 files, 20
-migrations, 39 server actions — are still accurate.
-
----
-
-Landing page, second pass: the numbers, the connections, the two seats.
-
-"The numbers" in the nav pointed at /methodology, which does not exist —
-a visitor got a 404. It now scrolls to a numbers strip under the hero:
-6 coaching teams, 70 coached runners, 100 independent athletes, 34 races
-in preparation, with a footnote saying plainly that this is the seeded
-demo population, not live users.
-
-New: a connectivity diagram. Six sources — Garmin, Suunto, Strava, Apple
-Health, Runkeeper and intervals.icu — fan straight into Runi, and what
-comes out is drawn rather than listed: three miniatures of real product
-surfaces, a readiness card, the fitness/form chart and a week of the
-plan, under one word each — Insight, Process, Plan. The source tiles are
-the ones from the settings screen (same marks, same colours); an accent
-dash travels along each wire, static under reduced-motion. The diagram
-shows where the product is going (every source a source); the settings
-screen keeps telling the athlete how each one connects today.
-
-The four analysis capabilities each got a small graphic drawn in the
-product's own chart language — a heart-rate trace, rising pace bars, two
-runs overlaid, a readiness gauge — that draw themselves in on scroll.
-
-The athlete section is now four points in the order a runner lives them:
-connect your training to the engine, understand your own numbers, you
-measured against you (the mirror — no leaderboards), break a record. The
-coach section opens with the stance — we don't replace you; we make you
-the coach who talks in numbers — and mirrors the athlete's points at the
-coach's level: every athlete at every resolution, plan against execution,
-peak moments. "Send a QR" is gone; there is no QR in the product.
-
-No "AI", no "brain" anywhere on the page. It is an engine, and every
-figure is computed.
-
-Fixed: the photo lightbox opened inside its card instead of over the page
-— backdrop-filter makes a glass card the containing block for anything
-position:fixed inside it. The lightbox now portals to <body>.
-
-Scroll reveals follow the design engine's numbers (viewport enter, ~550ms,
-24px rise, 80ms stagger); zero axe violations; 809 tests pass.
-
-Also: Open Graph and Twitter card metadata in the root layout, with a
-1200x630 share image cut from the hero. A link to runi-coach.vercel.app
-pasted into WhatsApp, LinkedIn or iMessage now unfurls into the photo,
-the wordmark and one sentence instead of a bare URL.
+Fixes: dashboard greeting reads the saved name; zero streak hidden;
+Form tile tone follows the readiness bands. 831 tests pass.

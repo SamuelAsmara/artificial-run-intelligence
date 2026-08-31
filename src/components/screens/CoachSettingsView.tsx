@@ -20,16 +20,13 @@
 import { useState, useTransition } from "react";
 import { CoachNav } from "@/components/coach/CoachNav";
 import { JoinCode } from "@/components/coach/JoinCode";
-import { SignOutButton } from "@/components/SignOutButton";
 import { saveCoachPreferences } from "@/actions/coach";
 import { DEFAULT_PREFERENCES, type CoachPreferences } from "@/lib/coach/preferences";
 import { colorFor, DEFAULT_RACE_COLORS } from "@/lib/coach/calendar";
 import { RACE_LABEL, RACE_TYPES } from "@/lib/coach/templates";
 import { COACH_COPY } from "@/lib/screens/coachHome";
-import { ProfileCard, ConnectionsCard } from "@/components/screens/SettingsView";
-import { AccountSecurity } from "@/components/settings/AccountSecurity";
-import { Entrance, SectionHeader } from "@/components/ui";
-import { METHOD_COPY } from "@/lib/screens/methodology";
+import { ProfileCard, ConnectionsCard, SettingsTabs, AccountPanel, TAB_ICONS } from "@/components/screens/SettingsView";
+import { Entrance } from "@/components/ui";
 import type { AthleteProfileView } from "@/actions/profile";
 import type { ProviderConnectionView } from "@/actions/providers";
 
@@ -88,13 +85,38 @@ export function CoachSettingsView({
     <div data-entrance-root style={{ maxWidth: "1080px", marginInline: "auto", padding: "16px 24px 40px", display: "flex", flexDirection: "column", gap: "12px" }}><Entrance />
       <CoachNav active="settings" />
 
-      <h1 style={{ margin: 0, fontSize: "17px", fontWeight: 600 }}>Coach settings</h1>
+      <div style={{ textAlign: "start" }}>
+        <h1 style={{ margin: 0, fontSize: "17px", fontWeight: 600 }}>About you</h1>
+        <p style={{ margin: "2px 0 0", fontSize: "11.5px", color: "var(--color-muted)" }}>Personal details · coaching · connections · account & security</p>
+      </div>
 
-      {/* The coach's own details first — the same cards every athlete sees,
-          in the same place they expect them. Coaching preferences follow. */}
+      {/* The coach's own details first — the same card every athlete sees.
+          Everything else sits behind one row of tabs, same as the athlete's
+          settings: one open at a time, a second click closes it. */}
       <ProfileCard profile={profile} />
-      <ConnectionsCard connection={icuConnection} />
 
+      <SettingsTabs
+        tabs={[
+          {
+            key: "coaching", label: "Coaching", icon: TAB_ICONS.coaching,
+            hint: code ? `Code ${code}` : "Thresholds · colours · templates",
+            panel: (
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <div className="cs-two">
+                  <div style={{ width: "min(360px, 100%)" }}>
+        <JoinCode code={code} />
+                  </div>
+      <section className="card" style={{ padding: "18px 22px" }}>
+        <h2 style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>Training templates</h2>
+        <p style={{ margin: "2px 0 12px", fontSize: "11.5px", color: "var(--color-faint)", maxWidth: "70ch", lineHeight: 1.6 }}>
+          How you prepare somebody for each distance. Applied to whoever is training for it — edit a
+          template and the change reaches the next athlete to start, never one already running a plan.
+        </p>
+        <a className="btn btn-secondary" href="/coach/templates" style={{ display: "inline-block" }}>
+          Edit templates
+        </a>
+      </section>
+                </div>
       <section className="card" style={{ padding: "18px 22px" }}>
         <h2 style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>{COACH_COPY.thresholdsTitle}</h2>
         <p style={{ margin: "2px 0 14px", fontSize: "11.5px", color: "var(--color-faint)", maxWidth: "70ch", lineHeight: 1.6 }}>
@@ -123,7 +145,6 @@ export function CoachSettingsView({
           )}
         </div>
       </section>
-
       <section className="card" style={{ padding: 0, overflow: "hidden" }}>
         <button
           type="button"
@@ -190,64 +211,21 @@ export function CoachSettingsView({
           </div>
         ) : null}
       </section>
-
-      <section className="card" style={{ padding: "18px 22px" }}>
-        <h2 style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>Training templates</h2>
-        <p style={{ margin: "2px 0 12px", fontSize: "11.5px", color: "var(--color-faint)", maxWidth: "70ch", lineHeight: 1.6 }}>
-          How you prepare somebody for each distance. Applied to whoever is training for it — edit a
-          template and the change reaches the next athlete to start, never one already running a plan.
-        </p>
-        <a className="btn btn-secondary" href="/coach/templates" style={{ display: "inline-block" }}>
-          Edit templates
-        </a>
-      </section>
-
-      <div style={{ width: "min(360px, 100%)" }}>
-        <JoinCode code={code} />
-      </div>
-
-      <a
-        className="card dc-hover-border"
-        href="/settings/methodology"
-        style={{ display: "flex", alignItems: "center", gap: "14px", padding: "16px 22px", textDecoration: "none", color: "inherit" }}
-      >
-        <span style={{
-          width: "34px", height: "34px", borderRadius: "50%", flexShrink: 0,
-          background: "var(--color-elevated)", display: "flex", alignItems: "center", justifyContent: "center",
-        }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z" />
-            <path d="M9 7h6M9 11h4" />
-          </svg>
-        </span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ margin: 0, fontSize: "13px", fontWeight: 600 }}>{METHOD_COPY.navLink}</p>
-          <p className="num" style={{ margin: "2px 0 0", fontSize: "10.5px", color: "var(--color-faint)" }}>
-            {METHOD_COPY.navHint}
-          </p>
-        </div>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-faint)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="m9 18 6-6-6-6" />
-        </svg>
-      </a>
-
-      <section className="card" style={{ padding: "20px 24px" }}>
-        <SectionHeader title={COACH_COPY.accountTitle} />
-        <p style={{ margin: "2px 0 0", fontSize: "11.5px", color: "var(--color-faint)" }}>
-          {COACH_COPY.accountSub}
-        </p>
-        <AccountSecurity email={email ?? ""} />
-
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", marginBlockStart: "18px", paddingBlockStart: "16px", borderBlockStart: "1px solid var(--color-line)" }}>
-          <div>
-            <p style={{ margin: 0, fontSize: "12.5px", fontWeight: 500 }}>Signed in as {email ?? "\u2014"}</p>
-            <p style={{ margin: "2px 0 0", fontSize: "11px", color: "var(--color-faint)" }}>
-              Your data stays where it is; you can sign back in at any time.
-            </p>
-          </div>
-          <SignOutButton />
-        </div>
-      </section>
+              </div>
+            ),
+          },
+          {
+            key: "connections", label: "Connections", icon: TAB_ICONS.connections,
+            hint: icuConnection ? (icuConnection.status === "connected" ? "Connected" : "Needs attention") : "Not connected",
+            panel: <ConnectionsCard connection={icuConnection} />,
+          },
+          {
+            key: "account", label: "Account & security", icon: TAB_ICONS.account,
+            hint: email ?? "",
+            panel: <AccountPanel email={email} title={COACH_COPY.accountTitle} sub={COACH_COPY.accountSub} />,
+          },
+        ]}
+      />
     </div>
   );
 }

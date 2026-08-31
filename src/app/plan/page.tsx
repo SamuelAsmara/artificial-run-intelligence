@@ -9,6 +9,6 @@ import { todayIso } from "@/lib/time/week";
 export const metadata = { title: "Plan · Runi" };
 
 export default async function PlanPage() {
-  const { plan, race } = await getPlanScreen();
-  return <PlanView data={{ plan, race, today: todayIso() }} />;
+  const { plan, planMeta, race, start } = await getPlanScreen();
+  return <PlanView data={{ plan, planMeta, race, start, today: todayIso() }} />;
 }

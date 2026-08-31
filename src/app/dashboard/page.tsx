@@ -24,8 +24,12 @@ import { formatPace } from "@/lib/format/pace";
 import { paceShapeColor, paceShapeToPath } from "@/lib/dashboard/sparkline";
 import { getPersonalRecords } from "@/actions/activities";
 import { APP_LOCALE, APP_TIME_ZONE, todayIso } from "@/lib/time/week";
+import { riegel } from "@/lib/screens/numbers";
+import { parseTargetTime, RACE_DISTANCE_M } from "@/lib/planning/ownPlan";
+import { PR_DISTANCES } from "@/lib/wellness/icuStreams";
+import { formatDuration } from "@/lib/format/pace";
 import {
-  calendarDots, raceCountdown, runStreak, weeklyVolume, weeklyVolumeSummary,
+  calendarDots, planCountdown, raceCountdown, runStreak, weeklyVolume, weeklyVolumeSummary,
 } from "@/lib/dashboard/rail";
 
 export const metadata = { title: "Dashboard · Runi" };
@@ -124,13 +128,22 @@ export default async function DashboardPage({
   );
 }
 
-/** Whatever we can greet them by — username from sign-up, else nothing. */
+/**
+ * Whatever we can greet them by. The name saved in Settings (profiles.full_name)
+ * wins; the username typed at sign-up is only the fallback for someone who has
+ * never opened Settings. Reading the sign-up metadata first was a bug: renaming
+ * yourself in Settings changed nothing up here.
+ */
 async function athleteName(): Promise<string | null> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const meta = user?.user_metadata as { username?: string; full_name?: string } | undefined;
+  if (!user) return null;
+  const { data } = await supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle();
+  const saved = data?.full_name?.trim();
+  if (saved) return saved;
+  const meta = user.user_metadata as { username?: string; full_name?: string } | undefined;
   return meta?.username ?? meta?.full_name ?? null;
 }
 
@@ -230,7 +243,7 @@ async function railData() {
   // Planned sessions drive the calendar's "planned" and "missed" dots.
   const { data: plan } = await supabase
     .from("training_plans")
-    .select("id")
+    .select("id, name, goal_race_id")
     .eq("user_id", user.id)
     .eq("status", "active")
     .order("created_at", { ascending: false })
@@ -239,6 +252,7 @@ async function railData() {
 
   let planned: { date: string; isRest: boolean }[] = [];
   let planStart: string | null = null;
+  let planEnd: string | null = null;
   let totalWeeks = 0;
 
   if (plan) {
@@ -253,6 +267,7 @@ async function railData() {
       isRest: r.workout_type === "rest",
     }));
     planStart = rows?.[0]?.day_date ?? null;
+    planEnd = rows?.length ? rows[rows.length - 1].day_date : null;
     totalWeeks = rows?.length ? Math.max(...rows.map((r) => r.week_number)) : 0;
   }
 
@@ -261,12 +276,57 @@ async function railData() {
     volumeSummary: weeklyVolumeSummary(runs),
     calendarDots: calendarDots(planned, runs),
     streak: runStreak(runs),
+    // A race plan counts down to race day; a plan of the athlete's own, with
+    // no race behind it, counts down to its last day.
     race: race
       ? raceCountdown(race.race_type, race.race_date, planStart, totalWeeks)
-      : null,
+      : plan && plan.goal_race_id == null && planEnd
+        ? planCountdown(plan.name ?? "your plan", planEnd, planStart, totalWeeks)
+        : null,
     /** the athlete's own goal time, or null when they never set one */
     raceTarget: race?.target_time ?? null,
+    racePrediction: race ? await racePrediction(race.race_type, race.target_time) : null,
   };
+}
+
+/**
+ * The predicted finish on the countdown card — the same Riegel prediction the
+ * Numbers board shows, from the athlete's longest personal best. This card
+ * printed a dash for every real athlete since the prototype's 3:47:10 was
+ * removed; the number existed one tab away the whole time.
+ */
+async function racePrediction(raceType: string, targetTime: string | null) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const distanceM = RACE_DISTANCE_M[raceType as keyof typeof RACE_DISTANCE_M];
+  if (!distanceM) return null;
+
+  const { data } = await supabase
+    .from("activities")
+    .select("best_efforts")
+    .eq("user_id", user.id)
+    .not("best_efforts", "is", null)
+    .order("started_at", { ascending: false })
+    .limit(400);
+  const best: Record<string, number> = {};
+  for (const a of data ?? []) {
+    for (const [k, v] of Object.entries((a.best_efforts ?? {}) as Record<string, number>)) {
+      if (Number.isFinite(v) && v > 0 && (best[k] == null || v < best[k])) best[k] = v;
+    }
+  }
+  // the longest distance with a best on file predicts most honestly
+  const baseKey = ["marathon", "half", "10k", "5k", "1k"].find((k) => best[k] != null && PR_DISTANCES[k] != null);
+  if (!baseKey) return null;
+  const predicted = riegel(best[baseKey], PR_DISTANCES[baseKey], distanceM);
+  const targetSec = parseTargetTime(targetTime);
+  const label = targetSec == null
+    ? "Predicted · from your PBs"
+    : predicted <= targetSec ? "Predicted · on target"
+      : predicted - targetSec <= 300 ? "Predicted · closing"
+        : "Predicted · off target";
+  const tone: "positive" | "caution" | "neutral" = targetSec == null ? "neutral" : predicted <= targetSec ? "positive" : "caution";
+  return { text: formatDuration(Math.round(predicted)), label, tone };
 }
 
 /** The rail's recent-runs list, from real activities. */

@@ -20,8 +20,8 @@ const COPY = {
   subtitle: "Nothing here yet",
   heading: "No runs yet",
   body:
-    "Connect intervals.icu in Settings and press Sync. Your runs, and everything Runi derives from them — pace shape, personal records, cardiac drift — appear here as soon as they arrive.",
-  cta: "Connect a data source",
+    "Connect your watch in Settings — Garmin, Coros, Polar, Suunto, Apple Watch or Strava — and press Sync. Your runs, and everything Runi derives from them — pace shape, personal records, cardiac drift — appear here as soon as they arrive.",
+  cta: "Connect your watch",
 } as const;
 
 
@@ -41,6 +41,7 @@ export function EmptyActivities() {
           <a href="/dashboard" style={{ color: "var(--color-muted)" }}>{COPY.navHome}</a>
           <a href="/plan" style={{ color: "var(--color-muted)" }}>{COPY.navPlan}</a>
           <a href="/activities" style={{ color: "var(--color-ink)" }}>{COPY.navActivities}</a>
+          <a href="/numbers" style={{ color: "var(--color-muted)" }}>Numbers</a>
           <a href="/settings" style={{ color: "var(--color-muted)" }}>{COPY.navSettings}</a>
         </nav>
         <div style={{ flex: 1 }} />
@@ -56,7 +57,7 @@ export function EmptyActivities() {
           </>
         }
         style={{ maxWidth: "620px", marginInline: "auto", width: "100%" }}
-        action={<a className="btn btn-primary" href="/settings">{COPY.cta}</a>}
+        action={<a className="btn btn-primary" href="/settings#connections">{COPY.cta}</a>}
       />
     </div>
   );

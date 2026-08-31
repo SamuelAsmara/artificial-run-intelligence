@@ -17,6 +17,8 @@ import { formatDuration } from "@/lib/format/pace";
 export interface ActivityWithEfforts {
   started_at: string | null;
   best_efforts: Record<string, number> | null;
+  /** the run's id, when the caller has it — lets a record link to the run that set it */
+  id?: string;
 }
 
 export interface PersonalRecord {
@@ -28,6 +30,8 @@ export interface PersonalRecord {
   time: string | null;
   /** ISO date of the run it came from */
   date: string | null;
+  /** the run that set it, so the record can be a link to that run's analysis */
+  activityId: string | null;
   /**
    * True when the run that set this record was on or after `newSince` — thirty
    * days ago, as the dashboard calls it. Not "the most recent activity set it",
@@ -56,6 +60,7 @@ export function personalRecords(
   return PR_ROWS.map(({ key, label }) => {
     let bestSeconds: number | null = null;
     let bestDate: string | null = null;
+    let bestId: string | null = null;
 
     for (const a of activities) {
       const seconds = a.best_efforts?.[key];
@@ -63,6 +68,7 @@ export function personalRecords(
       if (bestSeconds === null || seconds < bestSeconds) {
         bestSeconds = seconds;
         bestDate = a.started_at ? a.started_at.slice(0, 10) : null;
+        bestId = a.id ?? null;
       }
     }
 
@@ -71,6 +77,7 @@ export function personalRecords(
       label,
       time: bestSeconds === null ? null : formatDuration(bestSeconds),
       date: bestDate,
+      activityId: bestId,
       isNew: !!(newSince && bestDate && bestDate >= newSince),
     };
   });

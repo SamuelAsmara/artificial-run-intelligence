@@ -307,16 +307,43 @@ export function raceCountdown(
   totalWeeks: number,
   asOf: Date = zonedNow(),
 ): RaceCountdown | null {
-  const race = new Date(raceDateIso + "T00:00:00");
+  return countdownTo(`to race day · ${RACE_LABEL[raceType] ?? raceType}`, raceDateIso, planStartIso, totalWeeks, asOf);
+}
+
+/**
+ * The same card for a plan with no race behind it.
+ *
+ * An athlete running their own eight-week block has no race day, but they
+ * do have a last day, and "23 days · to the end of Autumn block" is a real
+ * answer where "— · no goal race set" was a shrug. Progress reads off the
+ * plan's weeks exactly as it does for a race plan.
+ */
+export function planCountdown(
+  planName: string,
+  endIso: string,
+  planStartIso: string | null,
+  totalWeeks: number,
+  asOf: Date = zonedNow(),
+): RaceCountdown | null {
+  return countdownTo(`to the end of ${planName}`, endIso, planStartIso, totalWeeks, asOf);
+}
+
+function countdownTo(
+  prefix: string,
+  dateIso: string,
+  planStartIso: string | null,
+  totalWeeks: number,
+  asOf: Date,
+): RaceCountdown | null {
+  const race = new Date(dateIso + "T00:00:00");
   if (Number.isNaN(race.getTime())) return null;
+  const raceDateIso = dateIso;
 
   const today = new Date(asOf);
   today.setHours(0, 0, 0, 0);
   const days = Math.max(0, Math.round((race.getTime() - today.getTime()) / DAY));
 
-  const label =
-    `to race day · ${RACE_LABEL[raceType] ?? raceType} · ` +
-    `${MONTHS[race.getMonth()]} ${race.getDate()}, ${race.getFullYear()}`;
+  const label = `${prefix} · ${MONTHS[race.getMonth()]} ${race.getDate()}, ${race.getFullYear()}`;
 
   let weekNumber = 1;
   if (planStartIso) {

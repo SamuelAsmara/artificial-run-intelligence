@@ -31,12 +31,13 @@
  * file renders `apiKeyHint` and has no way to ask for more.
  */
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { AvatarEditor } from "@/components/settings/AvatarEditor";
 import { Avatar } from "@/components/ui/Avatar";
 import { AccountSecurity } from "@/components/settings/AccountSecurity";
 import { CoachLink } from "@/components/settings/CoachLink";
 import { SignOutButton } from "@/components/SignOutButton";
+import { LeavePlan } from "@/components/plan/LeavePlan";
 import { APP_LOCALE, APP_TIME_ZONE } from "@/lib/time/week";
 import type { MyCoach } from "@/actions/coach";
 import { saveAthleteProfile, type AthleteProfileView } from "@/actions/profile";
@@ -69,10 +70,13 @@ export function SettingsView({
   icuConnection = null,
   profile = null,
   coach = null,
+  plan = null,
 }: {
   icuConnection?: ProviderConnectionView | null;
   profile?: AthleteProfileView | null;
   coach?: MyCoach | null;
+  /** the active training plan, so it can be left from here as well as from /plan */
+  plan?: { title: string; weeks: number } | null;
 } = {}) {
   return (
     <div data-entrance-root style={{
@@ -86,67 +90,180 @@ export function SettingsView({
             {copy.brand}
           </span>
         </div>
-        <h1 style={{ margin: 0, fontSize: "15px", fontWeight: 600 }}>{copy.title}</h1><nav className="topnav" style={{ display: "flex", gap: "20px", fontSize: "13px", color: "var(--color-muted)" }}>
+        <div style={{ textAlign: "start" }}>
+          <h1 style={{ margin: 0, fontSize: "15px", fontWeight: 600 }}>{copy.title}</h1>
+          <p style={{ margin: 0, fontSize: "11.5px", color: "var(--color-muted)" }}>{copy.subtitle}</p>
+        </div><nav className="topnav" style={{ display: "flex", gap: "20px", fontSize: "13px", color: "var(--color-muted)" }}>
           <a href="/dashboard" style={{ color: "var(--color-muted)" }}>{copy.navHome}</a>
           <a href="/plan" style={{ color: "var(--color-muted)" }}>{copy.navPlan}</a>
           <a href="/activities" style={{ color: "var(--color-muted)" }}>{copy.navActivities}</a>
+          <a href="/numbers" style={{ color: "var(--color-muted)" }}>Numbers</a>
           <a href="/settings" style={{ color: "var(--color-ink)" }}>{copy.navSettings}</a>
         </nav>
         <div style={{ flex: 1 }} />
       </header>
 
       <ProfileCard profile={profile} />
-      <ConnectionsCard connection={icuConnection} />
-      <CoachLink coach={coach} />
 
       {/*
-          The methodology page.
-          A row rather than a section, because it is a door, not a setting.
+          Everything that is not "who you are" sits behind one row of tabs, so
+          the page is a card and a row rather than a scroll. One tab open at a
+          time; the open tab closes on a second click, and Escape closes it.
+          The hash (#connections, #coach, #account) opens a tab on arrival, so
+          "connect your watch" links can land straight on the right one.
       */}
-      <a
-        className="card dc-hover-border"
-        href="/settings/methodology"
-        style={{
-          display: "flex", alignItems: "center", gap: "14px",
-          padding: "16px 22px", textDecoration: "none", color: "inherit",
-        }}
-      >
-        <span style={{
-          width: "34px", height: "34px", borderRadius: "50%", flexShrink: 0,
-          background: "var(--color-elevated)", display: "flex",
-          alignItems: "center", justifyContent: "center",
-        }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z" />
-            <path d="M9 7h6M9 11h4" />
-          </svg>
-        </span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ margin: 0, fontSize: "13px", fontWeight: 600 }}>{METHOD_COPY.navLink}</p>
-          <p className="num" style={{ margin: "2px 0 0", fontSize: "10.5px", color: "var(--color-faint)" }}>
-            {METHOD_COPY.navHint}
+      <SettingsTabs
+        tabs={[
+          {
+            key: "connections", label: "Connections", icon: TAB_ICONS.connections,
+            hint: icuConnection ? (icuConnection.status === "connected" ? "Connected" : "Needs attention") : "Not connected",
+            panel: <ConnectionsCard connection={icuConnection} />,
+          },
+          {
+            key: "coach", label: "Coach & plan", icon: TAB_ICONS.coach,
+            hint: [coach ? coach.name : "No coach", plan ? plan.title : null].filter(Boolean).join(" · "),
+            panel: (
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <CoachLink coach={coach} />
+                {/* the plan sits with the coach: leaving one is how you get to a different one */}
+                <section className="card" style={{ padding: "18px 24px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+                    <div>
+                      <h2 style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>Training plan</h2>
+                      <p style={{ margin: "2px 0 0", fontSize: "11.5px", color: "var(--color-faint)" }}>
+                        {plan ? `${plan.title} · ${plan.weeks} week${plan.weeks === 1 ? "" : "s"}` : "No active plan — the Plan tab offers three ways to start one."}
+                      </p>
+                    </div>
+                    {plan ? null : <a className="btn btn-secondary" href="/plan" style={{ fontSize: "12px" }}>Open Plan</a>}
+                  </div>
+                  {plan ? <div style={{ marginBlockStart: "10px" }}><LeavePlan /></div> : null}
+                </section>
+              </div>
+            ),
+          },
+          {
+            key: "account", label: "Account & security", icon: TAB_ICONS.account,
+            hint: profile?.email ?? "",
+            panel: <AccountPanel email={profile?.email ?? null} title={copy.secTitle} sub={copy.secSub} />,
+          },
+        ]}
+      />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* account & security — the same panel on both settings screens        */
+/* ------------------------------------------------------------------ */
+
+export function AccountPanel({ email, title, sub }: { email: string | null; title: string; sub: string }) {
+  return (
+    <section className="card" style={{ padding: "20px 24px" }}>
+      <h2 style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>{title}</h2>
+      <p style={{ margin: "2px 0 0", fontSize: "11.5px", color: "var(--color-faint)" }}>{sub}</p>
+      <AccountSecurity email={email ?? ""} />
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", marginBlockStart: "20px", paddingBlockStart: "16px", borderBlockStart: "1px solid var(--color-line)" }}>
+        <div>
+          <p style={{ margin: 0, fontSize: "12.5px", fontWeight: 500 }}>Signed in as {email ?? "\u2014"}</p>
+          <p style={{ margin: "2px 0 0", fontSize: "11px", color: "var(--color-faint)" }}>
+            Your data stays where it is; you can sign back in at any time.
           </p>
         </div>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-faint)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="m9 18 6-6-6-6" />
-        </svg>
-      </a>
+        <SignOutButton />
+      </div>
+    </section>
+  );
+}
 
-      <section className="card" style={{ padding: "20px 24px" }}>
-        <h2 style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>{copy.secTitle}</h2>
-        <p style={{ margin: "2px 0 0", fontSize: "11.5px", color: "var(--color-faint)" }}>{copy.secSub}</p>
-        <AccountSecurity email={profile?.email ?? ""} />
+/* ------------------------------------------------------------------ */
+/* the tab row                                                         */
+/* ------------------------------------------------------------------ */
 
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", marginBlockStart: "20px", paddingBlockStart: "16px", borderBlockStart: "1px solid var(--color-line)" }}>
-          <div>
-            <p style={{ margin: 0, fontSize: "12.5px", fontWeight: 500 }}>Signed in as {profile?.email ?? "\u2014"}</p>
-            <p style={{ margin: "2px 0 0", fontSize: "11px", color: "var(--color-faint)" }}>
-              Your data stays where it is; you can sign back in at any time.
-            </p>
-          </div>
-          <SignOutButton />
+export interface SettingsTabDef {
+  key: string;
+  label: string;
+  /** 24×24 stroke path */
+  icon: string;
+  hint: string;
+  panel: React.ReactNode;
+}
+
+export const TAB_ICONS = {
+  connections: "M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71",
+  coach: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75",
+  account: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z",
+  coaching: "M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8",
+  numbers: "M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z M9 7h6M9 11h4",
+} as const;
+
+/**
+ * Everything that is not "who you are", behind one row of tabs. One open at
+ * a time; the open tab closes on a second click and on Escape; the hash
+ * (#connections and so on) opens a tab on arrival. Shared by the athlete's
+ * and the coach's settings screens, which differ only in which tabs exist.
+ */
+export function SettingsTabs({ tabs, numbersLink = true }: { tabs: SettingsTabDef[]; numbersLink?: boolean }) {
+  const [open, setOpen] = useState<string | null>(null);
+  const keys = tabs.map((t) => t.key);
+
+  useEffect(() => {
+    const read = () => {
+      const h = window.location.hash.replace("#", "");
+      if (keys.includes(h)) setOpen(h);
+    };
+    read();
+    window.addEventListener("hashchange", read);
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(null); };
+    window.addEventListener("keydown", onKey);
+    return () => { window.removeEventListener("hashchange", read); window.removeEventListener("keydown", onKey); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [keys.join("|")]);
+
+  const pick = (t: string) => {
+    const next = open === t ? null : t;
+    setOpen(next);
+    window.history.replaceState(null, "", next ? `#${next}` : window.location.pathname);
+  };
+  const current = tabs.find((t) => t.key === open) ?? null;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+      <div className="st-tabs" style={{ gridTemplateColumns: `repeat(${tabs.length + (numbersLink ? 1 : 0)}, minmax(0, 1fr))` }}>
+        <div role="tablist" aria-label="Settings sections" style={{ display: "contents" }}>
+        {tabs.map((t) => {
+          const on = open === t.key;
+          return (
+            <button key={t.key} type="button" role="tab" aria-selected={on} aria-controls={`st-panel-${t.key}`} className={`card st-tab${on ? " is-open" : ""}`} onClick={() => pick(t.key)}>
+              <span className="st-tab-icon">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={t.icon} /></svg>
+              </span>
+              <span style={{ minWidth: 0, flex: 1 }}>
+                <span className="st-tab-label">{t.label}</span>
+                <span className="st-tab-hint num">{t.hint}</span>
+              </span>
+              <svg className="st-tab-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m6 9 6 6 6-6" /></svg>
+            </button>
+          );
+        })}
         </div>
-      </section>
+        {numbersLink ? (
+          <a className="card st-tab st-tab-link" href="/numbers">
+            <span className="st-tab-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={TAB_ICONS.numbers} /></svg>
+            </span>
+            <span style={{ minWidth: 0, flex: 1 }}>
+              <span className="st-tab-label">{METHOD_COPY.navLink}</span>
+              <span className="st-tab-hint num">{METHOD_COPY.navHint}</span>
+            </span>
+            <svg className="st-tab-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m9 18 6-6-6-6" /></svg>
+          </a>
+        ) : null}
+      </div>
+      {current ? (
+        <div key={current.key} id={`st-panel-${current.key}`} role="tabpanel" className="st-panel">
+          {current.panel}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -732,72 +849,146 @@ function IntervalsPanel({
 }
 
 /**
- * Connecting for the first time, or again after a disconnect.
+ * The connection form — one field.
  *
- * intervals.icu has no OAuth flow for personal accounts, so the athlete copies
- * two values out of their own settings page. The key is posted to a server
- * action and verified against intervals.icu before it is stored, so a typo
- * surfaces here rather than as a stale readiness score a week later — and it
- * never comes back to this component afterwards.
+ * intervals.icu has no OAuth for personal accounts, so the athlete still has
+ * to generate a key on their settings page. Everything around that step is
+ * ours to smooth: the settings page opens in a small window beside Runi
+ * instead of a tab that hides it; the three steps are written down; and the
+ * athlete pastes one thing — the key. The server asks intervals.icu whose key
+ * it is (`athlete/0`), so the athlete id is never typed, and the reply greets
+ * them by name with what was found. A pasted blob that also contains the id
+ * (people copy both lines) is split apart quietly.
+ *
+ * The key is posted to a server action, verified against intervals.icu
+ * before it is stored, and never comes back to this component.
  */
 function ConnectForm() {
-  const [athleteId, setAthleteId] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [error, setError] = useState("");
+  const [done, setDone] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  /** People paste "i123456  a1b2c3…" or the whole settings row. Keep the key. */
+  const splitPaste = (raw: string): { athleteId: string; apiKey: string } => {
+    const tokens = raw.trim().split(/[\s,;:]+/).filter(Boolean);
+    if (tokens.length <= 1) return { athleteId: "", apiKey: raw.trim() };
+    const id = tokens.find((t) => /^i\d{3,}$/i.test(t)) ?? "";
+    const key = tokens.filter((t) => t !== id).sort((a, b) => b.length - a.length)[0] ?? "";
+    return { athleteId: id, apiKey: key };
+  };
+
+  const openSettings = () => {
+    const w = 980, h = 780;
+    const left = Math.max(0, window.screenX + window.outerWidth - w - 24);
+    const top = Math.max(0, window.screenY + 60);
+    const win = window.open(
+      "https://intervals.icu/settings",
+      "runi-intervals",
+      `popup=yes,width=${w},height=${h},left=${left},top=${top},noopener`,
+    );
+    if (!win) window.open("https://intervals.icu/settings", "_blank", "noopener");
+  };
 
   const submit = () => {
     setError("");
+    const { athleteId, apiKey: key } = splitPaste(apiKey);
     startTransition(async () => {
-      const result = await connectIntervalsIcu(athleteId, apiKey);
+      const result = await connectIntervalsIcu(athleteId, key);
       if (!result.ok) {
         setError(result.error);
         return;
       }
-      setAthleteId("");
+      const who = result.data.name ? `Connected as ${result.data.name}` : "Connected";
+      const found: string[] = [];
+      if (result.data.runsImported > 0) found.push(`${result.data.runsImported} runs`);
+      if (result.data.nightsImported > 0) found.push(`${result.data.nightsImported} nights`);
+      setDone(found.length ? `${who} · ${found.join(" and ")} found` : `${who} · nothing to import yet`);
       setApiKey("");
     });
   };
 
+  /*
+   * Written against the real page (checked 2026-08-31): Developer Settings
+   * is a plain heading two-thirds of the way down, in the right-hand column
+   * past Notifications, with no anchor to link to. The key is hidden behind
+   * "(view)"; the pencil next to it regenerates the key and kills the old
+   * one, so the steps say which of the two to press.
+   */
+  const STEPS = [
+    "Open your intervals.icu settings — it opens beside Runi, so keep this page in view.",
+    "Scroll down to Developer Settings (right column, past Notifications). Click (view) next to API Key — not the pencil, that makes a new key.",
+    "Copy the key and paste it here. That's the only thing we need.",
+  ];
+
   return (
     <div style={{
       borderBlockStart: "1px solid var(--color-line)", padding: "12px 14px",
-      display: "flex", flexDirection: "column", gap: "10px",
+      display: "flex", flexDirection: "column", gap: "12px",
     }}>
-      <div className="set-grid">
-        <div>
-          <label htmlFor="icu-athlete" className="lbl">Athlete ID</label>
-          <input id="icu-athlete" className="field num" value={athleteId}
-            onChange={(e) => setAthleteId(e.target.value)} placeholder="i123456" autoComplete="off" />
+      <ol style={{ margin: 0, paddingInlineStart: "0", listStyle: "none", display: "grid", gap: "6px" }}>
+        {STEPS.map((t, i) => (
+          <li key={i} style={{ display: "grid", gridTemplateColumns: "20px 1fr", gap: "8px", alignItems: "baseline", fontSize: "12px", color: "var(--color-muted)" }}>
+            <span className="num" style={{ fontSize: "11px", color: "var(--color-accent)" }}>{i + 1}</span>
+            <span style={{ textWrap: "pretty" }}>{t}</span>
+          </li>
+        ))}
+      </ol>
+
+      {/* what to look for — a sketch of the block on their page */}
+      <div aria-hidden style={{
+        alignSelf: "start", padding: "10px 14px", borderRadius: "8px",
+        background: "#1f2530", boxShadow: "inset 0 0 0 1px #2f3745",
+        display: "grid", gap: "6px", fontFamily: "system-ui, sans-serif",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#7fb2ff", fontSize: "12px", fontWeight: 600 }}>
+          <span className="num" style={{ fontSize: "11px" }}>&lt;&gt;</span> Developer Settings
         </div>
-        <div>
-          <label htmlFor="icu-key" className="lbl">API key</label>
-          <input id="icu-key" className="field num" type="password" value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)} placeholder="paste the whole key"
-            autoComplete="off" />
+        <div style={{ display: "grid", gridTemplateColumns: "auto auto", columnGap: "22px", rowGap: "2px", fontSize: "11px" }}>
+          <span style={{ color: "#9aa4b5" }}>Athlete ID</span>
+          <span style={{ color: "#9aa4b5" }}>API Key</span>
+          <span className="num" style={{ color: "#e9edf3" }}>i123456</span>
+          <span style={{ color: "#e9edf3", display: "inline-flex", alignItems: "center", gap: "6px" }}>
+            <span style={{ padding: "1px 6px", borderRadius: "4px", boxShadow: "0 0 0 1.5px var(--color-accent)", color: "var(--color-accent)", fontWeight: 600 }}>(view)</span>
+            <span style={{ color: "#6b7688", fontSize: "10px" }}>✎ ← makes a new key</span>
+          </span>
         </div>
       </div>
-      <p style={{ margin: 0, fontSize: "11px", color: "var(--color-faint)", textWrap: "pretty" }}>
-        Both are on your{" "}
-        <a href="https://intervals.icu/settings" target="_blank" rel="noreferrer"
-          style={{ color: "var(--color-accent)", textDecoration: "underline", textUnderlineOffset: "2px" }}>
-          intervals.icu settings page
-        </a>
-        , under Developer. The key is stored for your account only and is never sent to your browser
-        again.
-      </p>
-      {error ? (
-        <p className="num" style={{ margin: 0, fontSize: "11px", color: "var(--color-negative)" }}>
-          {error}
-        </p>
-      ) : null}
-      <div>
-        <button className="btn btn-primary" type="button" onClick={submit}
-          disabled={pending || !athleteId.trim() || apiKey.trim().length < 8}
-          style={{ padding: "7px 14px", fontSize: "12px" }}>
-          {pending ? "Checking…" : "Connect"}
+
+      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+        <button className="btn btn-secondary" type="button" onClick={openSettings} style={{ padding: "7px 12px", fontSize: "12px", display: "inline-flex", alignItems: "center", gap: "7px" }}>
+          Open intervals.icu settings
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M14 4h6v6" /><path d="M20 4 10 14" /><path d="M18 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6" />
+          </svg>
         </button>
       </div>
+
+      <div>
+        <label htmlFor="icu-key" className="lbl">API key</label>
+        <div style={{ display: "flex", gap: "8px" }}>
+          <input id="icu-key" className="field num" type="password" value={apiKey}
+            onChange={(e) => { setApiKey(e.target.value); setDone(null); }}
+            onKeyDown={(e) => { if (e.key === "Enter" && apiKey.trim().length >= 8 && !pending) submit(); }}
+            placeholder="paste the key" autoComplete="off" spellCheck={false} style={{ flex: 1 }} />
+          <button className="btn btn-primary" type="button" onClick={submit}
+            disabled={pending || apiKey.trim().length < 8}
+            style={{ padding: "7px 14px", fontSize: "12px", whiteSpace: "nowrap" }}>
+            {pending ? "Checking…" : "Connect"}
+          </button>
+        </div>
+      </div>
+
+      {error ? (
+        <p className="num" style={{ margin: 0, fontSize: "11px", color: "var(--color-negative)" }}>{error}</p>
+      ) : null}
+      {done ? (
+        <p className="num" style={{ margin: 0, fontSize: "11.5px", color: "var(--color-positive)" }}>{done}</p>
+      ) : null}
+
+      <p style={{ margin: 0, fontSize: "11px", color: "var(--color-faint)", textWrap: "pretty" }}>
+        The key is stored for your account only, used from our server, and never sent to your browser again. You can revoke it on intervals.icu at any time.
+      </p>
     </div>
   );
 }

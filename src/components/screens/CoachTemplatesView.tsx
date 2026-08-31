@@ -240,6 +240,10 @@ export function CoachTemplatesView({
               >
                 {pending ? COACH_COPY.saving : COACH_COPY.save}
               </button>
+              {/* a template is a structure; a cycle is the structure applied to people on a date */}
+              <a className="btn btn-secondary" href={`/coach/cycles?new=1&race=${t.raceType}`} style={{ textDecoration: "none" }}>
+                Start a cycle from this template →
+              </a>
               <button
                 className="btn btn-secondary"
                 type="button"

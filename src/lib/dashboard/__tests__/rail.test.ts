@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  calendarDots, interruptedWeeks, isoWeekNumber, isoWeekYear, raceCountdown,
+  calendarDots, interruptedWeeks, isoWeekNumber, isoWeekYear, planCountdown, raceCountdown,
   runStreak, VOLUME_WEEKS, weeklyVolume, weeklyVolumeSummary, weekStart,
 } from "../rail";
 import { calendarDotColor, volumeBarAppearance, VOLUME_BAR_MIN_H } from "../presentation";
@@ -143,6 +143,16 @@ describe("runStreak", () => {
 
   it("ignores a duplicate on the same day", () => {
     expect(runStreak([run("2026-08-19", 5), run("2026-08-19", 3)], TODAY)).toBe(1);
+  });
+});
+
+describe("planCountdown", () => {
+  it("counts to the last day of a plan that has no race behind it", () => {
+    const c = planCountdown("Autumn block", "2026-10-03", "2026-08-10", 8, TODAY);
+    expect(c?.days).toBe(45);
+    expect(c?.label).toBe("to the end of Autumn block · Oct 3, 2026");
+    expect(c?.weekNumber).toBe(2);
+    expect(c?.totalWeeks).toBe(8);
   });
 });
 

@@ -186,7 +186,8 @@ export const SET_COPY = {
   navActivities: "Activities",
   navPlan: "Plan",
   navSettings: "Settings",
-  title: "Settings",
+  title: "About you",
+  subtitle: "Personal details · connections · coach & plan · account & security",
 
   profileTitle: "Personal details",
   profileSub: "Used to calibrate training load and pace zones.",

@@ -26,6 +26,7 @@ import "@fontsource/sora/800.css";
 import "./globals.css";
 import { isCoach } from "@/lib/auth/role";
 import { CoachModeBar } from "@/components/coach/CoachModeBar";
+import { AskRuniLauncher } from "@/components/insights/AskRuniLauncher";
 
 const SITE = "https://runi-coach.vercel.app";
 const DESCRIPTION =
@@ -90,6 +91,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           <CoachModeBar isCoach={coach} />
           {children}
         </div>
+        {/* "Ask Runi", floating on the athlete's pages — see the component for where and why */}
+        <AskRuniLauncher />
       </body>
     </html>
   );

@@ -35,10 +35,10 @@ const COPY = {
   aiTag: "AI Coach",
   readinessCaption: "Readiness · needs 7 days of data",
   narrative:
-    "Welcome! I don’t know anything about your running yet. Connect intervals.icu " +
+    "Welcome! I don’t know anything about your running yet. Connect your watch " +
     "and Runi will read your runs, your sleep and your heart-rate variability — " +
     "then build you a plan around them.",
-  ctaConnect: "Connect intervals.icu",
+  ctaConnect: "Connect your watch",
   ctaBuild: "Build my training plan",
   noData: "No data yet",
   chartTitle: "Fitness · Fatigue · Form will appear here",
@@ -100,6 +100,7 @@ export function EmptyDashboard({ name }: { name?: string | null }) {
           <a href="/dashboard" style={{ color: "var(--color-ink)" }}>{COPY.navHome}</a>
           <a href="/plan" style={{ color: "var(--color-muted)" }}>{COPY.navPlan}</a>
           <a href="/activities" style={{ color: "var(--color-muted)" }}>{COPY.navActivities}</a>
+          <a href="/numbers" style={{ color: "var(--color-muted)" }}>Numbers</a>
           <a href="/settings" style={{ color: "var(--color-muted)" }}>{COPY.navSettings}</a>
         </nav>
         <div style={{ flex: 1 }} />
@@ -157,7 +158,7 @@ export function EmptyDashboard({ name }: { name?: string | null }) {
             {COPY.narrative}
           </p>
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBlockStart: "4px" }}>
-            <a className="btn btn-primary" href="/settings">{COPY.ctaConnect}</a>
+            <a className="btn btn-primary" href="/settings#connections">{COPY.ctaConnect}</a>
             <a className="btn btn-secondary" href="/plan">{COPY.ctaBuild}</a>
           </div>
         </div>

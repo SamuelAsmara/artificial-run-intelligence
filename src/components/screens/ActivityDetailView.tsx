@@ -457,6 +457,7 @@ function Nav({ runTitle }: { runTitle?: string }) {
         <a href="/dashboard" style={{ color: "var(--color-muted)" }}>{copy.navHome}</a>
         <a href="/plan" style={{ color: "var(--color-muted)" }}>{copy.navPlan}</a>
         <a href="/activities" style={{ color: "var(--color-ink)" }}>{copy.navActivities}</a>
+        <a href="/numbers" style={{ color: "var(--color-muted)" }}>Numbers</a>
         <a href="/settings" style={{ color: "var(--color-muted)" }}>{copy.navSettings}</a>
       </nav>
       <div style={{ flex: 1 }} />

@@ -24,16 +24,17 @@ export function Formula({ children }: { children: ReactNode }) {
       style={{
         display: "flex",
         alignItems: "center",
-        justifyContent: "center",
+        justifyContent: "var(--formula-justify, center)",
         flexWrap: "wrap",
         gap: "8px",
         // A little air above and below: an equation crowded against prose reads
-        // as part of the sentence.
-        padding: "18px 16px",
-        marginBlockStart: "12px",
+        // as part of the sentence. A container can tighten this (the Numbers
+        // panel does) by setting the --formula-* custom properties.
+        padding: "var(--formula-pad, 18px 16px)",
+        marginBlockStart: "var(--formula-gap, 12px)",
         borderRadius: "var(--radius-control)",
         background: "var(--color-elevated)",
-        fontSize: "15px",
+        fontSize: "var(--formula-size, 15px)",
         lineHeight: 1.2,
         color: "var(--color-ink)",
         overflowX: "auto",
@@ -113,7 +114,7 @@ export function Where({ children }: { children: ReactNode }) {
   return (
     <p style={{
       margin: "8px 0 0", fontSize: "11.5px", color: "var(--color-faint)",
-      lineHeight: 1.6, textAlign: "center", textWrap: "pretty",
+      lineHeight: 1.6, textAlign: "var(--formula-align, center)" as "center", textWrap: "pretty",
     }}>
       {children}
     </p>

@@ -8,12 +8,12 @@ export const goalRaceSchema = z.object({
   raceDate: z
     .string()
     .date()
-    .refine((v) => new Date(v) > new Date(), { message: "תאריך המרוץ חייב להיות בעתיד" })
+    .refine((v) => new Date(v) > new Date(), { message: "The race date has to be in the future." })
     .refine((v) => {
       const h = new Date();
       h.setDate(h.getDate() + MAX_RACE_HORIZON_DAYS);
       return new Date(v) <= h;
-    }, { message: "תאריך המרוץ רחוק מדי (עד שנתיים קדימה)" }),
+    }, { message: "The race date is too far out — up to two years ahead." }),
   targetTime: z.string().optional(),
 });
 export type GoalRaceInput = z.infer<typeof goalRaceSchema>;

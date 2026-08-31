@@ -35,6 +35,7 @@ export function MethodologyView({ isCoach = false }: { isCoach?: boolean }) {
           <a href="/dashboard" style={{ color: "var(--color-muted)" }}>{NAV.home}</a>
           <a href="/plan" style={{ color: "var(--color-muted)" }}>{NAV.plan}</a>
           <a href="/activities" style={{ color: "var(--color-muted)" }}>{NAV.activities}</a>
+          <a href="/numbers" style={{ color: "var(--color-muted)" }}>Numbers</a>
           <a href="/settings" style={{ color: "var(--color-ink)" }}>{NAV.settings}</a>
         </nav>
         <div style={{ flex: 1 }} />

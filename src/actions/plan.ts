@@ -25,6 +25,8 @@ import { runPlanAdjustment } from "@/lib/planning/runAdjustment";
 import { readCapacity } from "@/lib/planning/readCapacity";
 import { estimateThresholds, type HistoryActivity } from "@/lib/planning/thresholds";
 import { paceLabel } from "@/lib/planning/paces";
+import { parseTargetTime, thresholdSpeedFromTarget, RACE_DISTANCE_M } from "@/lib/planning/ownPlan";
+import type { AthleteCapacity } from "@/lib/planning/capacity";
 import { buildRealPlan, type RealPlan } from "@/lib/dashboard/realPlan";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, RaceType } from "@/types/database.types";
@@ -72,7 +74,16 @@ async function readTemplate(
   supabase: SupabaseClient<Database>,
   userId: string,
   raceType: RaceType,
+  cycleId: string | null = null,
 ): Promise<PlanStructure | undefined> {
+  // A cycle names its template outright.
+  if (cycleId) {
+    const { data: cycle } = await supabase.from("coach_cycles").select("template_id").eq("id", cycleId).maybeSingle();
+    if (cycle?.template_id) {
+      const { data: t } = await supabase.from("plan_templates").select("phase_structure, weekly_mix").eq("id", cycle.template_id).maybeSingle();
+      if (t) return { phaseStructure: t.phase_structure, weeklyMix: t.weekly_mix };
+    }
+  }
   const { data: link } = await supabase
     .from("coach_athletes")
     .select("coach_id")
@@ -110,23 +121,32 @@ async function readTemplate(
  */
 export async function generatePlanAction(
   goalRaceId: string,
+  /**
+   * What to size the plan against when the athlete has no runs on file yet —
+   * the two numbers the Runi-plan form asks for in that case. Without runs
+   * and without this, the action refuses rather than guess.
+   */
+  opts: { fallbackCapacity?: AthleteCapacity; cycleId?: string | null; forUserId?: string } = {},
 ): Promise<ActionResult<{ planId: string; notes: string[]; achievable: boolean }>> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return { error: "יש להתחבר כדי ליצור תוכנית" };
+    return { error: "Sign in to build a plan." };
   }
 
   const { data: goalRace, error: fetchError } = await supabase
     .from("goal_races")
-    .select("id, race_type, race_date, user_id")
+    .select("id, race_type, race_date, user_id, target_time")
     .eq("id", goalRaceId)
     .single();
 
-  if (fetchError || !goalRace || goalRace.user_id !== user.id) {
-    return { error: "מרוץ היעד לא נמצא" };
+  // A coach may build for an athlete on their roster (row-level security is
+  // what actually enforces that); anyone else builds only for themselves.
+  const athleteId = opts.forUserId ?? user.id;
+  if (fetchError || !goalRace || goalRace.user_id !== athleteId) {
+    return { error: "Goal race not found." };
   }
 
   // The plan must be sized against this athlete. Generating from the generic
@@ -135,7 +155,7 @@ export async function generatePlanAction(
   const { data: history } = await supabase
     .from("activities")
     .select("started_at, distance_m, duration_s, avg_hr")
-    .eq("user_id", user.id)
+    .eq("user_id", athleteId)
     .order("started_at", { ascending: true });
 
   const runs: HistoryActivity[] = (history ?? [])
@@ -147,26 +167,35 @@ export async function generatePlanAction(
       date: (a.started_at as string).slice(0, 10),
     }));
 
-  if (runs.length === 0) {
+  if (runs.length === 0 && !opts.fallbackCapacity) {
     return {
       error:
-        "אין עדיין היסטוריית ריצות. חבר את Strava וסנכרן לפני בניית תוכנית — " +
-        "בלי לדעת מה אתה רץ היום, כל תוכנית תהיה ניחוש.",
+        "No runs on file yet. Connect your watch in Settings and sync, or tell Runi what you run now — " +
+        "without knowing what you run today, any plan is a guess.",
     };
   }
 
-  const capacity = readCapacity(runs.map((r) => ({ date: r.date, distanceM: r.distanceM })));
+  const capacity = runs.length
+    ? readCapacity(runs.map((r) => ({ date: r.date, distanceM: r.distanceM })))
+    : (opts.fallbackCapacity as AthleteCapacity);
 
   // Learned from the athlete's own efforts; used only to prescribe paces.
   // Age and sex set the maximum-heart-rate estimate, which sets the threshold,
   // which sets every prescribed pace — so they are read rather than assumed.
   // The readiness pipeline already did this; the plan did not, and the two then
   // produced different paces for the same athlete on the same day.
-  const demographics = await readDemographics(supabase, user.id);
-  const thresholds = estimateThresholds(runs, demographics);
+  //
+  // With no runs at all, the target time stands in: Riegel turns it into the
+  // pace of an hour's race, which is what threshold is. The measured value
+  // takes over the first time the plan is rebuilt after runs arrive.
+  const demographics = await readDemographics(supabase, athleteId);
+  const thresholdSpeedMps = runs.length
+    ? estimateThresholds(runs, demographics).thresholdSpeedMps
+    : thresholdSpeedFromTarget(RACE_DISTANCE_M[goalRace.race_type], parseTargetTime(goalRace.target_time) ?? 0) ?? 0;
 
-  // The coach's structure, when this athlete has a coach who wrote one.
-  const template = await readTemplate(supabase, user.id, goalRace.race_type);
+  // The coach's structure, when this athlete has a coach who wrote one — or
+  // the cycle's template, when the plan is being built for a cycle.
+  const template = await readTemplate(supabase, athleteId, goalRace.race_type, opts.cycleId ?? null);
 
   let generated;
   try {
@@ -182,17 +211,17 @@ export async function generatePlanAction(
       // מסמך אפיון בדיקות §6: תאריך קרוב מדי -> הודעה מפורשת, לא קריסה
       return { error: err.message };
     }
-    return { error: "יצירת התוכנית נכשלה, נסה שוב" };
+    return { error: "Building the plan failed — try again." };
   }
 
   const { data: plan, error: planError } = await supabase
     .from("training_plans")
-    .insert({ user_id: user.id, goal_race_id: goalRaceId })
+    .insert({ user_id: athleteId, goal_race_id: goalRaceId, cycle_id: opts.cycleId ?? null })
     .select("id")
     .single();
 
   if (planError || !plan) {
-    return { error: "שמירת התוכנית נכשלה, נסה שוב" };
+    return { error: "Saving the plan failed — try again." };
   }
 
   const workoutRows = generated.workouts.map((w) => ({
@@ -201,7 +230,7 @@ export async function generatePlanAction(
     day_date: w.dayDate,
     workout_type: w.workoutType,
     planned_distance: w.plannedDistance,
-    planned_pace: paceLabel(w.workoutType, thresholds.thresholdSpeedMps),
+    planned_pace: paceLabel(w.workoutType, thresholdSpeedMps),
     /*
      * The generator has computed this since day one and it was dropped right
      * here, on this map — the one place the plan touches the ground. Stored so
@@ -214,7 +243,7 @@ export async function generatePlanAction(
 
   const { error: workoutsError } = await supabase.from("plan_workouts").insert(workoutRows);
   if (workoutsError) {
-    return { error: "שמירת אימוני התוכנית נכשלה, נסה שוב" };
+    return { error: "Saving the plan’s sessions failed — try again." };
   }
 
   revalidatePath("/plan");
@@ -342,7 +371,7 @@ export async function adjustPlan(userId: string): Promise<ActionResult<{ adjuste
     data: { user },
   } = await supabase.auth.getUser();
   if (!user || user.id !== userId) {
-    return { error: "אין הרשאה" };
+    return { error: "Not allowed." };
   }
 
   const result = await runPlanAdjustment(supabase, userId);
@@ -434,17 +463,27 @@ export async function getDashboardPlan(): Promise<RealPlan | null> {
  * prototype's twelve invented weeks — which is what it did until now, for every
  * signed-in athlete, with no `?demo=1` gate and no empty state.
  */
+export interface PlanStart {
+  /** the coach the athlete is linked to, if any */
+  coach: { name: string; cycleName: string | null } | null;
+  /** how many runs Runi holds — zero means the Runi plan asks for two numbers */
+  runsOnFile: number;
+}
+
 export async function getPlanScreen(): Promise<{
   plan: RealPlan | null;
+  /** the active plan's own name and whether it is one the athlete wrote */
+  planMeta: { name: string | null; own: boolean; cycleName: string | null } | null;
   race: { raceType: string; raceDate: string; targetTime: string | null } | null;
+  start: PlanStart;
 }> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { plan: null, race: null };
+  if (!user) return { plan: null, planMeta: null, race: null, start: { coach: null, runsOnFile: 0 } };
 
-  const [plan, { data: race }] = await Promise.all([
+  const [plan, { data: race }, { data: activePlan }, { data: link }, { count: runs }] = await Promise.all([
     getDashboardPlan(),
     supabase
       .from("goal_races")
@@ -454,12 +493,31 @@ export async function getPlanScreen(): Promise<{
       .order("race_date", { ascending: true })
       .limit(1)
       .maybeSingle(),
+    supabase.from("training_plans").select("name, goal_race_id, cycle_id").eq("user_id", user.id).eq("status", "active")
+      .order("created_at", { ascending: false }).limit(1).maybeSingle(),
+    supabase.from("coach_athletes").select("coach_id, cycle_id").eq("athlete_id", user.id).eq("status", "active").maybeSingle(),
+    supabase.from("activities").select("id", { count: "exact", head: true }).eq("user_id", user.id),
   ]);
+
+  let coach: PlanStart["coach"] = null;
+  let cycleName: string | null = null;
+  if (link?.coach_id) {
+    const { data: rows } = await supabase.rpc("my_coach_name");
+    const me = Array.isArray(rows) ? rows[0] : null;
+    const cycleId = activePlan?.cycle_id ?? link.cycle_id;
+    if (cycleId) {
+      const { data: cycle } = await supabase.from("coach_cycles").select("name").eq("id", cycleId).maybeSingle();
+      cycleName = cycle?.name ?? null;
+    }
+    coach = { name: me?.coach_name ?? "your coach", cycleName };
+  }
 
   return {
     plan,
+    planMeta: activePlan ? { name: activePlan.name, own: activePlan.goal_race_id == null, cycleName } : null,
     race: race
       ? { raceType: race.race_type, raceDate: race.race_date, targetTime: race.target_time }
       : null,
+    start: { coach, runsOnFile: runs ?? 0 },
   };
 }

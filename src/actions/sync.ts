@@ -10,14 +10,14 @@ type ActionResult<T> = { data: T; error?: undefined } | { data?: undefined; erro
 export async function syncMyActivities(): Promise<ActionResult<{ synced: number }>> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "יש להתחבר" };
+  if (!user) return { error: "Sign in first." };
 
   const { data: conn } = await supabase
     .from("strava_connections")
     .select("access_token, refresh_token, expires_at")
     .eq("user_id", user.id)
     .maybeSingle();
-  if (!conn) return { error: "Strava לא מחובר — חבר קודם במסך ה-Onboarding" };
+  if (!conn) return { error: "No watch connected yet — connect one in Settings first." };
 
   try {
     let accessToken = conn.access_token;
@@ -58,6 +58,6 @@ export async function syncMyActivities(): Promise<ActionResult<{ synced: number 
     return { data: { synced } };
   } catch {
     await supabase.from("strava_connections").update({ last_sync_status: "error" }).eq("user_id", user.id);
-    return { error: "סנכרון מול Strava נכשל, נסה שוב" };
+    return { error: "Sync failed — try again." };
   }
 }

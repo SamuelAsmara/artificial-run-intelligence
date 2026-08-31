@@ -50,9 +50,9 @@ export interface Database {
         Relationships: [];
       };
       coach_athletes: {
-        Row: { id: string; coach_id: string; athlete_id: string; status: CoachLinkStatus; created_at: string };
-        Insert: { id?: string; coach_id: string; athlete_id: string; status?: CoachLinkStatus; created_at?: string };
-        Update: Upd<{ id: string; coach_id: string; athlete_id: string; status: CoachLinkStatus; created_at: string }>;
+        Row: { id: string; coach_id: string; athlete_id: string; status: CoachLinkStatus; created_at: string; cycle_id: string | null };
+        Insert: { id?: string; coach_id: string; athlete_id: string; status?: CoachLinkStatus; created_at?: string; cycle_id?: string | null };
+        Update: Upd<{ id: string; coach_id: string; athlete_id: string; status: CoachLinkStatus; created_at: string; cycle_id: string | null }>;
         Relationships: [];
       };
       subscriptions: {
@@ -86,9 +86,15 @@ export interface Database {
         Relationships: [];
       };
       training_plans: {
-        Row: { id: string; user_id: string; goal_race_id: string; template_id: string | null; status: PlanStatus; created_at: string };
-        Insert: { id?: string; user_id: string; goal_race_id: string; template_id?: string | null; status?: PlanStatus; created_at?: string };
-        Update: Upd<{ id: string; user_id: string; goal_race_id: string; template_id: string | null; status: PlanStatus; created_at: string }>;
+        Row: { id: string; user_id: string; goal_race_id: string | null; template_id: string | null; status: PlanStatus; created_at: string; name: string | null; cycle_id: string | null };
+        Insert: { id?: string; user_id: string; goal_race_id?: string | null; template_id?: string | null; status?: PlanStatus; created_at?: string; name?: string | null; cycle_id?: string | null };
+        Update: Upd<{ id: string; user_id: string; goal_race_id: string | null; template_id: string | null; status: PlanStatus; created_at: string; name: string | null; cycle_id: string | null }>;
+        Relationships: [];
+      };
+      coach_cycles: {
+        Row: { id: string; coach_id: string; name: string; race_type: RaceType; race_date: string; template_id: string | null; notes: string | null; created_at: string };
+        Insert: { id?: string; coach_id: string; name: string; race_type: RaceType; race_date: string; template_id?: string | null; notes?: string | null; created_at?: string };
+        Update: Upd<{ id: string; coach_id: string; name: string; race_type: RaceType; race_date: string; template_id: string | null; notes: string | null; created_at: string }>;
         Relationships: [];
       };
       plan_workouts: {

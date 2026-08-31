@@ -36,6 +36,7 @@ import {
   fetchActivities,
   fetchWellness,
   normaliseAthleteId,
+  resolveAthleteFromKey,
   toActivityImports,
   toRecoverySignals,
   verifyCredentials,
@@ -143,6 +144,7 @@ export async function connectIntervalsIcu(
 ): Promise<
   Result<{
     name: string | null;
+    athleteId: string;
     nightsImported: number;
     runsImported: number;
     detailed: number;
@@ -156,18 +158,33 @@ export async function connectIntervalsIcu(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "You need to be signed in." };
 
-  const athleteId = normaliseAthleteId(rawAthleteId ?? "");
   const apiKey = (rawApiKey ?? "").trim();
-
-  if (!athleteId) {
-    return { ok: false, error: "That doesn't look like an athlete ID. It looks like i123456." };
-  }
   if (apiKey.length < 8) {
     return { ok: false, error: "That API key looks too short — copy the whole thing." };
   }
 
-  const check = await verifyCredentials({ athleteId, apiKey });
-  if (!check.ok) return { ok: false, error: check.reason };
+  /*
+   * The athlete id is optional. The connect form no longer asks for it: the
+   * key alone identifies the account (`athlete/0`), so the form is one field
+   * and the athlete is greeted by name. An id is still accepted — a script or
+   * an old client can pass one — and is then verified against the key.
+   */
+  let athleteId = normaliseAthleteId(rawAthleteId ?? "");
+  let name: string | null;
+  if (athleteId) {
+    const check = await verifyCredentials({ athleteId, apiKey });
+    if (!check.ok) return { ok: false, error: check.reason };
+    name = check.name;
+  } else {
+    if ((rawAthleteId ?? "").trim()) {
+      return { ok: false, error: "That doesn't look like an athlete ID. It looks like i123456 — or leave it blank." };
+    }
+    const who = await resolveAthleteFromKey(apiKey);
+    if (!who.ok) return { ok: false, error: who.reason };
+    athleteId = who.athleteId;
+    name = who.name;
+  }
+  const check = { name };
 
   const { error: upsertErr } = await supabase.from("provider_connections").upsert(
     {
@@ -218,6 +235,7 @@ export async function connectIntervalsIcu(
     ok: true,
     data: {
       name: check.name,
+      athleteId,
       nightsImported: imported.nights,
       runsImported: imported.runs,
       detailed: imported.detailed,

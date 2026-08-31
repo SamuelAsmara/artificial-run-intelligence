@@ -164,7 +164,7 @@ const PEAK_WEEKLY_KM: Record<RaceType, number> = {
 export class RaceTooSoonError extends Error {
   constructor(public weeksAvailable: number) {
     super(
-      `אין מספיק זמן לבניית תוכנית מלאה — נותרו ${weeksAvailable} שבועות בלבד (מינימום ${MIN_WEEKS_FOR_FULL_PLAN}).`
+      `Not enough time for a full plan — ${weeksAvailable} week${weeksAvailable === 1 ? "" : "s"} left, and a plan needs at least ${MIN_WEEKS_FOR_FULL_PLAN}.`
     );
     this.name = "RaceTooSoonError";
   }

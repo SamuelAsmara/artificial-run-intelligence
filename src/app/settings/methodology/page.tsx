@@ -1,18 +1,10 @@
-import { MethodologyView } from "@/components/screens/MethodologyView";
-import { isCoach } from "@/lib/auth/role";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "How the numbers work · Runi" };
-
-/*
- * One page for both audiences.
- *
- * It was tempting to make this coach-only — the formulas are the coach's
- * professional interest, and an athlete arguably wants the plan, not the
- * arithmetic. But a product that computes a readiness score and will not say
- * how is asking for trust it has not earned, and the athlete is the one being
- * told to rest. So: same page, and the coach simply arrives with the formulas
- * already open.
+/**
+ * The formulas used to live here as a page of prose. They are now the
+ * Numbers board at /numbers — same figures, on the athlete's own data. The
+ * old address keeps working for the documents and anyone who bookmarked it.
  */
-export default async function MethodologyPage() {
-  return <MethodologyView isCoach={await isCoach()} />;
+export default function MethodologyRedirect() {
+  redirect("/numbers");
 }

@@ -164,6 +164,45 @@ export async function verifyCredentials(
 }
 
 /**
+ * Who does this key belong to?
+ *
+ * intervals.icu accepts `0` as the athlete id for "the athlete this key was
+ * issued to", so the key alone is enough to identify the account: we no longer
+ * need the athlete to go and find their `i123456`. One field instead of two,
+ * and a greeting by name the moment the key is verified.
+ */
+export async function resolveAthleteFromKey(
+  apiKey: string,
+): Promise<{ ok: true; athleteId: string; name: string | null } | { ok: false; reason: string }> {
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}/athlete/0`, {
+      headers: { Authorization: authHeader(apiKey), Accept: "application/json" },
+      cache: "no-store",
+    });
+  } catch {
+    return { ok: false, reason: "Could not reach intervals.icu. Try again in a moment." };
+  }
+  if (res.status === 401 || res.status === 403) {
+    return { ok: false, reason: "intervals.icu rejected that key. Check you copied all of it." };
+  }
+  if (!res.ok) {
+    return { ok: false, reason: `intervals.icu returned ${res.status}. Try again shortly.` };
+  }
+  let body: { id?: string | number; name?: string; firstname?: string } = {};
+  try {
+    body = (await res.json()) as typeof body;
+  } catch {
+    return { ok: false, reason: "intervals.icu answered, but not with an athlete. Try again." };
+  }
+  const athleteId = normaliseAthleteId(String(body.id ?? ""));
+  if (!athleteId) {
+    return { ok: false, reason: "intervals.icu answered, but not with an athlete. Try again." };
+  }
+  return { ok: true, athleteId, name: body.name ?? body.firstname ?? null };
+}
+
+/**
  * Normalises what the athlete pastes.
  *
  * intervals.icu shows the athlete id as `i123456` on the settings page, but

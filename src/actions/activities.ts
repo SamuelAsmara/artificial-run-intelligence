@@ -594,7 +594,7 @@ export async function getPersonalRecords(): Promise<PersonalRecord[]> {
 
   const { data } = await supabase
     .from("activities")
-    .select("started_at, best_efforts")
+    .select("id, started_at, best_efforts")
     .eq("user_id", user.id)
     .not("best_efforts", "is", null)
     .order("started_at", { ascending: false })

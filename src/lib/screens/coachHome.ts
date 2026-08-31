@@ -151,8 +151,8 @@ export const COACH_COPY = {
   highlightsEmpty: "Nothing to raise this morning.",
 
   cyclesTitle: "Preparation cycles",
-  cyclesSub: "Everyone sharing a race and a date is preparing together.",
-  cycleEmpty: "No cycles yet — a cycle appears once an athlete sets a goal race.",
+  cyclesSub: "A cycle is a group preparing for one race day from one template — each athlete on their own week of it.",
+  cycleEmpty: "No cycles yet. Start one from a template, then add the athletes who are preparing for that race.",
   noRaceGroup: "No goal race",
   selectAll: "All",
   clearAll: "Clear",

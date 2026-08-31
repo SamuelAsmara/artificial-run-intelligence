@@ -10,6 +10,7 @@ const PROTECTED_PREFIXES = [
   "/dashboard",
   "/plan",
   "/activities",
+  "/numbers",
   "/settings",
   "/coach",
   // "/upgrade" was here and has no route — billing is deliberately disabled

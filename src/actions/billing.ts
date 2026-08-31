@@ -29,7 +29,7 @@ export async function upgradeCoachSeats(): Promise<ActionResult<{ plan: "pro"; s
 async function upgradeCoachSeatsMock(): Promise<ActionResult<{ plan: "pro"; seatLimit: number }>> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "יש להתחבר כדי לשדרג" };
+  if (!user) return { error: "Sign in to upgrade." };
 
   const { data: sub } = await supabase
     .from("subscriptions")
@@ -43,7 +43,7 @@ async function upgradeCoachSeatsMock(): Promise<ActionResult<{ plan: "pro"; seat
   const { error } = await supabase
     .from("subscriptions")
     .upsert({ user_id: user.id, plan: "pro", seat_limit: PRO_SEAT_LIMIT }, { onConflict: "user_id" });
-  if (error) return { error: "השדרוג נכשל, נסה שוב" };
+  if (error) return { error: "Upgrade failed — try again." };
 
   await supabase.from("billing_events").insert({
     user_id: user.id, plan_from: planFrom, plan_to: "pro", seats: PRO_SEAT_LIMIT,
