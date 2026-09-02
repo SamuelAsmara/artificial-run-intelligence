@@ -160,7 +160,7 @@ The live app is at **[runi-coach.vercel.app](https://runi-coach.vercel.app)**. T
 
 | Role | Email | What to look at |
 |---|---|---|
-| Coach | `coach1@demo.ari-coach.app` | Roster with attention flags, preparation cycles, templates, the coach package page |
+| Coach | `coach1@demo.ari-coach.app` | Roster with attention flags, preparation cycles, templates, Settings → Billing (packages and the payment-method mockup) |
 | Athlete | `runner1-coach1@demo.ari-coach.app` | Dashboard, plan, Your Numbers, Ask Runi |
 
 Signing up with your own address also works, but the confirmation email is sent from Resend's shared test domain, which only delivers to the project owner until a verified domain is attached — one of the known limitations below.
@@ -201,7 +201,7 @@ Alongside them, in `docs/`: the technical guide (`Runi_technical_guide.html`) an
 
 ## Known Limitations
 
-- **Billing** — package choice is live (athletes: Basic free, Premium with RunAI coming next; coaches: Basic free for six months, then $5/mo, Premium $10/mo); charging through a payment provider is not connected yet, and the pages say so.
+- **Billing** — package choice is live (athletes: Basic free, Premium with RunAI coming next; coaches: Basic free for six months, then $5/mo, Premium $10/mo); charging through a payment provider is not connected yet — the payment-method form under Settings → Billing is a labelled mockup that stores nothing.
 - **Email domain** — auth emails go out through Resend's shared test sender, which delivers only to the project owner. A verified domain lifts that.
 - **Sync throughput** — the daily job processes athletes one by one. It holds up to a few hundred users; beyond that a queue is required (see the scale document).
 - **Native app** — there is none. Runi is a web application built to be used fully from a phone.

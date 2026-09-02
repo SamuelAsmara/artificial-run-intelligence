@@ -1,10 +1,6 @@
-email: branded password-reset template; athlete wording on the payment mockup
+docs: counts checked against the live database; billing tab in the reviewer notes
 
-The reset email used Supabase's default text next to a branded
-confirmation email. templates/reset-password.html is the same shell with
-the reset copy; email/README.md says where it goes and notes that a new
-reset request invalidates the previous link.
-
-The payment-method mockup on the athlete's Billing tab said "a coach" and
-quoted the coach's Basic price; it now speaks to the athlete, whose Basic
-is free with no end date.
+44 RLS policies (not 37), 55 server actions in 13 files (not 53), 57
+test files — corrected in the README, the progress log, the technical
+guide and the code map. README reviewer table and Known Limitations now
+describe Settings → Billing and the payment-method mockup.
