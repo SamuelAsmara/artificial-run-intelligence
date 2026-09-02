@@ -18,7 +18,7 @@ import type { CoachTier } from "@/lib/billing/plans";
 const COPY = {
   title: "Payment method",
   tag: "Mockup",
-  sub: "Billing is not connected in this version. This is the form a coach will fill in when it is — nothing typed here is stored or charged. Use any numbers, never a real card.",
+  sub: "Billing is not connected in this version. This is the form you will fill in when it is — nothing typed here is stored or charged. Use any numbers, never a real card.",
   name: "Name on card",
   number: "Card number",
   expiry: "Expiry",
@@ -29,6 +29,7 @@ const COPY = {
   historyNone: "No charges yet.",
   premiumNote: "Premium is free for now. When billing goes live, the card on file is charged $10 a month from that day — never earlier, never without notice.",
   basicNote: "Basic is free for six months from the day you chose it, then $5 a month. A card is only needed when the free period ends.",
+  athleteNote: "Basic is free, with no card and no end date. When Premium arrives, this is where the card goes.",
 };
 
 const digits = (s: string) => s.replace(/\D/g, "");
@@ -51,7 +52,7 @@ const brandOf = (s: string) => {
   return null;
 };
 
-export function PaymentMethodMock({ tier }: { tier: CoachTier | null }) {
+export function PaymentMethodMock({ tier, audience = "coach" }: { tier: CoachTier | null; audience?: "coach" | "athlete" }) {
   const [name, setName] = useState("");
   const [number, setNumber] = useState("");
   const [expiry, setExpiry] = useState("");
@@ -101,7 +102,7 @@ export function PaymentMethodMock({ tier }: { tier: CoachTier | null }) {
         <div style={{ gridColumn: "span 6", display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginBlockStart: "4px" }}>
           <button className="btn btn-primary" type="submit" disabled={!filled}>{COPY.save}</button>
           <span className="num" style={{ fontSize: "11.5px", color: note ? "var(--color-caution)" : "var(--color-faint)" }}>
-            {note || (tier === "premium" ? COPY.premiumNote : COPY.basicNote)}
+            {note || (audience === "athlete" ? COPY.athleteNote : tier === "premium" ? COPY.premiumNote : COPY.basicNote)}
           </span>
         </div>
       </form>

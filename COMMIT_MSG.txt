@@ -1,22 +1,10 @@
-feat(settings): one settings page for a coach; package choice inside Billing
+email: branded password-reset template; athlete wording on the payment mockup
 
-A coach now has one settings page, /coach/settings, whichever mode they
-were in when they clicked Settings — /settings redirects a coach there.
-The athlete settings screen, with its athlete package, is no longer
-reachable for a coach account, so a coach can never end up on an
-athlete package by accident.
+The reset email used Supabase's default text next to a branded
+confirmation email. templates/reset-password.html is the same shell with
+the reset copy; email/README.md says where it goes and notes that a new
+reset request invalidates the previous link.
 
-The package choice moves into Settings → Billing: the two package cards
-sit in the tab, picking one saves it and refreshes the page in place.
-/upgrade is kept as a redirect for old links, and the coach layout no
-longer sends a new coach there first — a coach with no package sees
-"Choose a package" in the tab instead. Under the cards, a payment-method
-form: a mockup, labelled as one, with card fields that are kept in
-component state only and a "Save card" that stores and charges nothing.
-The athlete Billing tab shows the same form.
-
-An auth link that fails (expired or already used) used to drop the
-browser on the landing page with no explanation; / now sends it to the
-sign-in screen with the "link expired" line and the form to ask again.
-
-Counts unchanged: 835 tests, 57 files, 24 migrations.
+The payment-method mockup on the athlete's Billing tab said "a coach" and
+quoted the coach's Basic price; it now speaks to the athlete, whose Basic
+is free with no end date.

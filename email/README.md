@@ -51,9 +51,16 @@ set a plain subject line (for example `Confirm your Runi account`). The
 `{{ .ConfirmationURL }}` placeholder is Supabase's own template syntax and
 is filled in automatically.
 
-The other templates (Magic Link, Reset Password, Invite, Change Email)
-still use Supabase's default text; the same shell can be reused with the
+**Authentication → Emails → Templates → Reset password**: paste
+`templates/reset-password.html` the same way, subject `Reset your Runi
+password`.
+
+The other templates (Magic Link, Invite, Change Email) still use
+Supabase's default text; the same shell can be reused with the
 placeholder each template expects (`{{ .Token }}`, `{{ .ConfirmationURL }}`).
+
+Note that a new reset request invalidates the previous link — only the
+most recent email works.
 
 ## 4. Verifying
 
@@ -66,3 +73,4 @@ request a password reset from `/login` and confirm the link opens
 
 - `templates/confirm-signup.html` — the branded confirmation email, table
   based so it renders the same in Outlook, Gmail and Apple Mail.
+- `templates/reset-password.html` — the same shell for the password reset.

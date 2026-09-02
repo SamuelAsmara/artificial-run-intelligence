@@ -161,7 +161,7 @@ export function SettingsView({
             panel: (
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 <AthletePackageCard plan={billingPlan} />
-                <PaymentMethodMock tier={billingPlan?.tier ?? null} />
+                <PaymentMethodMock tier={billingPlan?.tier ?? null} audience="athlete" />
               </div>
             ),
           },
