@@ -84,7 +84,6 @@ export async function chooseCoachPlan(tier: CoachTier): Promise<ActionResult<{ t
 
   revalidatePath("/coach");
   revalidatePath("/coach/settings");
-  revalidatePath("/upgrade");
   return { data: { tier } };
 }
 

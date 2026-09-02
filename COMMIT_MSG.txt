@@ -1,29 +1,22 @@
-feat(billing): coach and athlete packages; README for submission
+feat(settings): one settings page for a coach; package choice inside Billing
 
-A coach picks a package right after signing up, on /upgrade: Basic is
-free and stops at five athletes, Premium is unlimited and will carry the
-free-text chat. The choice is stored in subscriptions, shown in coach
-settings against the roster ("3 of 5 athletes"), and the Basic limit is
-enforced where it has to be — inside join_coach (migration 0022), since
-the athlete redeeming a code cannot read the coach's subscription. No
-payment provider is connected; Premium opens without a charge and the
-page says so.
+A coach now has one settings page, /coach/settings, whichever mode they
+were in when they clicked Settings — /settings redirects a coach there.
+The athlete settings screen, with its athlete package, is no longer
+reachable for a coach account, so a coach can never end up on an
+athlete package by accident.
 
-Athletes get the same two packages on the settings screen: Basic is free
-and is the whole product; Premium (RunAI, free-text chat) is shown as
-"coming next" with no button, so nothing on the page looks like a
-purchase. Migration 0023 gives subscriptions a scope column so a coach
-who also trains holds one row per role.
+The package choice moves into Settings → Billing: the two package cards
+sit in the tab, picking one saves it and refreshes the page in place.
+/upgrade is kept as a redirect for old links, and the coach layout no
+longer sends a new coach there first — a coach with no package sees
+"Choose a package" in the tab instead. Under the cards, a payment-method
+form: a mockup, labelled as one, with card fields that are kept in
+component state only and a "Save card" that stores and charges nothing.
+The athlete Billing tab shows the same form.
 
-Email: Supabase Auth sends the emails, Resend is the SMTP provider —
-email/README.md has the dashboard settings and the branded confirmation
-template. README gains a "For Reviewers" section with the two demo
-accounts and notes the Resend test-domain limitation.
+An auth link that fails (expired or already used) used to drop the
+browser on the landing page with no explanation; / now sends it to the
+sign-in screen with the "link expired" line and the form to ask again.
 
-docs/: the working notes that no longer describe the product (plans and
-gap maps from 19 Aug, the design port log, the first markdown drafts and
-the ARI-era archive) are removed; the audit and QA records stay, and the
-progress log is brought up to date. The six documents and the
-presentation follow in a separate commit.
-
-Counts: 835 tests, 57 files, 24 migrations, 53 actions.
+Counts unchanged: 835 tests, 57 files, 24 migrations.

@@ -39,14 +39,5 @@ export default async function CoachLayout({ children }: { children: React.ReactN
 
   if (data?.role !== "coach") notFound();
 
-  /*
-   * A coach without a package has not finished signing up. The choice page
-   * lives at /upgrade, outside this layout, so the redirect cannot loop.
-   * Accounts from before packages existed have no row either and see the
-   * page once — the choice is free, and it is theirs to make.
-   */
-  const { data: sub } = await supabase.from("subscriptions").select("plan").eq("user_id", user.id).eq("scope", "coach").maybeSingle();
-  if (!sub) redirect("/upgrade?first=1");
-
   return <>{children}</>;
 }

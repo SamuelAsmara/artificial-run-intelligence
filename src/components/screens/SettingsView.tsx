@@ -62,6 +62,7 @@ import { Entrance, BrandMark, SectionHeader } from "@/components/ui";
 import { METHOD_COPY } from "@/lib/screens/methodology";
 import { chooseAthletePlan, type AthletePlanView } from "@/actions/billing";
 import { ATHLETE_PLANS, type CoachTier } from "@/lib/billing/plans";
+import { PaymentMethodMock } from "@/components/settings/PaymentMethodMock";
 
 const copy = SET_COPY;
 const DASH = "—";
@@ -74,7 +75,6 @@ export function SettingsView({
   coach = null,
   plan = null,
   billingPlan = null,
-  isCoachAccount = false,
 }: {
   icuConnection?: ProviderConnectionView | null;
   profile?: AthleteProfileView | null;
@@ -91,7 +91,6 @@ export function SettingsView({
    * out rather than shown as a dead end. See doc1 §8/architecture notes on
    * subscription scope for why the two are kept apart.
    */
-  isCoachAccount?: boolean;
 } = {}) {
   return (
     <div data-entrance-root style={{
@@ -156,16 +155,16 @@ export function SettingsView({
               </div>
             ),
           },
-          ...(isCoachAccount ? [] : [{
+          {
             key: "billing", label: "Billing", icon: TAB_ICONS.billing,
             hint: billingPlan?.tier ? ATHLETE_PLANS[billingPlan.tier].name : "Free",
             panel: (
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 <AthletePackageCard plan={billingPlan} />
-                <PaymentMethodCard tier={billingPlan?.tier ?? null} />
+                <PaymentMethodMock tier={billingPlan?.tier ?? null} />
               </div>
             ),
-          }]),
+          },
           {
             key: "account", label: "Account & security", icon: TAB_ICONS.account,
             hint: profile?.email ?? "",
@@ -201,57 +200,13 @@ export function AccountPanel({ email, title, sub }: { email: string | null; titl
 }
 
 /* ------------------------------------------------------------------ */
-/* billing — shared by the athlete's settings and the coach's           */
+/* billing — the athlete's package                                      */
 /* ------------------------------------------------------------------ */
 
 /**
- * The payment method, stubbed.
- *
- * There is no payment provider behind Premium yet, for either an athlete or
- * a coach — see `chooseAthletePlan` / `chooseCoachPlan` in `actions/billing.ts`.
- * This card says that plainly instead of showing a checkout that is not one,
- * and reserves the spot Stripe lands in later: same card, same place,
- * "Add payment method" goes from disabled to real.
- */
-export function PaymentMethodCard({ tier }: { tier: CoachTier | null }) {
-  return (
-    <section className="card" style={{ padding: "18px 24px", display: "flex", flexDirection: "column", gap: "14px" }}>
-      <div>
-        <h2 style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>Payment method</h2>
-        <p style={{ margin: "4px 0 0", fontSize: "11.5px", color: "var(--color-faint)", maxWidth: "60ch", lineHeight: 1.6 }}>
-          {tier === "premium"
-            ? "Premium is free for now — no card on file, and nothing is charged automatically. Real billing is next on the list; when it's live, you'll add a card right here."
-            : "Basic doesn't need a payment method. If you move to Premium, this is where you'll add a card once billing goes live — it's free until then."}
-        </p>
-      </div>
-      <div
-        style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap",
-          padding: "12px 14px", borderRadius: "10px", background: "var(--color-elevated)", border: "1px dashed var(--color-line-strong)",
-        }}
-      >
-        <span style={{ fontSize: "12px", color: "var(--color-faint)" }}>No payment method on file</span>
-        <button
-          className="btn btn-secondary" type="button" disabled title="Coming once billing is live"
-          style={{ opacity: 0.55, cursor: "not-allowed" }}
-        >
-          Add payment method
-        </button>
-      </div>
-      <div>
-        <p className="num" style={{ margin: "0 0 6px", fontSize: "10px", letterSpacing: ".12em", color: "var(--color-faint)" }}>BILLING HISTORY</p>
-        <p style={{ margin: 0, fontSize: "12px", color: "var(--color-faint)" }}>No charges yet.</p>
-      </div>
-    </section>
-  );
-}
-
-/**
  * The athlete's package — Basic or Premium, picked right here rather than on
- * a separate page. A coach's choice affects a whole roster and a forced
- * first visit to `/upgrade`; an athlete's choice affects only their own
- * account, on a page they were already on — a second page would be for a
- * decision this small.
+ * a separate page — the same shape as the coach's Billing tab, and the same
+ * rule: nothing is charged in this version, and the card says so.
  */
 function AthletePackageCard({ plan }: { plan: AthletePlanView | null }) {
   const [pending, startTransition] = useTransition();

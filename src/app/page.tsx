@@ -18,7 +18,17 @@ import { LandingView } from "@/components/screens/LandingView";
  * Coaches who also run reach their own training from the strip at the top of
  * every coach screen; that is what it is for.
  */
-export default async function Home() {
+export default async function Home({ searchParams }: { searchParams: Promise<{ error_code?: string; error?: string }> }) {
+  /*
+   * An auth link that fails — expired, or already used — sends the browser
+   * here with the failure in the query string, because Supabase falls back to
+   * the site URL when it cannot honour the link's own redirect. Landing on
+   * the marketing page with no word about it reads as "nothing happened";
+   * the sign-in screen has the sentence for this and the form to ask again.
+   */
+  const sp = await searchParams;
+  if (sp.error_code || sp.error) redirect("/login?error=link-expired");
+
   const supabase = await createClient();
   const {
     data: { user },
