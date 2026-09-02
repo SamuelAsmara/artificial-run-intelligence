@@ -12,7 +12,7 @@
 נשאר רק:
 
 ```bash
-# 1. ב-.env.local:   DEMO_PASSWORD=<סיסמה שאתה בוחר>
+# 1. ב-.env.local:   DEMO_PASSWORD=<סיסמה לחשבונות ההדגמה>
 npm run seed:dry      # לא כותב כלום — מדפיס את 40 הרצים לבדיקה
 npm run seed:demo     # ההזרעה. ~6 דקות
 ```
@@ -34,7 +34,7 @@ npm run seed:purge    # מוחק רק כתובות @demo.ari-coach.app. לעול
 
 **הסיסמה לכל 42 החשבונות** היא מה שהגדרת ב-`DEMO_PASSWORD`. היא לא כתובה בשום קובץ בפרויקט.
 
-החשבון האישי שלך — `shmouelasmara@gmail.com` — **לא נוגעים בו.** הוא לא חלק מהמאגר הזה ולא יימחק ב-purge.
+החשבון האישי שלי — `shmouelasmara@gmail.com` — **לא נוגעים בו.** הוא לא חלק מהמאגר הזה ולא יימחק ב-purge.
 
 ---
 

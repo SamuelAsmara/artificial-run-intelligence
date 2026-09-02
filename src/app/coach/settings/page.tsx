@@ -1,6 +1,7 @@
 import { getCoachPreferences, getMyCoachCode } from "@/actions/coach";
 import { getAthleteProfile } from "@/actions/profile";
 import { getIntervalsIcuConnection } from "@/actions/providers";
+import { getCoachPlan } from "@/actions/billing";
 import { CoachSettingsView } from "@/components/screens/CoachSettingsView";
 
 export const metadata = { title: "Settings · Runi" };
@@ -15,11 +16,12 @@ export const metadata = { title: "Settings · Runi" };
  * component receives a status and a four-character hint.
  */
 export default async function CoachSettingsPage() {
-  const [preferences, code, profile, icuConnection] = await Promise.all([
+  const [preferences, code, profile, icuConnection, plan] = await Promise.all([
     getCoachPreferences(),
     getMyCoachCode(),
     getAthleteProfile(),
     getIntervalsIcuConnection(),
+    getCoachPlan(),
   ]);
 
   return (
@@ -29,6 +31,7 @@ export default async function CoachSettingsPage() {
       email={profile?.email ?? null}
       profile={profile}
       icuConnection={icuConnection}
+      plan={plan}
     />
   );
 }

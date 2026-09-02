@@ -60,6 +60,8 @@ import {
 import type { RaceType } from "@/types/database.types";
 import { Entrance, BrandMark, SectionHeader } from "@/components/ui";
 import { METHOD_COPY } from "@/lib/screens/methodology";
+import { chooseAthletePlan, type AthletePlanView } from "@/actions/billing";
+import { ATHLETE_PLANS, type CoachTier } from "@/lib/billing/plans";
 
 const copy = SET_COPY;
 const DASH = "—";
@@ -71,12 +73,25 @@ export function SettingsView({
   profile = null,
   coach = null,
   plan = null,
+  billingPlan = null,
+  isCoachAccount = false,
 }: {
   icuConnection?: ProviderConnectionView | null;
   profile?: AthleteProfileView | null;
   coach?: MyCoach | null;
   /** the active training plan, so it can be left from here as well as from /plan */
   plan?: { title: string; weeks: number } | null;
+  /** the athlete's own package — Basic or Premium, unrelated to the training plan above */
+  billingPlan?: AthletePlanView | null;
+  /**
+   * True for a coach account viewing their own athlete-side settings (a coach
+   * who also runs). Their package lives entirely in /coach/settings — Premium
+   * there already includes RunAI for coach — so the athlete Billing tab here
+   * would only ever read "Basic, free" and offers nothing real; it is left
+   * out rather than shown as a dead end. See doc1 §8/architecture notes on
+   * subscription scope for why the two are kept apart.
+   */
+  isCoachAccount?: boolean;
 } = {}) {
   return (
     <div data-entrance-root style={{
@@ -141,6 +156,16 @@ export function SettingsView({
               </div>
             ),
           },
+          ...(isCoachAccount ? [] : [{
+            key: "billing", label: "Billing", icon: TAB_ICONS.billing,
+            hint: billingPlan?.tier ? ATHLETE_PLANS[billingPlan.tier].name : "Free",
+            panel: (
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <AthletePackageCard plan={billingPlan} />
+                <PaymentMethodCard tier={billingPlan?.tier ?? null} />
+              </div>
+            ),
+          }]),
           {
             key: "account", label: "Account & security", icon: TAB_ICONS.account,
             hint: profile?.email ?? "",
@@ -176,6 +201,125 @@ export function AccountPanel({ email, title, sub }: { email: string | null; titl
 }
 
 /* ------------------------------------------------------------------ */
+/* billing — shared by the athlete's settings and the coach's           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The payment method, stubbed.
+ *
+ * There is no payment provider behind Premium yet, for either an athlete or
+ * a coach — see `chooseAthletePlan` / `chooseCoachPlan` in `actions/billing.ts`.
+ * This card says that plainly instead of showing a checkout that is not one,
+ * and reserves the spot Stripe lands in later: same card, same place,
+ * "Add payment method" goes from disabled to real.
+ */
+export function PaymentMethodCard({ tier }: { tier: CoachTier | null }) {
+  return (
+    <section className="card" style={{ padding: "18px 24px", display: "flex", flexDirection: "column", gap: "14px" }}>
+      <div>
+        <h2 style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>Payment method</h2>
+        <p style={{ margin: "4px 0 0", fontSize: "11.5px", color: "var(--color-faint)", maxWidth: "60ch", lineHeight: 1.6 }}>
+          {tier === "premium"
+            ? "Premium is free for now — no card on file, and nothing is charged automatically. Real billing is next on the list; when it's live, you'll add a card right here."
+            : "Basic doesn't need a payment method. If you move to Premium, this is where you'll add a card once billing goes live — it's free until then."}
+        </p>
+      </div>
+      <div
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap",
+          padding: "12px 14px", borderRadius: "10px", background: "var(--color-elevated)", border: "1px dashed var(--color-line-strong)",
+        }}
+      >
+        <span style={{ fontSize: "12px", color: "var(--color-faint)" }}>No payment method on file</span>
+        <button
+          className="btn btn-secondary" type="button" disabled title="Coming once billing is live"
+          style={{ opacity: 0.55, cursor: "not-allowed" }}
+        >
+          Add payment method
+        </button>
+      </div>
+      <div>
+        <p className="num" style={{ margin: "0 0 6px", fontSize: "10px", letterSpacing: ".12em", color: "var(--color-faint)" }}>BILLING HISTORY</p>
+        <p style={{ margin: 0, fontSize: "12px", color: "var(--color-faint)" }}>No charges yet.</p>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * The athlete's package — Basic or Premium, picked right here rather than on
+ * a separate page. A coach's choice affects a whole roster and a forced
+ * first visit to `/upgrade`; an athlete's choice affects only their own
+ * account, on a page they were already on — a second page would be for a
+ * decision this small.
+ */
+function AthletePackageCard({ plan }: { plan: AthletePlanView | null }) {
+  const [pending, startTransition] = useTransition();
+  const [picked, setPicked] = useState<CoachTier | null>(null);
+  const [error, setError] = useState("");
+  const current = plan?.tier ?? null;
+
+  const choose = (tier: CoachTier) => {
+    setError("");
+    setPicked(tier);
+    startTransition(async () => {
+      const r = await chooseAthletePlan(tier);
+      if (r.error) { setError(r.error); }
+      setPicked(null);
+    });
+  };
+
+  const tiers: CoachTier[] = ["basic", "premium"];
+
+  return (
+    <section className="card" style={{ padding: "18px 24px", display: "flex", flexDirection: "column", gap: "14px" }}>
+      <div>
+        <p className="num" style={{ margin: 0, fontSize: "10px", letterSpacing: ".12em", color: "var(--color-faint)" }}>PACKAGE</p>
+        <p style={{ margin: "4px 0 0", fontSize: "15px", fontWeight: 600 }}>
+          {current ? ATHLETE_PLANS[current].name : "Basic"}
+        </p>
+      </div>
+      <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+        {tiers.map((tier) => {
+          const p = ATHLETE_PLANS[tier];
+          const on = (current ?? "basic") === tier;
+          const busy = pending && picked === tier;
+          return (
+            <div key={tier} className={`card${on ? " is-open" : ""}`} style={{ flex: "1 1 220px", padding: "14px 16px", display: "flex", flexDirection: "column", gap: "8px" }}>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "8px" }}>
+                <span style={{ fontSize: "13.5px", fontWeight: 700 }}>{p.name}</span>
+                <span className="num" style={{ fontSize: "10px", color: tier === "premium" ? "var(--color-gold)" : "var(--color-muted)" }}>{p.price.toUpperCase()}</span>
+              </div>
+              <p style={{ margin: 0, fontSize: "11.5px", color: "var(--color-muted)" }}>{p.tagline}</p>
+              <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: "5px" }}>
+                {p.features.map((f) => (
+                  <li key={f} style={{ display: "flex", gap: "6px", alignItems: "flex-start", fontSize: "11.5px", lineHeight: 1.45 }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ color: "var(--color-accent)", flex: "none", marginBlockStart: "2px" }}><path d="M20 6 9 17l-5-5" /></svg>
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+              {on ? (
+                <span className="tag" style={{ alignSelf: "flex-start", background: "var(--color-accent-soft)", color: "var(--color-accent)" }}>Your package</span>
+              ) : tier === "premium" ? (
+                /* Premium for athletes ships with RunAI. Until then the card is a
+                   preview, not a purchase — nothing to click, nothing to charge. */
+                <span className="num" style={{ fontSize: "10.5px", color: "var(--color-faint)" }}>Coming next — not available yet, and nothing is charged in this version.</span>
+              ) : (
+                <button type="button" className="btn btn-secondary" onClick={() => choose(tier)} disabled={pending}>
+                  {busy ? "Saving…" : "Switch to Basic"}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {error ? <p role="alert" style={{ margin: 0, fontSize: "11.5px", color: "var(--color-negative)" }}>{error}</p> : null}
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* the tab row                                                         */
 /* ------------------------------------------------------------------ */
 
@@ -193,6 +337,7 @@ export const TAB_ICONS = {
   coach: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75",
   account: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z",
   coaching: "M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8",
+  billing: "M2 7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7Z M2 11h20",
   numbers: "M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z M9 7h6M9 11h4",
 } as const;
 

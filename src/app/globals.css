@@ -776,6 +776,7 @@
 /* ==================================================================== */
 
 .ps-paths { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 20px 0 16px; text-align: start; }
+.ps-paths-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .ps-path {
   display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 16px 18px;
   font: inherit; color: inherit; cursor: pointer; text-align: start;
@@ -813,7 +814,7 @@
 .ps-bar-n { position: absolute; top: 100%; left: 0; right: 0; text-align: center; font-size: 8.5px; color: var(--color-faint); margin-top: 3px; }
 @media (prefers-reduced-motion: no-preference) { .ps-panel { animation: nb-panel .3s cubic-bezier(.22,.61,.36,1); } }
 @media (max-width: 900px) {
-  .ps-paths { grid-template-columns: 1fr; }
+  .ps-paths, .ps-paths-2 { grid-template-columns: 1fr; }
   .ps-week { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .ps-grid-3 { grid-template-columns: 1fr; }
 }

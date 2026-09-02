@@ -1,6 +1,29 @@
-docs: rewrite README in English; retire the ARI name across docs
+feat(billing): coach and athlete packages; README for submission
 
-The README now opens on what the product does for the athlete and the
-coach, in sections and bullets, with the architecture, setup, tests and
-documents after it. The technical guide, code map and working notes are
-renamed and reworded from ARI to Runi.
+A coach picks a package right after signing up, on /upgrade: Basic is
+free and stops at five athletes, Premium is unlimited and will carry the
+free-text chat. The choice is stored in subscriptions, shown in coach
+settings against the roster ("3 of 5 athletes"), and the Basic limit is
+enforced where it has to be — inside join_coach (migration 0022), since
+the athlete redeeming a code cannot read the coach's subscription. No
+payment provider is connected; Premium opens without a charge and the
+page says so.
+
+Athletes get the same two packages on the settings screen: Basic is free
+and is the whole product; Premium (RunAI, free-text chat) is shown as
+"coming next" with no button, so nothing on the page looks like a
+purchase. Migration 0023 gives subscriptions a scope column so a coach
+who also trains holds one row per role.
+
+Email: Supabase Auth sends the emails, Resend is the SMTP provider —
+email/README.md has the dashboard settings and the branded confirmation
+template. README gains a "For Reviewers" section with the two demo
+accounts and notes the Resend test-domain limitation.
+
+docs/: the working notes that no longer describe the product (plans and
+gap maps from 19 Aug, the design port log, the first markdown drafts and
+the ARI-era archive) are removed; the audit and QA records stay, and the
+progress log is brought up to date. The six documents and the
+presentation follow in a separate commit.
+
+Counts: 835 tests, 57 files, 24 migrations, 53 actions.

@@ -9,7 +9,7 @@
 [![React](https://img.shields.io/badge/React-19-20232a?style=flat-square&logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20Auth-3ecf8e?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com)
-[![Tests](https://img.shields.io/badge/tests-831%20passing-2bb3a3?style=flat-square)](#testing)
+[![Tests](https://img.shields.io/badge/tests-835%20passing-2bb3a3?style=flat-square)](#testing)
 
 Final project · Internet Technologies · Reichman University · 2026
 
@@ -27,6 +27,7 @@ Final project · Internet Technologies · Reichman University · 2026
 - [Architecture](#architecture)
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
+- [For Reviewers](#for-reviewers)
 - [Testing](#testing)
 - [Documentation](#documentation)
 - [Known Limitations](#known-limitations)
@@ -86,6 +87,11 @@ The same engine serves the coach: one place that shows, every morning, which ath
 - The coach hands the athlete a code; the athlete enters it in their own settings
 - From that moment the coach sees the athlete's runs and plan; the athlete can leave at any time
 
+**Packages**
+- Athletes always use Runi for free; a coach picks a package right after signing up
+- Basic — free, up to five athletes; Premium — monthly subscription, unlimited athletes, free-text chat with Runi in the next version
+- The Basic limit is enforced in the database when an athlete redeems a code; billing is not connected yet, so Premium opens without a charge
+
 ---
 
 ## Design Principles
@@ -125,7 +131,7 @@ src/
 ├── actions/        Server Actions — the boundary between client and database
 ├── lib/            Pure logic: planning, readiness, activity, insights, screens, time
 └── types/          Database types, derived from the schema
-supabase/migrations/   21 numbered, backward-compatible migrations
+supabase/migrations/   22 numbered, backward-compatible migrations
 scripts/               Manual sync, analysis and demo data
 docs/                  Project documents, technical guide and presentation
 ```
@@ -142,15 +148,29 @@ cp .env.example .env.local     # every variable is documented in the file
 npm run dev
 ```
 
-- **Database:** run `supabase/migrations/0001` through `0021`, in order, in the Supabase SQL Editor.
+- **Database:** run every file in `supabase/migrations/` in numeric order (`0001` … `0023`), in the Supabase SQL Editor.
 - **Demo data:** `npm run seed:demo` creates two coaches with twenty athletes each and a full run history. Credentials are in `docs/DEMO_LOGINS.md`.
+- **Email:** Supabase Auth sends the confirmation and password-reset emails; Resend is plugged in as the SMTP provider. `email/README.md` has the exact dashboard settings.
+
+---
+
+## For Reviewers
+
+The live app is at **[runi-coach.vercel.app](https://runi-coach.vercel.app)**. Two seeded accounts show both sides of the product without signing up (the password is included with the submission, not in this repository):
+
+| Role | Email | What to look at |
+|---|---|---|
+| Coach | `coach1@demo.ari-coach.app` | Roster with attention flags, preparation cycles, templates, the coach package page |
+| Athlete | `runner1-coach1@demo.ari-coach.app` | Dashboard, plan, Your Numbers, Ask Runi |
+
+Signing up with your own address also works, but the confirmation email is sent from Resend's shared test domain, which only delivers to the project owner until a verified domain is attached — one of the known limitations below.
 
 ---
 
 ## Testing
 
 ```bash
-npm test            # 831 tests across 56 files
+npm test            # 835 tests across 57 files
 npm run test:watch
 npm run lint
 ```
@@ -162,7 +182,7 @@ npm run lint
 
 ## Documentation
 
-All documents are in `docs/`:
+All documents are in `docs/הגשה סופית/` (Hebrew):
 
 | # | Document |
 |---|---|
@@ -173,13 +193,16 @@ All documents are in `docs/`:
 | 5 | Information Security |
 | 6 | Scale and Performance |
 
-Alongside them: the technical guide (`Runi_technical_guide.html`), the code map (`Runi_code_map.html`) and the presentation (`Runi_presentation.pptx`).
+| 7 | Presentation (`7 - מצגת - Runi.pptx`) |
+
+Alongside them, in `docs/`: the technical guide (`Runi_technical_guide.html`) and the code map (`Runi_code_map.html`).
 
 ---
 
 ## Known Limitations
 
-- **Payments** — the schema exists; the flow is not implemented.
+- **Billing** — package choice is live (athletes: Basic free, Premium with RunAI coming next; coaches: Basic free for six months, then $5/mo, Premium $10/mo); charging through a payment provider is not connected yet, and the pages say so.
+- **Email domain** — auth emails go out through Resend's shared test sender, which delivers only to the project owner. A verified domain lifts that.
 - **Sync throughput** — the daily job processes athletes one by one. It holds up to a few hundred users; beyond that a queue is required (see the scale document).
 - **Native app** — there is none. Runi is a web application built to be used fully from a phone.
 

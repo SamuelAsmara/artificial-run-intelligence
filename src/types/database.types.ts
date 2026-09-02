@@ -24,6 +24,8 @@ export type WorkoutOrigin = "generated" | "coach" | "athlete";
 export type RecoverySource = "webhook" | "derived";
 export type CoachLinkStatus = "invited" | "active";
 export type Plan = "free" | "pro";
+/** which role a subscriptions/billing_events row belongs to — a coach who also trains holds one of each */
+export type SubscriptionScope = "athlete" | "coach";
 
 type Row<T> = T;
 type Ins<T> = T;
@@ -56,15 +58,15 @@ export interface Database {
         Relationships: [];
       };
       subscriptions: {
-        Row: { user_id: string; plan: Plan; seat_limit: number; updated_at: string };
-        Insert: { user_id: string; plan?: Plan; seat_limit?: number; updated_at?: string };
-        Update: Upd<{ user_id: string; plan: Plan; seat_limit: number; updated_at: string }>;
+        Row: { user_id: string; scope: SubscriptionScope; plan: Plan; seat_limit: number; updated_at: string };
+        Insert: { user_id: string; scope?: SubscriptionScope; plan?: Plan; seat_limit?: number; updated_at?: string };
+        Update: Upd<{ user_id: string; scope: SubscriptionScope; plan: Plan; seat_limit: number; updated_at: string }>;
         Relationships: [];
       };
       billing_events: {
-        Row: { id: string; user_id: string; plan_from: string | null; plan_to: string | null; seats: number | null; created_at: string };
-        Insert: { id?: string; user_id: string; plan_from?: string | null; plan_to?: string | null; seats?: number | null; created_at?: string };
-        Update: Upd<{ id: string; user_id: string; plan_from: string | null; plan_to: string | null; seats: number | null; created_at: string }>;
+        Row: { id: string; user_id: string; scope: SubscriptionScope; plan_from: string | null; plan_to: string | null; seats: number | null; created_at: string };
+        Insert: { id?: string; user_id: string; scope?: SubscriptionScope; plan_from?: string | null; plan_to?: string | null; seats?: number | null; created_at?: string };
+        Update: Upd<{ id: string; user_id: string; scope: SubscriptionScope; plan_from: string | null; plan_to: string | null; seats: number | null; created_at: string }>;
         Relationships: [];
       };
       strava_connections: {

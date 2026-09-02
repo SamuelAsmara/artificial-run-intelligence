@@ -25,10 +25,12 @@ import { DEFAULT_PREFERENCES, type CoachPreferences } from "@/lib/coach/preferen
 import { colorFor, DEFAULT_RACE_COLORS } from "@/lib/coach/calendar";
 import { RACE_LABEL, RACE_TYPES } from "@/lib/coach/templates";
 import { COACH_COPY } from "@/lib/screens/coachHome";
-import { ProfileCard, ConnectionsCard, SettingsTabs, AccountPanel, TAB_ICONS } from "@/components/screens/SettingsView";
+import { ProfileCard, ConnectionsCard, SettingsTabs, AccountPanel, PaymentMethodCard, TAB_ICONS } from "@/components/screens/SettingsView";
 import { Entrance } from "@/components/ui";
 import type { AthleteProfileView } from "@/actions/profile";
 import type { ProviderConnectionView } from "@/actions/providers";
+import type { CoachPlanView } from "@/actions/billing";
+import { COACH_PLANS, seatsLabel } from "@/lib/billing/plans";
 
 /**
  * The coach's settings — all of them, on one page.
@@ -48,12 +50,14 @@ export function CoachSettingsView({
   email,
   profile = null,
   icuConnection = null,
+  plan = null,
 }: {
   preferences: CoachPreferences;
   code: string | null;
   email: string | null;
   profile?: AthleteProfileView | null;
   icuConnection?: ProviderConnectionView | null;
+  plan?: CoachPlanView | null;
 }) {
   const [prefs, setPrefs] = useState<CoachPreferences>(preferences);
   const [note, setNote] = useState("");
@@ -220,6 +224,16 @@ export function CoachSettingsView({
             panel: <ConnectionsCard connection={icuConnection} />,
           },
           {
+            key: "billing", label: "Billing", icon: TAB_ICONS.billing,
+            hint: plan?.tier ? COACH_PLANS[plan.tier].name : "Choose a package",
+            panel: (
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <PackageCard plan={plan} />
+                <PaymentMethodCard tier={plan?.tier ?? null} />
+              </div>
+            ),
+          },
+          {
             key: "account", label: "Account & security", icon: TAB_ICONS.account,
             hint: email ?? "",
             panel: <AccountPanel email={email} title={COACH_COPY.accountTitle} sub={COACH_COPY.accountSub} />,
@@ -261,3 +275,24 @@ function Number({
     </label>
   );
 }
+
+/** The coach's package — Basic or Premium — with the roster measured against it. */
+function PackageCard({ plan }: { plan: CoachPlanView | null }) {
+  const tier = plan?.tier ?? null;
+  const name = tier ? COACH_PLANS[tier].name : "No package yet";
+  const line = tier ? seatsLabel(tier, plan?.athletes ?? 0) : `${plan?.athletes ?? 0} athletes · pick a package`;
+  return (
+    <section className="card" style={{ padding: "18px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+      <div>
+        <p className="num" style={{ margin: 0, fontSize: "10px", letterSpacing: ".12em", color: "var(--color-faint)" }}>PACKAGE</p>
+        <p style={{ margin: "4px 0 0", fontSize: "15px", fontWeight: 600 }}>
+          {name}
+          {tier === "premium" ? <span className="tag" style={{ marginInlineStart: "8px", background: "var(--color-gold-soft)", color: "var(--color-gold)" }}>Premium</span> : null}
+        </p>
+        <p className="num" style={{ margin: "2px 0 0", fontSize: "11.5px", color: "var(--color-muted)" }}>{line}</p>
+      </div>
+      <a className="btn btn-secondary" href="/upgrade">{tier ? "Change package" : "Choose a package"}</a>
+    </section>
+  );
+}
+

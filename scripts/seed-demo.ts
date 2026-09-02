@@ -1066,7 +1066,7 @@ async function ensureCoach(admin: Client, coach: Coach, password: string): Promi
 
   await admin
     .from("subscriptions")
-    .upsert({ user_id: id, plan: "pro", seat_limit: 25 }, { onConflict: "user_id" });
+    .upsert({ user_id: id, scope: "coach", plan: "pro", seat_limit: 25 }, { onConflict: "user_id,scope" });
 
   return id;
 }

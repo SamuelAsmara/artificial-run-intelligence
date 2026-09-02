@@ -95,7 +95,9 @@ export async function joinCoach(code: string): Promise<Result<{ coachName: strin
       ? "No coach has that code. Check it with them."
       : /your own/.test(error.message)
         ? "That is your own code."
-        : "Could not join that coach.";
+        : /roster full/.test(error.message)
+          ? "This coach's roster is full on their current package. Ask them to upgrade."
+          : "Could not join that coach.";
     return { ok: false, error: message };
   }
 

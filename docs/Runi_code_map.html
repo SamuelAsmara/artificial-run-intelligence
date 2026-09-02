@@ -147,10 +147,10 @@ svg{max-width:100%;height:auto;display:block}
   <p class="sub">מה יש בכל קובץ, איך הקוד מסודר, איך הוא מדבר עם מסד הנתונים — ומה לענות כשישאלו אותך למה.</p>
   <div class="facts">
     <span class="fact"><b>138</b> קבצי מקור</span>
-    <span class="fact"><b>27,584</b> שורות</span>
-    <span class="fact"><b>746</b> בדיקות</span>
-    <span class="fact"><b>16</b> טבלאות</span>
-    <span class="fact"><b>19</b> מיגרציות</span>
+    <span class="fact"><b>33,661</b> שורות</span>
+    <span class="fact"><b>835</b> בדיקות</span>
+    <span class="fact"><b>17</b> טבלאות</span>
+    <span class="fact"><b>22</b> מיגרציות</span>
     <span class="fact"><b>37</b> מדיניויות הרשאה</span>
   </div>
 </header>
@@ -165,7 +165,7 @@ svg{max-width:100%;height:auto;display:block}
 <tr><td>Next.js — App Router</td><td class="n">16</td><td>מסגרת אחת שמריצה גם ממשק וגם קוד שרת באותו פרויקט. <strong>אין API נפרד לתחזק</strong>, אין שני מודלי טיפוסים שצריך לסנכרן, ואין CORS.</td></tr>
 <tr><td>React</td><td class="n">19</td><td>מגיע עם Next. רוב הקומפוננטות הן Server Components — הן רצות בשרת ולא מגיעות לדפדפן בכלל.</td></tr>
 <tr><td>Supabase</td><td class="n">Postgres 15</td><td>מסד נתונים יחסי, אימות, והכי חשוב — <strong>Row Level Security</strong>. ראה סעיף 06.</td></tr>
-<tr><td>Vitest</td><td class="n">3.2</td><td>מריץ את 746 הבדיקות ב-17 שניות בלי מסד ובלי דפדפן.</td></tr>
+<tr><td>Vitest</td><td class="n">3.2</td><td>מריץ את 835 הבדיקות בפחות מחצי דקה בלי מסד ובלי דפדפן.</td></tr>
 <tr><td>Zod</td><td class="n">3.x</td><td>ולידציה של כל קלט שנכנס, בשרת. סכימה אחת מייצרת גם בדיקה וגם טיפוס.</td></tr>
 <tr><td>Tailwind + tokens</td><td class="n">4</td><td>שכבה דקה. הצבעים והמרווחים הם משתני CSS ב-<code>globals.css</code>, לא מחלקות פזורות.</td></tr>
 <tr><td>Vercel</td><td class="n">—</td><td>אירוח, ומשימה יומית ב-03:00.</td></tr>
@@ -203,42 +203,48 @@ svg{max-width:100%;height:auto;display:block}
 <h4>lib/ — הלוגיקה. נבדקת, טהורה, בלי תלויות</h4>
 <div class="scroll"><table>
 <tr><th>תיקייה</th><th>שורות</th><th>מה יש בה</th></tr>
-<tr><td class="p">lib/planning/</td><td class="n">2,303</td><td>הלב המדעי. TRIMP, CTL/ATL/TSB, ACWR, יכולת הרץ, בניית תוכנית, מנוע ההתאמה, ספי דופק.</td></tr>
-<tr><td class="p">lib/activity/</td><td class="n">2,349</td><td>ניתוח ריצה בודדת: דגימה מחדש של המקטעים, קצב מותאם-שיפוע, אזורי דופק, שיאים, גיאומטריית הגרף, השוואת ריצות.</td></tr>
-<tr><td class="p">lib/dashboard/</td><td class="n">1,754</td><td>הרכבת הדשבורד: רצועת הרייל, גרפים, קו האימון הבא, התוכנית האמיתית לתצוגה.</td></tr>
-<tr><td class="p">lib/screens/</td><td class="n">1,489</td><td>הטקסטים והמודלים לכל מסך. כל מחרוזת שהמשתמש רואה יושבת כאן ולא בתוך JSX.</td></tr>
-<tr><td class="p">lib/coach/</td><td class="n">1,099</td><td>רוסטר, דגלי תשומת לב, יומן, מחזורי הכנה, תבניות, ושבועות התבנית.</td></tr>
-<tr><td class="p">lib/wellness/</td><td class="n">841</td><td>דיבור עם intervals.icu: מיפוי התשובה, גזירת צורת הקצב וצורת הדופק מהמקטעים.</td></tr>
-<tr><td class="p">lib/providers/</td><td class="n">576</td><td>שכבת הספק — חיבור, סנכרון, טיפול בשגיאות.</td></tr>
-<tr><td class="p">lib/readiness/</td><td class="n">400</td><td>הצינור שמחשב תמונת מצב יומית מכל המקורות.</td></tr>
-<tr><td class="p">lib/ui/</td><td class="n">380</td><td>הכללים מאחורי ערכת הרכיבים: גיאומטריית עמודות, מצבי תא יום, רשת חודש.</td></tr>
-<tr><td class="p">lib/narrative/</td><td class="n">363</td><td>בניית ההסבר — משפט מורכב מערכים, לא נוצר.</td></tr>
-<tr><td class="p">lib/time/</td><td class="n">186</td><td>שבוע, אזור זמן, תאריך. <strong>מקור אמת אחד</strong>, וזו הסיבה.</td></tr>
-<tr><td class="p">lib/supabase/</td><td class="n">63</td><td>יצירת לקוח לשרת ולדפדפן.</td></tr>
+<tr><td class="p">lib/planning/</td><td class="n">2,457</td><td>הלב המדעי. TRIMP, CTL/ATL/TSB, ACWR, יכולת הרץ, בניית תוכנית, מנוע ההתאמה, ספי דופק.</td></tr>
+<tr><td class="p">lib/activity/</td><td class="n">2,443</td><td>ניתוח ריצה בודדת: דגימה מחדש של המקטעים, קצב מותאם-שיפוע, אזורי דופק, שיאים, גיאומטריית הגרף, השוואת ריצות.</td></tr>
+<tr><td class="p">lib/dashboard/</td><td class="n">1,792</td><td>הרכבת הדשבורד: רצועת הרייל, גרפים, קו האימון הבא, התוכנית האמיתית לתצוגה.</td></tr>
+<tr><td class="p">lib/screens/</td><td class="n">2,237</td><td>הטקסטים והמודלים לכל מסך, כולל לוח המספרים — הצבעים, הנוסחאות, וההיסטוריה של כל מדד. כל מחרוזת שהמשתמש רואה יושבת כאן ולא בתוך JSX.</td></tr>
+<tr><td class="p">lib/insights/</td><td class="n">778</td><td>עשר השאלות של Ask Runi — כל אחת פונקציה טהורה שמקבלת את נתוני הרץ ומחזירה תשובה, או אומרת מה חסר.</td></tr>
+<tr><td class="p">lib/coach/</td><td class="n">1,093</td><td>רוסטר, דגלי תשומת לב, יומן, מחזורי הכנה, תבניות, ושבועות התבנית.</td></tr>
+<tr><td class="p">lib/wellness/</td><td class="n">878</td><td>דיבור עם intervals.icu: מיפוי התשובה, גזירת צורת הקצב וצורת הדופק מהמקטעים.</td></tr>
+<tr><td class="p">lib/providers/</td><td class="n">573</td><td>שכבת הספק — חיבור, סנכרון, טיפול בשגיאות.</td></tr>
+<tr><td class="p">lib/readiness/</td><td class="n">398</td><td>הצינור שמחשב תמונת מצב יומית מכל המקורות.</td></tr>
+<tr><td class="p">lib/ui/</td><td class="n">382</td><td>הכללים מאחורי ערכת הרכיבים: גיאומטריית עמודות, מצבי תא יום, רשת חודש.</td></tr>
+<tr><td class="p">lib/narrative/</td><td class="n">362</td><td>בניית ההסבר — משפט מורכב מערכים, לא נוצר.</td></tr>
+<tr><td class="p">lib/time/</td><td class="n">185</td><td>שבוע, אזור זמן, תאריך. <strong>מקור אמת אחד</strong>, וזו הסיבה.</td></tr>
+<tr><td class="p">lib/supabase/</td><td class="n">61</td><td>יצירת לקוח לשרת ולדפדפן.</td></tr>
 <tr><td class="p">lib/auth/, format/, validation/, strava/</td><td class="n">189</td><td>תפקיד, פורמט, סכימות Zod, ולקוח Strava שאינו מחובר.</td></tr>
 </table></div>
 
 <h4>actions/ — הגבול בין לקוח לשרת</h4>
 <div class="scroll"><table>
 <tr><th>קובץ</th><th>שורות</th><th>פונקציות</th><th>מה הוא עושה</th></tr>
-<tr><td class="p">coach.ts</td><td class="n">1,204</td><td class="n">16</td><td>כל צד המאמן: רוסטר, כרטיס מתאמן, עריכת אימון, קוד הצטרפות, העדפות, תזכורות, תבניות.</td></tr>
-<tr><td class="p">activities.ts</td><td class="n">607</td><td class="n">3</td><td>רשימת הריצות, ניתוח ריצה בודדת, שיאים.</td></tr>
-<tr><td class="p">plan.ts</td><td class="n">397</td><td class="n">5</td><td>יצירת תוכנית, בנייה למרוץ הפעיל, התאמה, קריאת התוכנית לדשבורד ולמסך.</td></tr>
-<tr><td class="p">providers.ts</td><td class="n">336</td><td class="n">4</td><td>חיבור וניתוק intervals.icu. <strong>המפתח לא עוזב את השרת אף פעם.</strong></td></tr>
-<tr><td class="p">profile.ts</td><td class="n">289</td><td class="n">2</td><td>פרופיל, תמונה, ספים.</td></tr>
-<tr><td class="p">readiness.ts</td><td class="n">198</td><td class="n">4</td><td>חישוב ושליפה של תמונת המצב היומית.</td></tr>
-<tr><td class="p">sync.ts · goalRace.ts · auth.ts · billing.ts</td><td class="n">180</td><td class="n">4</td><td>סנכרון, מרוץ יעד, יציאה, וחיוב — שמנוטרל.</td></tr>
+<tr><td class="p">coach.ts</td><td class="n">1,226</td><td class="n">16</td><td>צד המאמן: רוסטר, כרטיס מתאמן, עריכת אימון, קוד הצטרפות (הצטרפות מחליפה מאמן קודם), העדפות, תזכורות, תבניות.</td></tr>
+<tr><td class="p">cycles.ts</td><td class="n">320</td><td class="n">9</td><td>מחזורי הכנה: יצירה, עריכה, שיבוץ והסרה (דרך <code>set_athlete_cycle</code>), בנייה מחדש של תוכניות, סגירה.</td></tr>
+<tr><td class="p">activities.ts</td><td class="n">606</td><td class="n">3</td><td>רשימת הריצות, ניתוח ריצה בודדת, שיאים.</td></tr>
+<tr><td class="p">plan.ts</td><td class="n">526</td><td class="n">6</td><td>יצירת תוכנית — לרץ, או בידי המאמן לרץ במחזור — עזיבה, התאמה, קריאת התוכנית לדשבורד ולמסך.</td></tr>
+<tr><td class="p">ownPlan.ts</td><td class="n">217</td><td class="n">3</td><td>תצוגה מקדימה ותוכנית של Runi; תוכנית שהרץ כותב בעצמו.</td></tr>
+<tr><td class="p">insights.ts</td><td class="n">222</td><td class="n">1</td><td>חבילת הנתונים של Ask Runi — נשלפת פעם אחת בפתיחת הפאנל.</td></tr>
+<tr><td class="p">providers.ts</td><td class="n">353</td><td class="n">4</td><td>חיבור וניתוק intervals.icu. <strong>המפתח לא עוזב את השרת אף פעם.</strong></td></tr>
+<tr><td class="p">profile.ts</td><td class="n">288</td><td class="n">2</td><td>פרופיל, תמונה, ספים.</td></tr>
+<tr><td class="p">readiness.ts</td><td class="n">210</td><td class="n">4</td><td>חישוב ושליפה של תמונת המצב היומית.</td></tr>
+<tr><td class="p">sync.ts · goalRace.ts · auth.ts · billing.ts</td><td class="n">176</td><td class="n">4</td><td>סנכרון, מרוץ יעד, יציאה, וחיוב — שמנוטרל.</td></tr>
 </table></div>
 
 <h4>components/ — תצוגה בלבד</h4>
 <div class="scroll"><table>
 <tr><th>תיקייה</th><th>שורות</th><th>מה יש בה</th></tr>
-<tr><td class="p">components/screens/</td><td class="n">5,698</td><td>מסך שלם לכל עמוד. מקבל נתונים, לא שולף.</td></tr>
-<tr><td class="p">components/ui/</td><td class="n">1,213</td><td>ערכת הרכיבים המשותפת — אריח מדד, גרף עמודות, תא יום, צ׳יפים, כותרת מקטע, ספירה לאחור, מצב ריק, נוסחה, תמונת פרופיל.</td></tr>
-<tr><td class="p">components/dashboard/</td><td class="n">1,207</td><td>הדשבורד, פאנל ההסבר, והמצב הריק שלו.</td></tr>
-<tr><td class="p">components/settings/</td><td class="n">830</td><td>אבטחת חשבון, עורך התמונה, הקישור למאמן.</td></tr>
-<tr><td class="p">components/coach/</td><td class="n">820</td><td>יומן, מתג המצב, ניווט, תזכורות, קוד.</td></tr>
-<tr><td class="p">components/activities/</td><td class="n">604</td><td>פאנל ההשוואה, והערת הנתונים.</td></tr>
+<tr><td class="p">components/screens/</td><td class="n">7,573</td><td>מסך שלם לכל עמוד. מקבל נתונים, לא שולף.</td></tr>
+<tr><td class="p">components/ui/</td><td class="n">1,349</td><td>ערכת הרכיבים המשותפת — אריח מדד, גרף עמודות, תא יום, צ׳יפים, כותרת מקטע, ספירה לאחור, מצב ריק, נוסחה, תמונת פרופיל.</td></tr>
+<tr><td class="p">components/dashboard/</td><td class="n">1,194</td><td>הדשבורד, פאנל ההסבר, והמצב הריק שלו.</td></tr>
+<tr><td class="p">components/settings/</td><td class="n">827</td><td>אבטחת חשבון, עורך התמונה, הקישור למאמן.</td></tr>
+<tr><td class="p">components/coach/</td><td class="n">744</td><td>יומן, פס המצב מאמן ⇄ מתאמן, ניווט, תזכורות, קוד.</td></tr>
+<tr><td class="p">components/plan/</td><td class="n">708</td><td>שלושת נתיבי ההתחלה של התוכנית — קוד מאמן, Runi עם תצוגה מקדימה, תוכנית משלי.</td></tr>
+<tr><td class="p">components/insights/</td><td class="n">491</td><td>פאנל Ask Runi והכפתור הצף שפותח אותו מכל מסך.</td></tr>
+<tr><td class="p">components/activities/</td><td class="n">602</td><td>פאנל ההשוואה, והערת הנתונים.</td></tr>
 </table></div>
 
 <div class="note"><span class="lbl">איפה להתחיל לקרוא</span>
@@ -247,7 +253,7 @@ svg{max-width:100%;height:auto;display:block}
 
 <section id="db">
 <h2>04</h2><h3>מסד הנתונים</h3>
-<p class="lede">Postgres יחסי, 16 טבלאות, 17 אינדקסים. כמעט הכל תלוי ב-<code>profiles</code>, ו-<code>profiles.id</code> הוא ה-<code>id</code> של המשתמש ב-Supabase Auth — אותו מספר, לא העתק.</p>
+<p class="lede">Postgres יחסי, 17 טבלאות, 18 אינדקסים. כמעט הכל תלוי ב-<code>profiles</code>, ו-<code>profiles.id</code> הוא ה-<code>id</code> של המשתמש ב-Supabase Auth — אותו מספר, לא העתק.</p>
 
 <div class="scroll">
 <svg viewBox="0 0 880 420" role="img" aria-label="תרשים הקשרים בין הטבלאות">
@@ -314,6 +320,7 @@ svg{max-width:100%;height:auto;display:block}
 <tr><td class="p">plan_workouts</td><td class="n">via plan</td><td>אימון בודד: יום, סוג, מרחק, קצב, סטטוס, <strong>מי קבע אותו</strong>, מה היה לפני התאמה, ולמה.</td></tr>
 <tr><td class="p">plan_adjustments</td><td class="n">via plan</td><td>יומן ההתאמות — מה שונה, מתי, ובגלל מה.</td></tr>
 <tr><td class="p">coach_athletes</td><td class="n">שני צדדים</td><td>הקשר. <strong>רק המתאמן רשאי ליצור שורה כאן</strong> — ראה סעיף 06.</td></tr>
+<tr><td class="p">coach_cycles</td><td class="n">coach_id</td><td>מחזור הכנה — שם, מרחק, תאריך מרוץ, תבנית. הרץ משובץ אליו דרך <code>coach_athletes.cycle_id</code>, והתוכנית שנבנתה ממנו זוכרת אותו ב-<code>training_plans.cycle_id</code>.</td></tr>
 <tr><td class="p">coach_preferences · coach_reminders · plan_templates</td><td class="n">coach_id</td><td>צבעים וספים, תזכורות פרטיות, ותבניות אימון.</td></tr>
 <tr><td class="p">subscriptions · billing_events · strava_connections</td><td class="n">user_id</td><td>קיימות בסכימה, <strong>לא בשימוש</strong>. מונטיזציה תוכננה ולא מומשה.</td></tr>
 </table></div>
@@ -360,7 +367,7 @@ svg{max-width:100%;height:auto;display:block}
 
 <section id="auth">
 <h2>06</h2><h3>הרשאות</h3>
-<p class="lede">37 מדיניויות, RLS מופעלת על כל 16 הטבלאות. <strong>ההרשאה נאכפת במסד, לא בקוד.</strong></p>
+<p class="lede">37 מדיניויות, RLS מופעלת על כל 17 הטבלאות. שתי פונקציות SECURITY DEFINER: <code>is_coach_of</code>, ו-<code>set_athlete_cycle</code> שמשבצת רץ למחזור בלי לפתוח את שורת הקשר למאמן. <strong>ההרשאה נאכפת במסד, לא בקוד.</strong></p>
 
 <p>לכל טבלה צמוד כלל שאומר מי רשאי לראות ולשנות כל שורה, והכלל נאכף בפוסטגרס בכל שאילתה — גם אם הקוד ביקש משהו אחר. באג באפליקציה יכול להציג את הדבר הלא נכון; הוא לא יכול להביא נתונים שהמשתמש לא רשאי לקבל.</p>
 
@@ -381,7 +388,7 @@ svg{max-width:100%;height:auto;display:block}
 
 <section id="logic">
 <h2>07</h2><h3>הלוגיקה העסקית</h3>
-<p class="lede">תשעה מדדים. כולם מחושבים מהנתונים של המשתמש עצמו, בשיטה מפורסמת — ולכל אחד יש מגבלה שכתובה במוצר.</p>
+<p class="lede">שלושה-עשר מדדים. כולם מחושבים מהנתונים של המשתמש עצמו, בשיטה מפורסמת — ולכל אחד יש מגבלה שכתובה במוצר.</p>
 
 <div class="scroll"><table>
 <tr><th>המדד</th><th>הנוסחה בקצרה</th><th>המקור</th></tr>
@@ -399,19 +406,19 @@ svg{max-width:100%;height:auto;display:block}
 <div class="note good"><span class="lbl">הכלל שאוכף את עצמו לאורך כל המוצר</span>
 <p><strong>בלי נתון אמיתי — לא מציגים מספר.</strong> קו מקף, מצב ריק, או הסתרה. לא ערך לדוגמה, ולא ברירת מחדל שנראית כמו מדידה. סריקה שיטתית מצאה 47 מקומות שהפרו את זה, וכולם תוקנו.</p></div>
 
-<p>וזו גם הסיבה שיש דף נוסחאות בתוך המוצר: כל אחד מתשעת המדדים מוצג שם עם משפט בשפה פשוטה, טווחי קריאה, הנוסחה עצמה, המקור — ו<strong>שדה שאומר במפורש מה המדד הזה אינו יכול להגיד לך</strong>. מוצר שמחשב ציון מוכנות ולא מוכן להסביר איך, מבקש אמון שלא הרוויח.</p>
+<p>וזו גם הסיבה שיש לוח "המספרים שלך" בתוך המוצר (<code>/numbers</code>): כל אחד מהמדדים מוצג שם עם הערך של הרץ, הטווח שבו הוא נמצא, משפט בשפה פשוטה, הנוסחה עצמה, המקור, גרף היסטוריה של שבוע עד שנה — ו<strong>שדה שאומר במפורש מה המדד הזה אינו יכול להגיד לך</strong>. מוצר שמחשב ציון מוכנות ולא מוכן להסביר איך, מבקש אמון שלא הרוויח.</p>
 </section>
 
 <section id="tests">
 <h2>08</h2><h3>הבדיקות</h3>
-<p class="lede">746 בדיקות ב-52 קבצים, רצות ב-17 שניות — בלי מסד ובלי דפדפן.</p>
+<p class="lede">835 בדיקות ב-57 קבצים, רצות בפחות מחצי דקה — בלי מסד ובלי דפדפן.</p>
 
-<p>זה אפשרי בגלל הכלל מסעיף 02. וזה חשוב מסיבה פשוטה: <strong>בדיקה שרצה ב-17 שניות רצה לפני כל שינוי.</strong> בדיקה שדורשת מסד ודפדפן רצה פעם ביום, ואז מפסיקים להריץ אותה.</p>
+<p>זה אפשרי בגלל הכלל מסעיף 02. וזה חשוב מסיבה פשוטה: <strong>בדיקה שרצה בחצי דקה רצה לפני כל שינוי.</strong> בדיקה שדורשת מסד ודפדפן רצה פעם ביום, ואז מפסיקים להריץ אותה.</p>
 
 <div class="grid g3">
 <div class="card"><b class="num" style="font-size:22px">126</b><p style="margin:2px 0 0;font-size:12.5px;color:var(--muted)">המודל הפיזיולוגי</p></div>
-<div class="card"><b class="num" style="font-size:22px">49</b><p style="margin:2px 0 0;font-size:12.5px;color:var(--muted)">בניית תוכנית והתאמה</p></div>
-<div class="card"><b class="num" style="font-size:22px">89</b><p style="margin:2px 0 0;font-size:12.5px;color:var(--muted)">צד המאמן</p></div>
+<div class="card"><b class="num" style="font-size:22px">55</b><p style="margin:2px 0 0;font-size:12.5px;color:var(--muted)">בניית תוכנית והתאמה</p></div>
+<div class="card"><b class="num" style="font-size:22px">105</b><p style="margin:2px 0 0;font-size:12.5px;color:var(--muted)">צד המאמן</p></div>
 <div class="card"><b class="num" style="font-size:22px">41</b><p style="margin:2px 0 0;font-size:12.5px;color:var(--muted)">ערכת הרכיבים</p></div>
 <div class="card"><b class="num" style="font-size:22px">24</b><p style="margin:2px 0 0;font-size:12.5px;color:var(--muted)">זמן ואזור זמן</p></div>
 <div class="card"><b class="num" style="font-size:22px">63</b><p style="margin:2px 0 0;font-size:12.5px;color:var(--muted)">גיאומטריית גרפים</p></div>

@@ -130,7 +130,7 @@ details .inner p:first-child{margin-block-start:0}
 <a class="nl" href="#start">מאיפה מתחילים</a>
 <a class="nl" href="#map">מפת המערכת</a>
 <div class="navgroup">איך זה עובד</div>
-<a class="nl" href="#flows">חמשת התהליכים</a>
+<a class="nl" href="#flows">ששת התהליכים</a>
 <a class="nl" href="#physio">המודל הפיזיולוגי</a>
 <a class="nl" href="#db">מסד הנתונים</a>
 <div class="navgroup">למה ככה</div>
@@ -140,7 +140,7 @@ details .inner p:first-child{margin-block-start:0}
 <a class="nl" href="#qa">20 שאלות ותשובות</a>
 <a class="nl" href="#cheat">דף רמאות</a></nav>
 <main>
-<h1>Artificial Run Intelligence — איך זה עובד</h1>
+<h1>Runi — איך זה עובד</h1>
 <p class="lede">
 מסמך פנימי. <strong>לא מוגש.</strong> הוא קיים כדי שתדע להצביע על הקוד מאחורי
 כל החלטה — כי המטלה מבקשת בדיוק את זה: <em>"לדעת להסביר למה נבחרה כל ספרייה,
@@ -148,12 +148,12 @@ details .inner p:first-child{margin-block-start:0}
 </p>
 
 <div class="kpi">
-  <div><div class="n">21</div><div class="l">עמודים ונתיבים</div></div>
-  <div><div class="n">38</div><div class="l">פעולות שרת</div></div>
-  <div><div class="n">16</div><div class="l">טבלאות</div></div>
+  <div><div class="n">23</div><div class="l">עמודים ונתיבים</div></div>
+  <div><div class="n">53</div><div class="l">פעולות שרת</div></div>
+  <div><div class="n">17</div><div class="l">טבלאות</div></div>
   <div><div class="n">37</div><div class="l">מדיניות הרשאה</div></div>
-  <div><div class="n">15</div><div class="l">מיגרציות</div></div>
-  <div><div class="n">554</div><div class="l">בדיקות</div></div>
+  <div><div class="n">22</div><div class="l">מיגרציות</div></div>
+  <div><div class="n">835</div><div class="l">בדיקות</div></div>
 </div>
 
 <h2 id="start">מאיפה מתחילים</h2>
@@ -167,7 +167,7 @@ details .inner p:first-child{margin-block-start:0}
 הוא מקבל מספרים ומחזיר מספרים.</p>
 <p><span class="file">src/actions/</span> מדבר עם המסד וקורא ל-<code>lib</code>.
 <span class="file">src/components/</span> רק מציג — מסך לא שולף לבד, הוא מקבל נתונים כ-props.</p>
-<p class="note">זו הסיבה ש-554 בדיקות רצות ב-14 שניות בלי מסד ובלי דפדפן. וזו גם
+<p class="note">זו הסיבה ש-835 בדיקות רצות בפחות מחצי דקה בלי מסד ובלי דפדפן. וזו גם
 התשובה לשאלה "איך בדקת את זה?" — הלוגיקה מבודדת, אז אפשר לבדוק אותה.</p>
 </div>
 
@@ -222,7 +222,7 @@ details .inner p:first-child{margin-block-start:0}
 <tr><td><span class="file">supabase/migrations/</span></td><td>15 מיגרציות</td><td><span class="file">0013_coach_link_consent.sql</span></td></tr>
 </table>
 
-<h2 id="flows">חמשת התהליכים — מקצה לקצה</h2>
+<h2 id="flows">ששת התהליכים — מקצה לקצה</h2>
 <p class="lede">אם ישאלו "תראה לי איך X עובד" — זה המקום.</p>
 
 <h3>1 · משתמש נרשם ומתחבר</h3>
@@ -288,10 +288,11 @@ details .inner p:first-child{margin-block-start:0}
     <p>מתעדכן <strong>במקום</strong> ולא נוצר מחדש — אחרת שינוי תאריך מייתם תוכנית
     שרצים לפיה כבר חודש.</p></div></div>
   <div class="step"><div class="stepn">2</div><div class="body">
-    <p><strong>הכפתור</strong> — <span class="file">components/plan/BuildPlanCard.tsx</span>
-    → <code>buildPlanForActiveRace()</code></p>
-    <p><strong>מסרב לדרוס תוכנית קיימת.</strong> בנייה מחדש מוחקת שבועות של
-    היסטוריה, וזה לא מה ש"בנה לי תוכנית" נשמע כמו.</p></div></div>
+    <p><strong>שלושה נתיבים</strong> — <span class="file">components/plan/PlanStart.tsx</span></p>
+    <p>קוד ממאמן (<code>joinCoach()</code>), תוכנית של Runi עם תצוגה מקדימה
+    (<code>previewRuniPlan()</code> → <code>startRuniPlan()</code> ב-<span class="file">actions/ownPlan.ts</span>),
+    או תוכנית שהרץ כותב (<code>createOwnPlan()</code> על <span class="file">lib/planning/ownPlan.ts</span>).
+    <strong>כולם מסרבים לדרוס תוכנית קיימת</strong> — עוזבים קודם, והעזיבה סוגרת ולא מוחקת.</p></div></div>
   <div class="step"><div class="stepn">3</div><div class="body">
     <p><strong>יכולת הרץ</strong> — <span class="file">lib/planning/readCapacity.ts</span> + <code>capacity.ts</code></p>
     <p><strong>הנפח נגזר ממה שהוא רץ היום</strong>, לא מטבלה. הריצה הארוכה גדלה
@@ -333,6 +334,23 @@ details .inner p:first-child{margin-block-start:0}
     <p><strong>העריכה</strong> — <code>updateWorkout()</code></p>
     <p>בודקת בעלות, כותבת <code>origin = 'coach'</code>,
     ומבקשת בחזרה את השורות שהשתנו — <strong>כי פוסטגרס לא זורק כשהוא מסרב.</strong></p></div></div>
+</div>
+
+<h3>6 · מאמן פותח מחזור ומשבץ רץ</h3>
+<div class="flow">
+  <div class="step"><div class="stepn">1</div><div class="body">
+    <p><strong>המחזור</strong> — <code>createCycle()</code> ב-<span class="file">actions/cycles.ts</span></p>
+    <p>שם, מרחק, תאריך מרוץ ותבנית. "חצי מרתון תל אביב" ו"חצי מרתון ירושלים" הם שני מחזורים
+    תחת אותו מרחק, וכל רץ בשבוע שלו.</p></div></div>
+  <div class="step"><div class="stepn">2</div><div class="body">
+    <p><strong>השיבוץ</strong> — <code>assignToCycle()</code> → <code>set_athlete_cycle()</code> במסד</p>
+    <p>שורת הקשר ניתנת לעדכון רק לרץ (0013), אז השיבוץ עובר בפונקציה
+    <code>SECURITY DEFINER</code> שנוגעת ב-<code>cycle_id</code> בלבד (0021) — ומחזירה אם שורה השתנתה.
+    <strong>בלי זה "נוסף" הופיע מעל מחזור ריק.</strong></p></div></div>
+  <div class="step"><div class="stepn">3</div><div class="body">
+    <p><strong>התוכנית</strong> — <code>generatePlanAction(raceId, { cycleId, forUserId })</code></p>
+    <p>מרוץ יעד ותוכנית נכתבים לרץ בידי המאמן (0020, דרך <code>is_coach_of</code>), מתבנית המחזור,
+    עם <code>cycle_id</code> על התוכנית — כדי שסגירה או בנייה מחדש יגעו רק בתוכניות של המחזור.</p></div></div>
 </div>
 
 <h2 id="physio">המודל הפיזיולוגי</h2>
@@ -398,7 +416,7 @@ details .inner p:first-child{margin-block-start:0}
 </div>
 
 <h2 id="db">מסד הנתונים</h2>
-<p class="lede">16 טבלאות, 37 מדיניויות, <strong>RLS על כל 16 בלי יוצא מן הכלל</strong>.</p>
+<p class="lede">17 טבלאות, 37 מדיניויות, <strong>RLS על כל 17 בלי יוצא מן הכלל</strong>.</p>
 
 <h3>שלוש עמודות שכדאי להכיר</h3>
 
@@ -531,7 +549,7 @@ details .inner p:first-child{margin-block-start:0}
 <p class="lede">תרגול לראיון. פתח, נסה לענות בעצמך, ואז בדוק.</p>
 
 <h3>ארכיטקטורה</h3>
-<details><summary>איפה בדיוק נאכפת ההרשאה?</summary><div class="inner"><p><strong>במסד.</strong> 37 מדיניויות RLS על 16 טבלאות — כולן. הדפוס: אתלט רואה שורה אם <code>user_id = auth.uid()</code>; מאמן אם <code>is_coach_of(user_id)</code>.</p><p>יש עוד שתי שכבות מעל — middleware ובדיקת <code>getUser()</code> בכל פעולה — אבל <strong>הן לא ההגנה.</strong> הן נוחות. ההגנה היא שהמסד מסרב.</p></div></details>
+<details><summary>איפה בדיוק נאכפת ההרשאה?</summary><div class="inner"><p><strong>במסד.</strong> 37 מדיניויות RLS על 17 טבלאות — כולן. הדפוס: אתלט רואה שורה אם <code>user_id = auth.uid()</code>; מאמן אם <code>is_coach_of(user_id)</code>.</p><p>יש עוד שתי שכבות מעל — middleware ובדיקת <code>getUser()</code> בכל פעולה — אבל <strong>הן לא ההגנה.</strong> הן נוחות. ההגנה היא שהמסד מסרב.</p></div></details>
 <details><summary>למה Server Actions ולא REST API?</summary><div class="inner"><p>אין API נפרד לתחזק, אין שני מודלי טיפוסים לסנכרן, ואין CORS. הקומפוננטה קוראת לפונקציה ו-Next.js עושה את הרשת.</p><p><strong>המחיר שצריך להכיר:</strong> כל ייצוא מקובץ <code>&quot;use server&quot;</code> הוא נקודת קצה ציבורית. לכן מייצאים רק פונקציות אסינכרוניות, וכל אחת בודקת אימות. ייצוא של קבוע הפיל לנו את הבנייה פעמיים — וזו התנהגות נכונה.</p></div></details>
 <details><summary>איך המידע זורם מהדפדפן למסד?</summary><div class="inner"><p><strong>הוא לא.</strong> הדפדפן לא מדבר עם המסד. העמוד נבנה בשרת (Server Component), קורא ל-Server Action, שקוראת ל-Supabase — ו-RLS מסננת. לדפדפן מגיע HTML מוכן.</p></div></details>
 <details><summary>למה בלי ניהול state גלובלי?</summary><div class="inner"><p>כי אין state גלובלי. מקור האמת הוא המסד, והעמודים נבנים בשרת. <code>useState</code> רק למה שבאמת מקומי — טאב פתוח, יום נבחר.</p><p>אחרי כתיבה קוראים ל-<code>revalidatePath</code> והשרת מרנדר מחדש.</p></div></details>
@@ -547,10 +565,10 @@ details .inner p:first-child{margin-block-start:0}
 <details><summary>למה ACWR עם תיקון הטיה?</summary><div class="inner"><p>ממוצע מעריכי בתחילת סדרה מוטה כלפי מטה — אין לו מספיק היסטוריה. <strong>בלי תיקון, אתלט חדש נראה בטוח יותר משהוא</strong> בדיוק בשבועות שבהם הוא הכי בסיכון.</p></div></details>
 <details><summary>איך נבנית התוכנית?</summary><div class="inner"><p>מחלקים את השבועות עד המרוץ לארבע פאזות. <strong>הנפח נגזר מהיכולת הנוכחית של הרץ</strong> — הריצה הארוכה גדלה מהריצה הארוכה שלו, לא מטבלה.</p><p>ותבנית המאמן נכנסת <strong>כפרופורציות</strong>: 14 שבועות למי שרץ בעוד תשעה הופכים לתשעה ששומרים על הצורה.</p></div></details>
 <details><summary>מה קורה אם intervals.icu לא עונה?</summary><div class="inner"><p>תלוי במה:</p><ul><li><strong>404/422</strong> — לריצה הזו אין מקטע. מסומן ומדלגים.</li><li><strong>429 או 5xx</strong> — <strong>זורק</strong>, והשורה נשארת בתור.</li><li><strong>401/403</strong> — החיבור מסומן כשגוי והשגיאה מוצגת בהגדרות.</li></ul><p class='note'>זה היה באג: תקלת רשת סומנה כ&quot;אין מקטע&quot;, והריצה איבדה את הגרף ואת השיא <strong>לנצח</strong>.</p></div></details>
-<details><summary>איפה ה-AI במוצר?</summary><div class="inner"><p><strong>אין מודל שפה.</strong> ההסבר <em>מחושב</em> — <span class="file">lib/narrative/buildNarrative.ts</span> מרכיב משפט מערכים שכבר חושבו.</p><p>וזה יתרון: אי אפשר להזות מספר שלא ניסחת, כל נתון ניתן למעקב, והמוצר עובד בלי רשת ובלי עלות. האינטליגנציה היא במודל הפיזיולוגי.</p></div></details>
+<details><summary>איפה ה-AI במוצר?</summary><div class="inner"><p><strong>בגרסה הנוכחית אין מודל שפה</strong> — הגרסה הבאה מחברת את Ask Runi ל-Grok, מעל החישובים ולא במקומם. ההסבר <em>מחושב</em> — <span class="file">lib/narrative/buildNarrative.ts</span> מרכיב משפט מערכים שכבר חושבו.</p><p>וזה יתרון: אי אפשר להזות מספר שלא ניסחת, כל נתון ניתן למעקב, והמוצר עובד בלי רשת ובלי עלות. האינטליגנציה היא במודל הפיזיולוגי.</p></div></details>
 
 <h3>בדיקות ואיכות</h3>
-<details><summary>מה בדקת, ואיך?</summary><div class="inner"><p><strong>554 בדיקות ב-37 קבצים, שרצות ב-14 שניות</strong> בלי מסד ובלי דפדפן — כי כל הלוגיקה ב-<code>lib/</code> טהורה.</p><p>הכיסוי: המודל הפיזיולוגי, יצירת התוכנית, מנוע ההתאמה, אזורי זמן, גיאומטריית גרפים, הרוסטר והיומן.</p></div></details>
+<details><summary>מה בדקת, ואיך?</summary><div class="inner"><p><strong>835 בדיקות ב-37 קבצים, שרצות ב-14 שניות</strong> בלי מסד ובלי דפדפן — כי כל הלוגיקה ב-<code>lib/</code> טהורה.</p><p>הכיסוי: המודל הפיזיולוגי, יצירת התוכנית, מנוע ההתאמה, אזורי זמן, גיאומטריית גרפים, הרוסטר והיומן.</p></div></details>
 <details><summary>למה אין Playwright ו-E2E?</summary><div class="inner"><p>תוכננו ולא מומשו. <strong>התקציב הוגבל והיה צריך לבחור</strong> בין לבדוק שכפתור מרונדר לבין לבדוק שהחישוב מאחוריו נכון.</p><p>בחרנו בחישוב: באג בכפתור נראה בעין; ריצה שנרשמה כשיא איטי יותר משהייתה — לא. במקום זאת בוצעה <strong>סריקה ידנית מתועדת</strong> שמצאה 47 ליקויים.</p></div></details>
 <details><summary>מה המגבלה שהכי מטרידה אותך בבדיקות?</summary><div class="inner"><p>שההרשאות נבדקות <strong>בעיניים ולא אוטומטית</strong> — וזה החלק שבו טעות עולה הכי ביוקר. הפרצה שנמצאה מוכיחה גם שהבדיקה הידנית עבדה, וגם שהיא הגיעה מאוחר.</p></div></details>
 
@@ -572,7 +590,7 @@ details .inner p:first-child{margin-block-start:0}
 <table>
 <tr><th>אם ישאלו…</th><th>המשפט</th></tr>
 <tr><td>מה מיוחד</td><td>לא איסוף דאטה — <strong>התאמה אוטומטית מודעת-התאוששות</strong>, עם הסבר.</td></tr>
-<tr><td>איפה ה-AI</td><td>במודל הפיזיולוגי. <strong>אין LLM — ולכן אי אפשר להמציא מספר.</strong></td></tr>
+<tr><td>איפה ה-AI</td><td>במודל הפיזיולוגי. <strong>בגרסה הנוכחית אין LLM — ולכן אי אפשר להמציא מספר.</strong> הגרסה הבאה מחברת את Ask Runi ל-Grok מעל החישובים: המודל מנסח, הפונקציות מחשבות.</td></tr>
 <tr><td>הארכיטקטורה</td><td>Next.js על Vercel, Supabase, ו<strong>הרשאות שנאכפות במסד ולא בקוד</strong>.</td></tr>
 <tr><td>מה למדת</td><td><strong>שפוסטגרס לא צועק כשהוא מסרב</strong> — פעולה שנחסמה ע"י RLS מדווחת הצלחה.</td></tr>
 <tr><td>מה השתבש</td><td>פרצה במדיניות אחת שהייתה כל גבול האבטחה. נמצאה כששאלנו מה בעצם מחליט.</td></tr>
@@ -581,8 +599,8 @@ details .inner p:first-child{margin-block-start:0}
 
 <h3>המספרים</h3>
 <div class="kpi">
-  <div><div class="n">554</div><div class="l">בדיקות · 14 שניות</div></div>
-  <div><div class="n">37</div><div class="l">מדיניויות · 16 טבלאות</div></div>
+  <div><div class="n">835</div><div class="l">בדיקות · 14 שניות</div></div>
+  <div><div class="n">37</div><div class="l">מדיניויות · 17 טבלאות</div></div>
   <div><div class="n">42/7</div><div class="l">ימים · כושר/עייפות</div></div>
   <div><div class="n">1.5</div><div class="l">סף יחס העומס</div></div>
   <div><div class="n">47</div><div class="l">ליקויים שנמצאו ותוקנו</div></div>
