@@ -193,7 +193,7 @@ All documents are in `docs/הגשה סופית/` (Hebrew):
 | 5 | Information Security |
 | 6 | Scale and Performance |
 
-| 7 | Presentation (`7 - מצגת - Runi.pptx`) |
+| 7 | Presentation (`7 - מצגת - Runi.html` — open in a browser; F for full screen, arrow keys to navigate) |
 
 Alongside them, in `docs/`: the technical guide (`Runi_technical_guide.html`) and the code map (`Runi_code_map.html`).
 
