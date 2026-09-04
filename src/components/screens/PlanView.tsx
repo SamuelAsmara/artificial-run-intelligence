@@ -18,10 +18,8 @@
 
 import * as React from "react";
 import { useMemo, useState } from "react";
-import {
-  PLAN_COPY, PLAN_EMPTY, PURPOSE, planSegsFor, planWeeks, realPlanWeeks,
-  type PlanDay,
-} from "@/lib/screens/plan";
+import Link from "next/link";
+import { PLAN_COPY, PURPOSE, realPlanWeeks, type PlanDay, type PlanWeek } from "@/lib/screens/plan";
 import { RACE_LABEL } from "@/lib/coach/templates";
 import { PlanStart } from "@/components/plan/PlanStart";
 import type { PlanStart as PlanStartInfo } from "@/actions/plan";
@@ -29,16 +27,27 @@ import { LeavePlan } from "@/components/plan/LeavePlan";
 import { plannedMinutes, sessionShape } from "@/lib/planning/sessionShape";
 import type { RealPlan } from "@/lib/dashboard/realPlan";
 import type { RaceType } from "@/types/database.types";
-import { Entrance, BrandMark, dayCellStyle, EmptyState, StatTile, STAT_ICONS, type DayState, type SessionType } from "@/components/ui";
+import {
+  Entrance,
+  BrandMark,
+  dayCellStyle,
+  StatTile,
+  STAT_ICONS,
+  type DayState,
+  type SessionType,
+} from "@/components/ui";
 import { NUMBERS_HUE } from "@/lib/screens/numbers";
 import { DayCellFull } from "@/components/ui";
 import { monthGrid, monthsOf } from "@/lib/ui/monthGrid";
 
-/** a calendar page — the plan is a schedule before it is anything else */
-const CAL_ICON = "M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z";
+/** Stable empty plan, so the memoised day lists do not rebuild every render. */
+const NO_WEEKS: PlanWeek[] = [];
 
 const RACE_KM: Record<string, string> = {
-  "5k": "5 km", "10k": "10 km", half: "21.1 km", full: "42.2 km",
+  "5k": "5 km",
+  "10k": "10 km",
+  half: "21.1 km",
+  full: "42.2 km",
 };
 
 export interface PlanScreenData {
@@ -64,8 +73,18 @@ export interface PlanScreenData {
 /** Sunday first, like every other week in the product. */
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 /** "2026-08" -> "August 2026" */
@@ -154,9 +173,14 @@ function PhaseTimeline({
   const current = weeks[now]?.phase ?? "";
 
   /* Geometry, all in viewBox units — the SVG scales with the card. */
-  const LEFT = 4, RIGHT = 1216, GAP = 3;
-  const BAR_TOP = 12, BAR_BOTTOM = 74;
-  const BAND_Y = 82, BAND_H = 6, LABEL_Y = 106;
+  const LEFT = 4,
+    RIGHT = 1216,
+    GAP = 3;
+  const BAR_TOP = 12,
+    BAR_BOTTOM = 74;
+  const BAND_Y = 82,
+    BAND_H = 6,
+    LABEL_Y = 106;
   const barW = (RIGHT - LEFT - GAP * (total - 1)) / total;
   const maxKm = Math.max(1, ...weeks.map((w) => w.km));
   const x = (i: number) => LEFT + i * (barW + GAP);
@@ -165,9 +189,19 @@ function PhaseTimeline({
 
   return (
     <section className="card" style={{ padding: "16px 20px 12px" }} aria-label="Plan phases">
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "baseline",
+          justifyContent: "space-between",
+          gap: "12px",
+          flexWrap: "wrap",
+        }}
+      >
         <div>
-          <h2 style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>Where you are in the plan</h2>
+          <h2 style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>
+            Where you are in the plan
+          </h2>
           <p style={{ margin: "2px 0 0", fontSize: "11.5px", color: "var(--color-faint)" }}>
             Each bar is a week&apos;s planned volume; the colour is its phase.
           </p>
@@ -190,7 +224,14 @@ function PhaseTimeline({
         </defs>
 
         {/* the floor the bars stand on */}
-        <line x1={LEFT} x2={RIGHT} y1={BAR_BOTTOM} y2={BAR_BOTTOM} stroke="var(--color-line)" strokeWidth="1" />
+        <line
+          x1={LEFT}
+          x2={RIGHT}
+          y1={BAR_BOTTOM}
+          y2={BAR_BOTTOM}
+          stroke="var(--color-line)"
+          strokeWidth="1"
+        />
 
         {/* one bar per week: the plan's own volumes, coloured by phase */}
         {weeks.map((w, i) => {
@@ -200,9 +241,26 @@ function PhaseTimeline({
           return (
             <g key={i}>
               {isNow ? (
-                <rect x={x(i)} y={BAR_BOTTOM - hgt} width={barW} height={hgt} rx="2" fill={fill} opacity="0.9" filter="url(#ptGlow)" />
+                <rect
+                  x={x(i)}
+                  y={BAR_BOTTOM - hgt}
+                  width={barW}
+                  height={hgt}
+                  rx="2"
+                  fill={fill}
+                  opacity="0.9"
+                  filter="url(#ptGlow)"
+                />
               ) : null}
-              <rect x={x(i)} y={BAR_BOTTOM - hgt} width={barW} height={hgt} rx="2" fill={fill} opacity={isNow ? 1 : i < now ? 0.32 : 0.78}>
+              <rect
+                x={x(i)}
+                y={BAR_BOTTOM - hgt}
+                width={barW}
+                height={hgt}
+                rx="2"
+                fill={fill}
+                opacity={isNow ? 1 : i < now ? 0.32 : 0.78}
+              >
                 <title>{`W${i + 1} · ${w.km} km · ${w.phase}`}</title>
               </rect>
             </g>
@@ -210,7 +268,16 @@ function PhaseTimeline({
         })}
 
         {/* the "you are here" marker, PMC-style */}
-        <line x1={markerX} x2={markerX} y1="4" y2={BAND_Y + BAND_H + 2} stroke="var(--color-ink)" strokeWidth="1" strokeDasharray="3 3" opacity="0.7" />
+        <line
+          x1={markerX}
+          x2={markerX}
+          y1="4"
+          y2={BAND_Y + BAND_H + 2}
+          stroke="var(--color-ink)"
+          strokeWidth="1"
+          strokeDasharray="3 3"
+          opacity="0.7"
+        />
         <circle cx={markerX} cy="4" r="3.5" fill="var(--color-ink)" />
 
         {/* the phase band and its names */}
@@ -225,13 +292,32 @@ function PhaseTimeline({
           const roomy = bw >= 64;
           return (
             <g key={s.from}>
-              <rect x={bx} y={BAND_Y} width={bw} height={BAND_H} rx="3" fill={fill} opacity={on ? 1 : 0.45}>
+              <rect
+                x={bx}
+                y={BAND_Y}
+                width={bw}
+                height={BAND_H}
+                rx="3"
+                fill={fill}
+                opacity={on ? 1 : 0.45}
+              >
                 <title>{`${s.phase} · ${range}`}</title>
               </rect>
               {roomy ? (
-                <text x={bx + 1} y={LABEL_Y} fontSize="12" fontWeight={on ? 600 : 500} fill={phaseText(s.phase)}>
+                <text
+                  x={bx + 1}
+                  y={LABEL_Y}
+                  fontSize="12"
+                  fontWeight={on ? 600 : 500}
+                  fill={phaseText(s.phase)}
+                >
                   {label}
-                  <tspan fontSize="10.5" fill="var(--color-faint)" fontFamily="var(--font-mono)" fontWeight="400">
+                  <tspan
+                    fontSize="10.5"
+                    fill="var(--color-faint)"
+                    fontFamily="var(--font-mono)"
+                    fontWeight="400"
+                  >
                     {"  " + range}
                   </tspan>
                 </text>
@@ -244,27 +330,21 @@ function PhaseTimeline({
   );
 }
 
-export function PlanView({ data }: { data?: PlanScreenData } = {}) {
-  /**
-   * True when this screen is showing the athlete's own plan.
-   *
-   * Without `data` at all we are on the reference render, which is the only
-   * place `planWeeks()` — the prototype's twelve invented weeks — belongs.
-   */
-  const isReal = data !== undefined;
-  const realPlan = data?.plan ?? null;
-  const race = data?.race ?? null;
+export function PlanView({ data }: { data: PlanScreenData }) {
+  const realPlan = data.plan;
+  const race = data.race;
+  const today = data.today;
 
-  const W = useMemo(
-    () => (isReal ? (realPlan ? realPlanWeeks(realPlan.weeks) : []) : planWeeks()),
-    [isReal, realPlan],
-  );
+  const W = useMemo(() => (realPlan ? realPlanWeeks(realPlan.weeks) : NO_WEEKS), [realPlan]);
   const hasPlan = W.length > 0;
-  const currentWeek = realPlan?.currentWeek ?? 3;
+  const currentWeek = realPlan?.currentWeek ?? 0;
 
   const copy = PLAN_COPY;
-  const P = "var(--color-positive)", N = "var(--color-negative)",
-    M = "var(--color-muted)", AC = "var(--color-accent)", CA = "var(--color-caution)";
+  const P = "var(--color-positive)",
+    N = "var(--color-negative)",
+    M = "var(--color-muted)",
+    AC = "var(--color-accent)",
+    CA = "var(--color-caution)";
 
   /*
    * Every plan day, flat, with its own ISO date — the one source both the
@@ -276,15 +356,11 @@ export function PlanView({ data }: { data?: PlanScreenData } = {}) {
   /** Every month the plan touches, in order — "2026-08", "2026-09", ... */
   const availableMonths = useMemo(() => monthsOf(allDays), [allDays]);
 
-  /** The month today falls in, when today is inside the plan at all. */
-  const todayMonth = useMemo(() => {
-    if (isReal) return data?.today ? data.today.slice(0, 7) : null;
-    const t = allDays.find((d) => d.today);
-    return t ? t.date.slice(0, 7) : null;
-  }, [isReal, data?.today, allDays]);
+  /** The month today falls in — "2026-08". */
+  const todayMonth = today.slice(0, 7);
 
   const [monthIndex, setMonthIndex] = useState(() => {
-    const i = todayMonth ? availableMonths.indexOf(todayMonth) : -1;
+    const i = availableMonths.indexOf(todayMonth);
     return i >= 0 ? i : 0;
   });
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -299,7 +375,7 @@ export function PlanView({ data }: { data?: PlanScreenData } = {}) {
     setMonthIndex((i) => Math.min(availableMonths.length - 1, Math.max(0, i + delta)));
     setSelectedDate(null);
   };
-  const todayMonthIndex = todayMonth ? availableMonths.indexOf(todayMonth) : -1;
+  const todayMonthIndex = availableMonths.indexOf(todayMonth);
   const showTodayButton = todayMonthIndex >= 0 && monthIndex !== todayMonthIndex;
   const jumpToday = () => {
     if (todayMonthIndex < 0) return;
@@ -308,7 +384,7 @@ export function PlanView({ data }: { data?: PlanScreenData } = {}) {
   };
 
   const selDayData: PlanDay | null = useMemo(
-    () => (selectedDate ? allDays.find((d) => d.date === selectedDate) ?? null : null),
+    () => (selectedDate ? (allDays.find((d) => d.date === selectedDate) ?? null) : null),
     [selectedDate, allDays],
   );
 
@@ -320,117 +396,450 @@ export function PlanView({ data }: { data?: PlanScreenData } = {}) {
   const selDisplay = useMemo(() => {
     const sel = selDayData;
     if (!sel) return null;
-    const segs = isReal
-      ? sessionShape({ type: sel.type, distanceKm: sel.dist, pace: sel.pace || null })
-      : planSegsFor(sel.type);
+    const segs = sessionShape({ type: sel.type, distanceKm: sel.dist, pace: sel.pace || null });
     const tot = segs.reduce((s, x) => s + x.m, 0) || 1;
     const barBg = sel.missed ? "var(--color-line-strong)" : sel.done ? AC : CA;
     const dur = plannedMinutes(sel.dist, sel.pace || null);
     return {
       title: `${sel.name} · ${sel.day} ${sel.mon} ${sel.dateNum}`,
-      meta: sel.type === "rest"
-        ? "Recovery day"
-        : [`${sel.dist} km`, sel.pace ? `@ ${sel.pace}/km` : null, dur ? `~${dur} min` : null]
-            .filter(Boolean)
-            .join(" · "),
+      meta:
+        sel.type === "rest"
+          ? "Recovery day"
+          : [`${sel.dist} km`, sel.pace ? `@ ${sel.pace}/km` : null, dur ? `~${dur} min` : null]
+              .filter(Boolean)
+              .join(" · "),
       status: sel.status || "Planned",
-      statusColor: sel.status === "Done" ? P : sel.status === "Missed" ? N
-        : sel.status === "Today" ? AC : sel.status === "Adjusted" ? CA : M,
+      statusColor:
+        sel.status === "Done"
+          ? P
+          : sel.status === "Missed"
+            ? N
+            : sel.status === "Today"
+              ? AC
+              : sel.status === "Adjusted"
+                ? CA
+                : M,
       hasBar: sel.type !== "rest" && segs.length > 0,
-      segments: segs.map((s) => ({ w: ((s.m / tot) * 100).toFixed(2), h: s.h, bg: barBg, title: s.t })),
-      // The prototype spelled out "6 × 800 m @ 4:15 · 90 s jog". We store a
-      // type, a distance and a pace — not a rep structure — so a real plan
-      // describes what it actually knows.
-      segStart: isReal ? "" : sel.type === "int" ? "Warm-up 10 min · 5:45"
-        : sel.type === "tempo" ? "Warm-up 10 min" : "",
-      segMid: isReal
-        ? (sel.dist ? sel.dist + " km" + (sel.pace ? " @ " + sel.pace + "/km" : "") : "")
-        : sel.type === "int" ? "6 × 800 m @ 4:15 · 90 s jog"
-          : sel.type === "tempo" ? "20 min @ 4:45/km"
-            : sel.dist ? sel.dist + " km @ " + sel.pace + "/km" : "",
-      segEnd: isReal ? "" : (sel.type === "int" || sel.type === "tempo") ? "Cool-down 10 min" : "",
+      segments: segs.map((s) => ({
+        w: ((s.m / tot) * 100).toFixed(2),
+        h: s.h,
+        bg: barBg,
+        title: s.t,
+      })),
+      // We store a type, a distance and a pace — not a rep structure — so the
+      // caption describes what the plan actually knows.
+      segStart: "",
+      segMid: sel.dist ? sel.dist + " km" + (sel.pace ? " @ " + sel.pace + "/km" : "") : "",
+      segEnd: "",
       purpose: PURPOSE[sel.type],
-      // An adjustment reason is a specific claim about a specific week. We do
-      // not store one per session yet, so a real plan does not assert one.
-      adjusted: !!sel.reason || !!sel.byPerson || (!isReal && sel.status === "Adjusted"),
+      // An adjustment reason is a specific claim about a specific week; a
+      // session only asserts one when the engine or a person wrote it.
+      adjusted: !!sel.reason || !!sel.byPerson,
       reason: sel.reason
         ? sel.reason
         : sel.byPerson
           ? "Set by hand — Runi will not adjust this session automatically."
-          : isReal
-            ? ""
-            : "Downgraded from intervals — acute load climbed 12% this week; protecting Saturday’s long run.",
+          : "",
     };
-  }, [selDayData, isReal]);
+  }, [selDayData]);
 
-  /*
-   * The page title, subtitle and race banner.
-   *
-   * All three used to be constants: "Marathon Plan", "Oct 11, 2026 · Target
-   * 3:45:00", "Sun Oct 11, 2026 · Marathon · 42.2 km". An athlete training for
-   * a 10K in March was shown a marathon in October with a target they never
-   * entered — and the required pace under it was derived from that target.
-   */
+  // The page title, subtitle and race banner, from the athlete's own race and plan.
   const raceName = race ? (RACE_LABEL[race.raceType as RaceType] ?? "Race") : null;
-  const meta = data?.planMeta ?? null;
-  const planTitle = isReal
-    ? meta?.own
-      ? meta.name ?? "Your plan"
-      : raceName ? `${raceName} plan` : "Training plan"
-    : copy.title;
-  const planSubtitle = isReal
-    ? meta?.own
-      ? `Your own plan · ${W.length} week${W.length === 1 ? "" : "s"}`
-      : race
-        ? [meta?.cycleName, race.raceDate, race.targetTime ? `Target ${race.targetTime}` : null]
-            .filter(Boolean)
-            .join(" · ")
-        : "No goal race set"
-    : copy.subtitle;
+  const meta = data.planMeta ?? null;
+  const planTitle = meta?.own
+    ? (meta.name ?? "Your plan")
+    : raceName
+      ? `${raceName} plan`
+      : "Training plan";
+  const planSubtitle = meta?.own
+    ? `Your own plan · ${W.length} week${W.length === 1 ? "" : "s"}`
+    : race
+      ? [meta?.cycleName, race.raceDate, race.targetTime ? `Target ${race.targetTime}` : null]
+          .filter(Boolean)
+          .join(" · ")
+      : "No goal race set";
 
-  const showRaceBanner = isReal ? !!race : true;
-  const raceLine = isReal && race
+  const showRaceBanner = !!race;
+  const raceLine = race
     ? `${race.raceDate} · ${raceName} · ${RACE_KM[race.raceType] ?? ""}`.trim()
-    : copy.raceLine;
-  const raceTargetLine = isReal
-    ? race?.targetTime
-      ? `Target ${race.targetTime}`
-      : "No target time set"
-    : copy.raceTarget;
+    : "";
+  const raceTargetLine = race?.targetTime ? `Target ${race.targetTime}` : "No target time set";
 
   const totalKm = W.reduce((s, w) => s + w.km, 0);
 
-  // Every figure below used to be a literal: "12 weeks · 4 completed",
-  // "74 km · Peak week (W9)", and a "61 days" that was simply 11 Aug to 11 Oct
-  // 2026 and would have read 61 days forever.
   const peak = W.reduce((best, w, i) => (w.km > (W[best]?.km ?? -1) ? i : best), 0);
   const daysToRace = race
-    ? Math.round((Date.parse(race.raceDate) - Date.parse(data?.today ?? "1970-01-01")) / 86_400_000)
+    ? Math.round((Date.parse(race.raceDate) - Date.parse(today)) / 86_400_000)
     : null;
 
-  // Figure and unit are separate now — the kit's stat tile sets the figure at
+  // Figure and unit are separate — the kit's stat tile sets the figure at
   // 25px and drops the unit to 11px beside it, which is where the hierarchy
   // comes from. Merged strings like "12 weeks" would set the word at 25px too.
-  const planStats: { v: string | null; unit?: string; name: string; icon: string }[] = isReal
-    ? [
-        { v: String(W.length), unit: W.length === 1 ? "week" : "weeks", name: `Plan length · ${Math.max(0, currentWeek)} done`, icon: STAT_ICONS.clock },
-        { v: String(totalKm), unit: "km", name: "Total planned volume", icon: STAT_ICONS.chart },
-        { v: String(W[peak]?.km ?? 0), unit: "km", name: `Peak week (W${peak + 1})`, icon: STAT_ICONS.flame },
-        {
-          v: daysToRace === null ? null : String(Math.max(0, daysToRace)),
-          unit: "days",
-          name: "To race day",
-          icon: STAT_ICONS.trophy,
-        },
-      ]
-    : [
-        { v: "12", unit: "weeks", name: "Plan length · 4 done", icon: STAT_ICONS.clock },
-        { v: String(totalKm), unit: "km", name: "Total planned volume", icon: STAT_ICONS.chart },
-        { v: "74", unit: "km", name: "Peak week (W9)", icon: STAT_ICONS.flame },
-        { v: "61", unit: "days", name: "To race day", icon: STAT_ICONS.trophy },
-      ];
+  const planStats: {
+    id: string;
+    v: string | null;
+    unit?: string;
+    name: string;
+    icon: string;
+    hue: string;
+  }[] = [
+    {
+      id: "length",
+      v: String(W.length),
+      unit: W.length === 1 ? "week" : "weeks",
+      name: `Plan length · ${Math.max(0, currentWeek)} done`,
+      icon: STAT_ICONS.clock,
+      hue: NUMBERS_HUE.pace,
+    },
+    {
+      id: "volume",
+      v: String(totalKm),
+      unit: "km",
+      name: "Total planned volume",
+      icon: STAT_ICONS.chart,
+      hue: NUMBERS_HUE.volume,
+    },
+    {
+      id: "peak",
+      v: String(W[peak]?.km ?? 0),
+      unit: "km",
+      name: `Peak week (W${peak + 1})`,
+      icon: STAT_ICONS.flame,
+      hue: NUMBERS_HUE.trimp,
+    },
+    {
+      id: "race",
+      v: daysToRace === null ? null : String(Math.max(0, daysToRace)),
+      unit: "days",
+      name: "To race day",
+      icon: STAT_ICONS.trophy,
+      hue: NUMBERS_HUE.riegel,
+    },
+  ];
 
   return (
-<div data-entrance-root style={{ maxWidth: "1280px", marginInline: "auto", padding: "16px 24px 40px", display: "flex", flexDirection: "column", gap: "12px" }}><Entrance /><header style={{ display: "flex", alignItems: "center", gap: "24px", paddingBlock: "6px 10px" }}><div style={{ display: "flex", alignItems: "center", gap: "9px" }}><BrandMark /><span className="num" style={{ fontWeight: "500", fontSize: "16px", letterSpacing: ".12em" }}>{copy.brand}</span></div><div style={{ textAlign: "start" }}><h1 style={{ margin: "0", fontSize: "15px", fontWeight: "600" }}>{planTitle}</h1><p style={{ margin: "0", fontSize: "11.5px", color: "var(--color-muted)" }}>{planSubtitle}</p></div><nav className="topnav" style={{ display: "flex", gap: "20px", fontSize: "13px", color: "var(--color-muted)" }}><a href="/dashboard" style={{ color: "var(--color-muted)" }}>{copy.navHome}</a><a href="/plan" style={{ color: "var(--color-ink)" }}>{copy.navPlan}</a><a href="/activities" style={{ color: "var(--color-muted)" }}>{copy.navActivities}</a><a href="/numbers" style={{ color: "var(--color-muted)" }}>Numbers</a><a href="/settings" style={{ color: "var(--color-muted)" }}>{copy.navSettings}</a></nav><div style={{ flex: "1" }}></div></header>{(!hasPlan) ? (isReal ? (<PlanStart info={data?.start ?? { coach: null, runsOnFile: 0 }} />) : (<EmptyState icon={CAL_ICON} message={<><span style={{ display: "block", fontSize: "15px", fontWeight: 600, color: "var(--color-ink)", marginBlockEnd: "8px" }}>{PLAN_EMPTY.title}</span>{PLAN_EMPTY.body}</>} style={{ maxWidth: "620px", marginInline: "auto", width: "100%" }} action={<a className="btn btn-primary" href="/settings">{PLAN_EMPTY.cta}</a>} />)) : null}{(hasPlan) ? (<><section className="stat-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "12px" }}>{planStats.map((s, _i1) => (<React.Fragment key={_i1}><StatTile value={s.v} unit={s.unit} label={s.name} icon={s.icon} hue={[NUMBERS_HUE.pace, NUMBERS_HUE.volume, NUMBERS_HUE.trimp, NUMBERS_HUE.riegel][_i1]} /></React.Fragment>))}</section><PhaseTimeline weeks={W} currentWeek={currentWeek} /><section className="card" style={{ padding: "16px 18px" }}><div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}><h2 className="num" style={{ margin: "0", fontSize: "13px", fontWeight: "600" }}>{currentMonth ? monthLabel(currentMonth) : ""}</h2><div style={{ display: "flex", alignItems: "center", gap: "8px" }}>{(showTodayButton) ? (<button className="btn btn-secondary" type="button" onClick={jumpToday} style={{ padding: "5px 10px", fontSize: "11.5px" }}>Today</button>) : null}<button className="btn btn-secondary" type="button" onClick={() => stepMonth(-1)} disabled={monthIndex <= 0} style={{ padding: "5px 10px" }} aria-label="Previous month"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg></button><span className="num" style={{ fontSize: "11px", color: "var(--color-faint)", minWidth: "46px", textAlign: "center" }}>{monthIndex + 1} / {availableMonths.length}</span><button className="btn btn-secondary" type="button" onClick={() => stepMonth(1)} disabled={monthIndex >= availableMonths.length - 1} style={{ padding: "5px 10px" }} aria-label="Next month"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg></button></div></div><div className="cal-grid" style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: "6px", marginBlockStart: "14px" }}>{WEEKDAYS.map((wd) => (<span key={wd} className="num" style={{ fontSize: "9px", letterSpacing: ".08em", textTransform: "uppercase", color: "var(--color-faint)", textAlign: "center", paddingBlockEnd: "2px" }}>{wd}</span>))}{(grid?.cells ?? []).map((c) => (<DayCellFull key={c.iso} day={String(c.dayOfMonth)} state={monthState(c)} type={monthType(c)} name={c.item ? c.item.name : ""} meta={c.inMonth && c.item && c.item.type !== "rest" ? <>{c.item.dist}<span className="cal-unit"> km</span></> : undefined} onClick={() => setSelectedDate(c.iso)} style={{ minHeight: 76, ...(c.inMonth ? null : { opacity: 0.55 }), boxShadow: selectedDate === c.iso ? "inset 0 0 0 2px var(--color-accent)" : dayCellStyle(monthState(c)).ring }} />))}</div></section>{(selDisplay) ? (<section className="card" style={{ padding: "16px 20px" }}><div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}><div><h3 style={{ margin: "0", fontSize: "13px", fontWeight: "600" }}>{selDisplay.title}</h3><p className="num" style={{ margin: "2px 0 0", fontSize: "11.5px", color: "var(--color-muted)" }}>{selDisplay.meta}</p></div><span className="tag" style={{ background: "var(--color-elevated)", color: selDisplay.statusColor }}>{selDisplay.status}</span></div>{(selDisplay.hasBar) ? (<><div style={{ display: "flex", alignItems: "flex-end", gap: "2px", height: "48px", marginBlockStart: "12px" }}>{selDisplay.segments.map((s, _i5) => (<React.Fragment key={_i5}><div title={s.title} style={{ width: `${s.w}%`, height: `${s.h}px`, background: s.bg, borderRadius: "3px 3px 0 0" }}></div></React.Fragment>))}</div><div className="num" style={{ display: "flex", justifyContent: "space-between", marginBlockStart: "5px" }}><span style={{ fontSize: "10px", color: "var(--color-faint)" }}>{selDisplay.segStart}</span><span style={{ fontSize: "10px", color: "var(--color-muted)" }}>{selDisplay.segMid}</span><span style={{ fontSize: "10px", color: "var(--color-faint)" }}>{selDisplay.segEnd}</span></div></>) : null}<p style={{ margin: "10px 0 0", fontSize: "12px", color: "var(--color-muted)", textWrap: "pretty" }}>{selDisplay.purpose}</p>{(selDisplay.adjusted) ? (<><p style={{ margin: "6px 0 0", fontSize: "12px", color: "var(--color-caution)" }}>{selDisplay.reason}</p></>) : null}</section>) : null}{(showRaceBanner) ? (<section className="card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", padding: "13px 20px", borderColor: "var(--color-accent-soft)" }}><div style={{ display: "flex", alignItems: "center", gap: "12px" }}><span className="tag" style={{ background: "var(--color-accent-soft)", color: "var(--color-accent)" }}>{copy.raceTag}</span><p className="num" style={{ margin: "0", fontSize: "13px" }}>{raceLine}</p></div><span className="num" style={{ fontSize: "12px", color: "var(--color-muted)" }}>{raceTargetLine}</span></section>) : null}{(isReal) ? (<LeavePlan />) : null}</>) : null}</div>
+    <div
+      data-entrance-root
+      style={{
+        maxWidth: "1280px",
+        marginInline: "auto",
+        padding: "16px 24px 40px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "12px",
+      }}
+    >
+      <Entrance />
+      <header
+        style={{ display: "flex", alignItems: "center", gap: "24px", paddingBlock: "6px 10px" }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
+          <BrandMark />
+          <span
+            className="num"
+            style={{ fontWeight: "500", fontSize: "16px", letterSpacing: ".12em" }}
+          >
+            {copy.brand}
+          </span>
+        </div>
+        <div style={{ textAlign: "start" }}>
+          <h1 style={{ margin: "0", fontSize: "15px", fontWeight: "600" }}>{planTitle}</h1>
+          <p style={{ margin: "0", fontSize: "11.5px", color: "var(--color-muted)" }}>
+            {planSubtitle}
+          </p>
+        </div>
+        <nav
+          className="topnav"
+          style={{ display: "flex", gap: "20px", fontSize: "13px", color: "var(--color-muted)" }}
+        >
+          <Link href="/dashboard" style={{ color: "var(--color-muted)" }}>
+            {copy.navHome}
+          </Link>
+          <Link href="/plan" style={{ color: "var(--color-ink)" }}>
+            {copy.navPlan}
+          </Link>
+          <Link href="/activities" style={{ color: "var(--color-muted)" }}>
+            {copy.navActivities}
+          </Link>
+          <Link href="/numbers" style={{ color: "var(--color-muted)" }}>
+            Numbers
+          </Link>
+          <Link href="/settings" style={{ color: "var(--color-muted)" }}>
+            {copy.navSettings}
+          </Link>
+        </nav>
+        <div style={{ flex: "1" }}></div>
+      </header>
+      {!hasPlan ? <PlanStart info={data.start ?? { coach: null, runsOnFile: 0 }} /> : null}
+      {hasPlan ? (
+        <>
+          <section
+            className="stat-grid"
+            style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "12px" }}
+          >
+            {planStats.map((s) => (
+              <React.Fragment key={s.id}>
+                <StatTile value={s.v} unit={s.unit} label={s.name} icon={s.icon} hue={s.hue} />
+              </React.Fragment>
+            ))}
+          </section>
+          <PhaseTimeline weeks={W} currentWeek={currentWeek} />
+          <section className="card" style={{ padding: "16px 18px" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "12px",
+                flexWrap: "wrap",
+              }}
+            >
+              <h2 className="num" style={{ margin: "0", fontSize: "13px", fontWeight: "600" }}>
+                {currentMonth ? monthLabel(currentMonth) : ""}
+              </h2>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                {showTodayButton ? (
+                  <button
+                    className="btn btn-secondary"
+                    type="button"
+                    onClick={jumpToday}
+                    style={{ padding: "5px 10px", fontSize: "11.5px" }}
+                  >
+                    Today
+                  </button>
+                ) : null}
+                <button
+                  className="btn btn-secondary"
+                  type="button"
+                  onClick={() => stepMonth(-1)}
+                  disabled={monthIndex <= 0}
+                  style={{ padding: "5px 10px" }}
+                  aria-label="Previous month"
+                >
+                  <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="m15 18-6-6 6-6" />
+                  </svg>
+                </button>
+                <span
+                  className="num"
+                  style={{
+                    fontSize: "11px",
+                    color: "var(--color-faint)",
+                    minWidth: "46px",
+                    textAlign: "center",
+                  }}
+                >
+                  {monthIndex + 1} / {availableMonths.length}
+                </span>
+                <button
+                  className="btn btn-secondary"
+                  type="button"
+                  onClick={() => stepMonth(1)}
+                  disabled={monthIndex >= availableMonths.length - 1}
+                  style={{ padding: "5px 10px" }}
+                  aria-label="Next month"
+                >
+                  <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="m9 18 6-6-6-6" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div
+              className="cal-grid"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(7,1fr)",
+                gap: "6px",
+                marginBlockStart: "14px",
+              }}
+            >
+              {WEEKDAYS.map((wd) => (
+                <span
+                  key={wd}
+                  className="num"
+                  style={{
+                    fontSize: "9px",
+                    letterSpacing: ".08em",
+                    textTransform: "uppercase",
+                    color: "var(--color-faint)",
+                    textAlign: "center",
+                    paddingBlockEnd: "2px",
+                  }}
+                >
+                  {wd}
+                </span>
+              ))}
+              {(grid?.cells ?? []).map((c) => (
+                <DayCellFull
+                  key={c.iso}
+                  day={String(c.dayOfMonth)}
+                  state={monthState(c)}
+                  type={monthType(c)}
+                  name={c.item ? c.item.name : ""}
+                  meta={
+                    c.inMonth && c.item && c.item.type !== "rest" ? (
+                      <>
+                        {c.item.dist}
+                        <span className="cal-unit"> km</span>
+                      </>
+                    ) : undefined
+                  }
+                  onClick={() => setSelectedDate(c.iso)}
+                  style={{
+                    minHeight: 76,
+                    ...(c.inMonth ? null : { opacity: 0.55 }),
+                    boxShadow:
+                      selectedDate === c.iso
+                        ? "inset 0 0 0 2px var(--color-accent)"
+                        : dayCellStyle(monthState(c)).ring,
+                  }}
+                />
+              ))}
+            </div>
+          </section>
+          {selDisplay ? (
+            <section className="card" style={{ padding: "16px 20px" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "baseline",
+                  justifyContent: "space-between",
+                  flexWrap: "wrap",
+                  gap: "8px",
+                }}
+              >
+                <div>
+                  <h3 style={{ margin: "0", fontSize: "13px", fontWeight: "600" }}>
+                    {selDisplay.title}
+                  </h3>
+                  <p
+                    className="num"
+                    style={{ margin: "2px 0 0", fontSize: "11.5px", color: "var(--color-muted)" }}
+                  >
+                    {selDisplay.meta}
+                  </p>
+                </div>
+                <span
+                  className="tag"
+                  style={{ background: "var(--color-elevated)", color: selDisplay.statusColor }}
+                >
+                  {selDisplay.status}
+                </span>
+              </div>
+              {selDisplay.hasBar ? (
+                <>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-end",
+                      gap: "2px",
+                      height: "48px",
+                      marginBlockStart: "12px",
+                    }}
+                  >
+                    {selDisplay.segments.map((s, _i5) => (
+                      <React.Fragment key={_i5}>
+                        <div
+                          title={s.title}
+                          style={{
+                            width: `${s.w}%`,
+                            height: `${s.h}px`,
+                            background: s.bg,
+                            borderRadius: "3px 3px 0 0",
+                          }}
+                        ></div>
+                      </React.Fragment>
+                    ))}
+                  </div>
+                  <div
+                    className="num"
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      marginBlockStart: "5px",
+                    }}
+                  >
+                    <span style={{ fontSize: "10px", color: "var(--color-faint)" }}>
+                      {selDisplay.segStart}
+                    </span>
+                    <span style={{ fontSize: "10px", color: "var(--color-muted)" }}>
+                      {selDisplay.segMid}
+                    </span>
+                    <span style={{ fontSize: "10px", color: "var(--color-faint)" }}>
+                      {selDisplay.segEnd}
+                    </span>
+                  </div>
+                </>
+              ) : null}
+              <p
+                style={{
+                  margin: "10px 0 0",
+                  fontSize: "12px",
+                  color: "var(--color-muted)",
+                  textWrap: "pretty",
+                }}
+              >
+                {selDisplay.purpose}
+              </p>
+              {selDisplay.adjusted ? (
+                <>
+                  <p style={{ margin: "6px 0 0", fontSize: "12px", color: "var(--color-caution)" }}>
+                    {selDisplay.reason}
+                  </p>
+                </>
+              ) : null}
+            </section>
+          ) : null}
+          {showRaceBanner ? (
+            <section
+              className="card"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "16px",
+                padding: "13px 20px",
+                borderColor: "var(--color-accent-soft)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <span
+                  className="tag"
+                  style={{ background: "var(--color-accent-soft)", color: "var(--color-accent)" }}
+                >
+                  {copy.raceTag}
+                </span>
+                <p className="num" style={{ margin: "0", fontSize: "13px" }}>
+                  {raceLine}
+                </p>
+              </div>
+              <span className="num" style={{ fontSize: "12px", color: "var(--color-muted)" }}>
+                {raceTargetLine}
+              </span>
+            </section>
+          ) : null}
+          <LeavePlan />
+        </>
+      ) : null}
+    </div>
   );
 }

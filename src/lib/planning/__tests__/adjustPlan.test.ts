@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { decideAdjustments, type WorkoutForAdjustment } from "../adjustPlan";
+import { decideAdjustments, highDriftRate, type WorkoutForAdjustment } from "../adjustPlan";
+
 import type { DailyLoad } from "../acwr";
 
-// מסמך אפיון בדיקות §1: adjustPlan — מוריד עצימות שבוע קדימה כאשר ACWR
-// מחושב מעל 1.5; ומזיז את שבוע הבנייה כשיותר מאימון אחד פוספס.
+// Test plan §1: adjustPlan — reduces the coming week when ACWR is above 1.5,
+// and recommends shifting the build week when more than one session was missed.
 
-/** תאריך קבוע — כך שהטסט לא נשבר מעצמו כשעובר הזמן. */
+/** A fixed date, so the test does not age out by itself. */
 const FIXED_TODAY = "2026-08-06";
 
 function highLoadDailyLoads(): DailyLoad[] {
@@ -27,13 +28,13 @@ const plannedWorkout: WorkoutForAdjustment = {
 };
 
 describe("decideAdjustments", () => {
-  it("מוריד עצימות כאשר ACWR מחושב מעל 1.5", () => {
+  it("reduces intensity when ACWR is above 1.5", () => {
     const decisions = decideAdjustments([plannedWorkout], highLoadDailyLoads(), 0, new Date(FIXED_TODAY));
     expect(decisions[0].action).toBe("reduce_intensity");
     expect(decisions[0].reductionFactor).toBeLessThan(1);
   });
 
-  it("מזיז שבוע קדימה כשיותר מאימון אחד פוספס באותו שבוע (לא מדביק פער בבת אחת)", () => {
+  it("recommends shifting the week when more than one session was missed (no catching up in one go)", () => {
     const workouts: WorkoutForAdjustment[] = [
       { id: "m1", weekNumber: 3, status: "missed", plannedDistance: 5000 },
       { id: "m2", weekNumber: 3, status: "missed", plannedDistance: 5000 },
@@ -44,7 +45,7 @@ describe("decideAdjustments", () => {
     expect(forPlanned?.action).toBe("shift_week");
   });
 
-  it("לא נוגע באימונים שכבר הושלמו/פוספסו/הותאמו", () => {
+  it("leaves completed, missed and adjusted sessions alone", () => {
     const workouts: WorkoutForAdjustment[] = [
       { id: "c1", weekNumber: 1, status: "completed", plannedDistance: 5000 },
     ];
@@ -52,7 +53,7 @@ describe("decideAdjustments", () => {
     expect(decisions[0].action).toBe("none");
   });
 
-  it("לא משנה כלום כשהעומס יציב ואין פספוסים", () => {
+  it("changes nothing when load is steady and nothing was missed", () => {
     const asOf = new Date(FIXED_TODAY);
     const stableLoads: DailyLoad[] = Array.from({ length: 28 }, (_, i) => {
       const d = new Date(asOf);
@@ -61,5 +62,25 @@ describe("decideAdjustments", () => {
     });
     const decisions = decideAdjustments([plannedWorkout], stableLoads, 0, new Date(FIXED_TODAY));
     expect(decisions[0].action).toBe("none");
+  });
+});
+
+describe("highDriftRate", () => {
+  it("is the share of scored runs above the drift threshold", () => {
+    expect(highDriftRate([2, 7, 8, 1])).toBe(0.5);
+  });
+
+  it("ignores runs without a drift figure", () => {
+    expect(highDriftRate([null, undefined, 9, 9, 1])).toBeCloseTo(2 / 3);
+  });
+
+  it("needs at least three scored runs before it calls a pattern", () => {
+    expect(highDriftRate([9, 9])).toBe(0);
+  });
+
+  it("reduces the coming week when the rate crosses the threshold", () => {
+    const decisions = decideAdjustments([plannedWorkout], [], 0.5, new Date(FIXED_TODAY));
+    expect(decisions[0].action).toBe("reduce_intensity");
+    expect(decisions[0].reason).toMatch(/cardiac drift/);
   });
 });

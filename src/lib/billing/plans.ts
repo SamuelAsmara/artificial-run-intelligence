@@ -59,9 +59,9 @@ export const COACH_PLANS: Record<CoachTier, {
 /**
  * The athlete's two packages — Basic and Premium.
  *
- * Same `subscriptions` row and the same `free`/`pro` values as the coach
- * packages (the table has no role column — it never needed one, since RLS
- * already scopes every row to its own `user_id`). Only the copy differs:
+ * Same `free`/`pro` values as the coach packages, in a separate
+ * `subscriptions` row per `scope` (0023) so a coach who also trains keeps
+ * the two apart. Only the copy differs:
  * an athlete isn't managing seats, so Premium's one addition is RunAI, the
  * free-text assistant built on Runi's own LLM layer.
  */

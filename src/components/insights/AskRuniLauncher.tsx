@@ -24,7 +24,12 @@ const SHOW_ON = ["/dashboard", "/plan", "/activities", "/numbers", "/settings"];
 
 export function AskRuniLauncher() {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
+  // The panel is open *for a route*: it closes when the route changes, because
+  // a panel about "your runs" carried into settings is a panel that looks
+  // stuck. Remembering which route it opened on derives that without an effect.
+  const [openOn, setOpenOn] = useState<string | null>(null);
+  const open = openOn === pathname;
+  const setOpen = (next: boolean) => setOpenOn(next ? pathname : null);
   const [compact, setCompact] = useState(false);
   const lastY = useRef(0);
 
@@ -45,10 +50,6 @@ export function AskRuniLauncher() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, [visible]);
-
-  // Close when the route changes: a panel about "your runs" carried into
-  // settings is a panel that looks stuck.
-  useEffect(() => { setOpen(false); }, [pathname]);
 
   if (!visible) return null;
 

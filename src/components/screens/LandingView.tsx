@@ -1,12 +1,10 @@
 /**
  * The landing page — what a signed-out visitor sees at `/`.
  *
- * The hero is a 1:1 port of the Claude Design handoff (`handoff_landing/Runi
- * Landing.dc.html`, 2026-08-30): full-viewport, the long-exposure trail
- * photograph, blue grade, film grain, the R-Trace mark and the wordmark.
+ * The hero is full-viewport: the long-exposure trail photograph, blue grade,
+ * film grain, the R-Trace mark and the wordmark.
  *
- * Below it the page was rebuilt on 2026-08-31 around six sections, in the
- * order a visitor would ask the questions: how big is this → what does it
+ * Below it, six sections in the order a visitor would ask the questions: how big is this → what does it
  * connect to → what does it measure → what does it do for a runner → what
  * does it do for a coach → start.
  *
@@ -36,6 +34,7 @@ import { BrandMark } from "@/components/ui";
 import { LandingMotion } from "@/components/landing/LandingMotion";
 import { TileMark } from "@/components/screens/SettingsView";
 import { PROVIDER_TILES } from "@/lib/screens/settings";
+import Link from "next/link";
 
 /* ------------------------------------------------------------------ */
 /* copy                                                                */
@@ -246,7 +245,7 @@ export function LandingView() {
     <div style={{ background: "var(--color-canvas)", color: "var(--color-ink)" }}>
       <LandingMotion />
 
-      {/* ---------- hero (Claude Design handoff, unchanged) ---------- */}
+      {/* ---------- hero ---------- */}
       <section style={{ position: "relative", height: "100svh", minHeight: "660px", overflow: "hidden", display: "flex", flexDirection: "column" }}>
         <div style={{ position: "absolute", inset: 0, background: "#08090c" }}>
           {/* eslint-disable-next-line @next/next/no-img-element -- full-bleed hero, no next/image sizing needed */}
@@ -269,7 +268,7 @@ export function LandingView() {
             <a className="mlabel land-navlink" href="#coaches">For coaches</a>
             <a className="mlabel land-navlink" href="#numbers">The numbers</a>
           </nav>
-          <a href="/login" className="mlabel land-pill-ghost" style={{ padding: "10px 22px" }}>Sign in</a>
+          <Link href="/login" className="mlabel land-pill-ghost" style={{ padding: "10px 22px" }}>Sign in</Link>
         </header>
 
         <div className="land-rise" style={{ position: "relative", zIndex: 2, flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", paddingInline: "24px" }}>
@@ -284,8 +283,8 @@ export function LandingView() {
 
         <div className="land-rise land-rise2" style={{ position: "relative", zIndex: 2, display: "flex", flexDirection: "column", alignItems: "center", gap: "26px", paddingBlockEnd: "52px" }}>
           <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", justifyContent: "center" }}>
-            <a href="/signup" className="land-pill-main" style={{ display: "inline-flex", alignItems: "center", gap: "9px", font: "600 13.5px 'IBM Plex Sans', sans-serif", padding: "13px 28px", borderRadius: "999px" }}>Start the journey{ARROW}</a>
-            <a href="/login" className="land-pill-ghost" style={{ display: "inline-flex", alignItems: "center", font: "500 13.5px 'IBM Plex Sans', sans-serif", padding: "13px 28px" }}>View live demo</a>
+            <Link href="/signup" className="land-pill-main" style={{ display: "inline-flex", alignItems: "center", gap: "9px", font: "600 13.5px 'IBM Plex Sans', sans-serif", padding: "13px 28px", borderRadius: "999px" }}>Start the journey{ARROW}</Link>
+            <Link href="/login" className="land-pill-ghost" style={{ display: "inline-flex", alignItems: "center", font: "500 13.5px 'IBM Plex Sans', sans-serif", padding: "13px 28px" }}>View live demo</Link>
           </div>
           <svg width="16" height="22" viewBox="0 0 16 22" fill="none" stroke="rgba(233,237,243,.5)" strokeWidth="1.5" strokeLinecap="round" aria-hidden>
             <path d="M8 2v14" /><path d="m3 12 5 5 5-5" />
@@ -395,7 +394,7 @@ export function LandingView() {
             <p style={{ margin: 0, fontSize: "14.5px", color: "var(--color-muted)", maxWidth: "460px", textWrap: "pretty", lineHeight: 1.65 }}>
               You lead; Runi assists. It reads every athlete&rsquo;s data, shows the process clearly, and leaves the judgment — and the relationship — where it belongs: with you.
             </p>
-            <a href="/login" className="land-pill-line" style={{ display: "inline-flex", alignItems: "center", gap: "8px", marginBlockStart: "22px", font: "600 13.5px 'IBM Plex Sans', sans-serif", padding: "12px 24px" }}>See the coach board{ARROW}</a>
+            <Link href="/login" className="land-pill-line" style={{ display: "inline-flex", alignItems: "center", gap: "8px", marginBlockStart: "22px", font: "600 13.5px 'IBM Plex Sans', sans-serif", padding: "12px 24px" }}>See the coach board{ARROW}</Link>
           </div>
           <div className="land-item"><NumberedRows items={COACH} /></div>
         </div>
@@ -408,7 +407,7 @@ export function LandingView() {
           <p className="land-item" style={{ margin: 0, fontSize: "15px", color: "var(--color-muted)", maxWidth: "440px", textWrap: "pretty" }}>
             Connect your watch, set a goal race, and get a plan that adapts to what your body actually did — not what the spreadsheet hoped.
           </p>
-          <a href="/signup" className="land-pill-accent land-item" style={{ display: "inline-flex", alignItems: "center", gap: "9px", font: "600 14px 'IBM Plex Sans', sans-serif", padding: "14px 32px", marginBlockStart: "8px" }}>Start the journey</a>
+          <Link href="/signup" className="land-pill-accent land-item" style={{ display: "inline-flex", alignItems: "center", gap: "9px", font: "600 14px 'IBM Plex Sans', sans-serif", padding: "14px 32px", marginBlockStart: "8px" }}>Start the journey</Link>
         </div>
         <footer style={{ borderBlockStart: "1px solid var(--color-line)" }}>
           <div style={{ ...WRAP, padding: "22px 46px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", flexWrap: "wrap" }}>

@@ -1,8 +1,7 @@
 @import "tailwindcss";
 
 /* ------------------------------------------------------------------
-   ARI — design tokens
-   Source of truth: design_handoff_ari_athlete_app/README.md
+   Runi — design tokens
    Every colour/radius in the product resolves through this block.
    To reskin the app, edit here — never in a component.
    ------------------------------------------------------------------ */

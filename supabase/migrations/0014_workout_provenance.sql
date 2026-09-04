@@ -57,6 +57,6 @@ create index if not exists plan_workouts_adjustable_idx
   where origin = 'generated';
 
 comment on column public.plan_workouts.origin is
-  'generated = ARI built it and may adjust it; coach/athlete = a person set it, the engine leaves it alone';
+  'generated = Runi built it and may adjust it; coach/athlete = a person set it, the engine leaves it alone';
 comment on column public.plan_workouts.planned_distance_original is
   'the distance before an automatic reduction; null once restored';

@@ -32,7 +32,7 @@
  * server is tens of kilobytes and a large photo cannot fail the save.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 /** The saved crop, in pixels. Square, because every box that shows it is. */
 const OUTPUT_PX = 512;
@@ -93,7 +93,7 @@ export function AvatarEditor({
    * adjustment would soften the photo a little more each time; keeping the
    * source means every drag re-cuts from the same original.
    */
-  const [source, setSource] = useState<string | null>(null);
+  const [source, setSource] = useState<string | null>(src);
   const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -103,10 +103,18 @@ export function AvatarEditor({
   const fileInput = useRef<HTMLInputElement>(null);
   const dragStart = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
 
-  /** An already-saved avatar becomes the source, so it can be re-framed. */
-  useEffect(() => {
+  /**
+   * An already-saved avatar becomes the source, so it can be re-framed — at
+   * mount, and again whenever the saved avatar changes while nothing is being
+   * framed (the form was reset, say). Adjusting state from a changed prop
+   * during render, rather than in an effect, so the frame never shows a stale
+   * intermediate render.
+   */
+  const [prevSrc, setPrevSrc] = useState(src);
+  if (src !== prevSrc) {
+    setPrevSrc(src);
     if (src && !source) setSource(src);
-  }, [src, source]);
+  }
 
   /** Preview pixels per source pixel, at the current zoom. */
   const scaleFor = useCallback(

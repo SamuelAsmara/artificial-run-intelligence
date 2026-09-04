@@ -264,7 +264,7 @@ export function estimateThresholds(
       : `Threshold heart rate ${Math.round(lthr)} bpm — provisional until you log 3 sustained hard runs.`,
   );
 
-  const { thresholdSpeedMps, measured: paceMeasured } = estimateThresholdSpeed(history, lthr);
+  const { thresholdSpeedMps } = estimateThresholdSpeed(history, lthr);
   if (thresholdSpeedMps > 0) {
     notes.push(
       `Threshold pace ${formatMinSec(1000 / thresholdSpeedMps)}/km, from your fastest sustained run.`,

@@ -4,12 +4,14 @@ import { healthWebhookSchema } from "@/lib/validation/schemas";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 
 /**
- * POST /api/webhooks/health — מסמך תכנון טכני §5, מסמך אבטחה §6.
- * מקבל payload מאפליקציית הגישור (Health Webhook), מאמת secret token
- * בהשוואת זמן-קבוע (מונע Timing Attack), כותב ל-recovery_signals (upsert).
+ * POST /api/webhooks/health — Technical design §5, Security doc §6.
+ * Receives a recovery payload (sleep / HRV / resting HR) from a bridging app,
+ * checks a shared secret in constant time, validates the body with Zod and
+ * upserts into recovery_signals.
  *
- * הערה: ה-secret הנוכחי משותף לכלל האפליקציה, לא ייחודי-למשתמש —
- * מגבלה ידועה, מתועדת במסמך אבטחה §8 כשיפור עתידי.
+ * The secret is one per deployment, not per athlete — a known limitation,
+ * listed in the Security doc §8. The route is off unless
+ * HEALTH_WEBHOOK_ENABLED=true (see below).
  */
 
 function isValidSecret(provided: string | null): boolean {

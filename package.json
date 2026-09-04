@@ -1,5 +1,5 @@
 {
-  "name": "ari-app",
+  "name": "runi",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check:wellness": "tsx scripts/check-wellness.ts",
+    "check:permissions": "tsx scripts/check-permissions.ts",
     "analyze": "tsx scripts/analyze.ts",
     "seed:dry": "tsx scripts/seed-demo.ts --dry-run",
     "seed:demo": "tsx scripts/seed-demo.ts",

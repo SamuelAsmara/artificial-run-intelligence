@@ -1,8 +1,7 @@
 "use client";
 
 /**
- * Sign in — a port of
- * design_handoff_ari_athlete_app/new_login_design/ARI Login.dc.html.
+ * Sign in — one glass card over a full-bleed night photograph.
  *
  * ## The screen
  *
@@ -32,6 +31,7 @@ import { BrandMark } from "@/components/ui";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { LOGIN_COPY, MIN_PASSWORD } from "@/lib/screens/login";
+import Link from "next/link";
 
 const copy = LOGIN_COPY;
 
@@ -215,7 +215,7 @@ export function LoginView({ initialMode = "login" }: { initialMode?: "login" | "
   return (
     <div style={{ position: "relative", minHeight: "100dvh" }}>
       {/* Back to the landing page — small, quiet, top corner. */}
-      <a
+      <Link
         href="/"
         className="mlabel land-pill-ghost"
         style={{
@@ -227,7 +227,7 @@ export function LoginView({ initialMode = "login" }: { initialMode?: "login" | "
           <path d="m15 18-6-6 6-6" />
         </svg>
         Back
-      </a>
+      </Link>
       {/* The photograph, with the blurred twin underneath it. WebP first; the
           JPEG is there for anything that cannot read it. */}
       <div

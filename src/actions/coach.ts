@@ -28,10 +28,11 @@ import {
   DEFAULT_PREFERENCES, targetPaceSeconds, type CoachPreferences,
 } from "@/lib/coach/preferences";
 import { todayIso } from "@/lib/time/week";
+import { workoutPatchSchema } from "@/lib/validation/schemas";
 import {
-  flagsFor, rosterFlags, summariseRoster, weekBoard, weekDates,
-  type AthleteRow, type BoardRow, type Flag, type PlannedSession,
-  type RosterSummary, type RunRecord,
+  flagsFor, rosterFlags, summariseRoster, weekDates,
+  type AthleteRow, type BoardRow, type Flag,
+  type RosterSummary,
 } from "@/lib/coach/roster";
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -620,6 +621,12 @@ export async function updateWorkout(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "You need to be signed in." };
 
+  const parsed = workoutPatchSchema.safeParse(patch);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "That edit is not valid." };
+  }
+  patch = parsed.data;
+
   const fields: {
     workout_type?: WorkoutType;
     planned_distance?: number | null;
@@ -818,7 +825,7 @@ export interface Reminder {
   athleteName: string | null;
 }
 
-export async function getReminders(): Promise<Reminder[]> {
+async function getReminders(): Promise<Reminder[]> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];

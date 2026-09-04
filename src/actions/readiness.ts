@@ -13,63 +13,12 @@
  * known, and the explanation panel says which parts were available.
  */
 
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { recomputeForUser } from "@/lib/readiness/recompute";
 import { hrvVsBaselinePct, latestSleepHours, type RecoverySignal } from "@/lib/wellness/intervalsIcu";
 import { computeReadiness } from "@/lib/planning/readiness";
 import { buildNarrative, type Narrative } from "@/lib/narrative/buildNarrative";
 
-type ActionResult<T> = { data: T; error?: undefined } | { data?: undefined; error: string };
-
 const iso = (d: Date) => d.toISOString().slice(0, 10);
-
-/**
- * Recomputes the athlete's readiness history and stores it.
- *
- * Reads every activity we hold for them, pulls recovery data when a wellness
- * source is configured, runs the engine, and upserts one row per day into
- * `readiness_snapshots`. Safe to run repeatedly — the unique key on
- * (user_id, date) makes it idempotent.
- *
- * Called after a Strava sync, from the daily cron, and manually from Settings.
- */
-export async function recomputeReadiness(
-  days = 90,
-): Promise<ActionResult<{ days: number; runs: number; hrScored: number; withRecovery: boolean }>> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Not signed in." };
-
-  // The work itself lives in a lib so the nightly cron can run it for an
-  // athlete who is not the one signed in. This is the session wrapper.
-  const result = await recomputeForUser(supabase, user.id, days);
-  if (!result.ok) return { error: result.error };
-
-  revalidatePath("/dashboard");
-  return { data: result.data };
-}
-
-/** The most recent snapshot, for the dashboard. */
-export async function getLatestReadiness() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
-
-  const { data } = await supabase
-    .from("readiness_snapshots")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("date", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  return data;
-}
 
 /** The last `days` snapshots, oldest first — the fitness/fatigue/form chart. */
 export async function getReadinessSeries(days = 84) {

@@ -17,11 +17,12 @@ import type { CoachWorkspace } from "@/actions/coach";
 import { buildCycles } from "@/lib/coach/programs";
 import { RACE_LABEL } from "@/lib/coach/templates";
 import {
-  buildHighlights, COACH_COPY, FLAG_LIMIT, initials, KIND_LABEL, toneColor, untilLabel, untilParts,
+  buildHighlights, COACH_COPY, FLAG_LIMIT, initials, KIND_LABEL, toneColor, untilParts,
 } from "@/lib/screens/coachHome";
 import { weekDates } from "@/lib/coach/roster";
 import { Entrance, StatTile, STAT_ICONS, EmptyState } from "@/components/ui";
 import { NUMBERS_HUE } from "@/lib/screens/numbers";
+import Link from "next/link";
 
 /** two figures — the roster is people before it is anything else */
 const ROSTER_ICON = "M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM2 20a7 7 0 0 1 14 0M17 11a3 3 0 1 0 0-6M16 20h6a5 5 0 0 0-4-4.9";
@@ -173,7 +174,7 @@ export function CoachHomeView({ data, today }: { data: CoachWorkspace; today: st
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "3px", marginBlockStart: "10px" }}>
             {shownFlags.map((f, i) => (
-              <a
+              <Link
                 key={`${f.athleteId}-${f.kind}-${i}`}
                 className="dc-hover-bg flagrow"
                 href={`/coach/athletes/${f.athleteId}`}
@@ -195,7 +196,7 @@ export function CoachHomeView({ data, today }: { data: CoachWorkspace; today: st
                 <span className="num" style={{ fontSize: "10px", letterSpacing: ".05em", textTransform: "uppercase", color: toneColor(f.tone) }}>
                   {KIND_LABEL[f.kind]}
                 </span>
-              </a>
+              </Link>
             ))}
           </div>
         </section>

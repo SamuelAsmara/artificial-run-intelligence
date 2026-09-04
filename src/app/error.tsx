@@ -12,6 +12,7 @@
 
 import { useEffect } from "react";
 import { BrandMark } from "@/components/ui/BrandMark";
+import Link from "next/link";
 
 export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => { console.error("[runi] page error", error.digest ?? "", error); }, [error]);
@@ -28,7 +29,7 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
         {error.digest ? <p className="num" style={{ margin: "10px 0 0", fontSize: "10px", color: "var(--color-faint)" }}>ref {error.digest}</p> : null}
         <div style={{ display: "flex", gap: "10px", justifyContent: "center", marginBlockStart: "18px", flexWrap: "wrap" }}>
           <button className="btn btn-primary" type="button" onClick={reset}>Try again</button>
-          <a className="btn btn-secondary" href="/dashboard">Home</a>
+          <Link className="btn btn-secondary" href="/dashboard">Home</Link>
         </div>
       </section>
     </main>

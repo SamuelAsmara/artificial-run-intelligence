@@ -1,6 +1,6 @@
 # Research — training load, fitness/fatigue, and injury risk
 
-Literature review carried out on 16 Aug 2026 to ground ARI's training logic in
+Literature review carried out on 16 Aug 2026 to ground Runi's training logic in
 published evidence rather than in whatever a commercial platform happens to do.
 
 Two briefs:
@@ -43,7 +43,7 @@ support that claim:
   | +30% to +100% | 1.52 |
   | > +100% | 2.28 |
 
-**Implication for ARI:** keep ACWR as a descriptive number ("you are training
+**Implication for Runi:** keep ACWR as a descriptive number ("you are training
 40% above your usual level"), drop the risk language, and make the primary
 safety signal *session distance versus 30-day longest run* — which is both
 better supported and computable from the fields we already store.

@@ -8,6 +8,7 @@
 
 import { COACH_COPY } from "@/lib/screens/coachHome";
 import { BrandMark } from "@/components/ui";
+import Link from "next/link";
 
 export function CoachNav({
   active,
@@ -15,13 +16,13 @@ export function CoachNav({
   active: "home" | "cycles" | "athletes" | "templates" | "settings";
 }) {
   const link = (key: string, href: string, label: string) => (
-    <a
+    <Link
       key={key}
       href={href}
       style={{ color: active === key ? "var(--color-ink)" : "var(--color-muted)" }}
     >
       {label}
-    </a>
+    </Link>
   );
 
   return (
@@ -52,12 +53,12 @@ export function CoachNav({
         */}
       </nav>
       <div style={{ flex: 1 }} />
-      <a
+      <Link
         href="/coach/settings"
         style={{ fontSize: "13px", color: active === "settings" ? "var(--color-ink)" : "var(--color-muted)" }}
       >
         {COACH_COPY.navSettings}
-      </a>
+      </Link>
     </header>
   );
 }

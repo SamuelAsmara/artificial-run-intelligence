@@ -17,8 +17,6 @@ import { DashboardView, type DashboardData } from "@/components/dashboard/Dashbo
 import { EmptyDashboard } from "@/components/dashboard/EmptyDashboard";
 import { getDashboardNarrative, getReadinessSeries } from "@/actions/readiness";
 import { getDashboardPlan } from "@/actions/plan";
-import { buildNarrative } from "@/lib/narrative/buildNarrative";
-import { computeReadiness } from "@/lib/planning/readiness";
 import { createClient } from "@/lib/supabase/server";
 import { formatPace } from "@/lib/format/pace";
 import { paceShapeColor, paceShapeToPath } from "@/lib/dashboard/sparkline";
@@ -34,33 +32,10 @@ import {
 
 export const metadata = { title: "Dashboard · Runi" };
 
-export default async function DashboardPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ coach?: string; score?: string; risk?: string; demo?: string }>;
-}) {
-  const sp = await searchParams;
-
-  // ?demo=1 forces the reference data — useful for screenshots and for showing
-  // the design when an account has no history yet.
-  if (sp.demo === "1") {
-    const demo = demoNarrative();
-    return (
-      <DashboardView
-        coachView={sp.coach === "1"}
-        readinessScore={sp.score ? Number(sp.score) : demo.readiness.score}
-        acwrRisk={sp.risk === "1"}
-        data={{ narrative: demo }}
-      />
-    );
-  }
-
+export default async function DashboardPage() {
   const series = await getReadinessSeries(84);
 
-  // Nothing to show yet. Previously this fell through to the demo dataset, which
-  // meant a brand-new account saw someone else's readiness score, personal bests
-  // and race countdown with no indication they weren't real. Show the empty
-  // state instead — demo data now lives only behind ?demo=1.
+  // Fewer than two snapshots is nothing to chart yet: show the empty state.
   if (series.length < 2) {
     const [name, plan] = await Promise.all([athleteName(), getDashboardPlan()]);
     const next = plan?.next;
@@ -86,21 +61,11 @@ export default async function DashboardPage({
     athletePhoto(),
   ]);
 
-  /*
-   * The score, or nothing.
-   *
-   * `?score=` is a demo affordance and used to be trusted as a number, so
-   * `?score=abc` produced NaN and rendered a ring with `strokeDasharray="NaN"`.
-   * And a snapshot whose score is null fell through to the component's default
-   * of 82 — a confident "Ready to load" for an athlete we have no score for.
-   */
-  const override = Number(sp.score);
-  const readinessScore = Number.isFinite(override) && override >= 0 && override <= 100
-    ? override
-    : latest.readiness_score ?? undefined;
+  // The score, or nothing: a snapshot whose score is null renders as a dash,
+  // never as a default.
+  const readinessScore = latest.readiness_score ?? undefined;
 
   const data: DashboardData = {
-    isReal: true,
     pmcSeries: {
       C: series.map((s) => Number(s.ctl ?? 0)),
       A: series.map((s) => Number(s.atl ?? 0)),
@@ -120,22 +85,9 @@ export default async function DashboardPage({
     rail,
   };
 
-  /*
-   * `?coach=1` is not honoured on a real dashboard.
-   *
-   * The banner it raises reads "You are viewing Samuel Cohen's training data" —
-   * a name from the prototype, hard-coded in model.ts, shown to whoever typed
-   * the parameter. Coaches read an athlete through /coach/athletes/[id], which
-   * is scoped by the roster; this was a mock of that, and a real coach seeing a
-   * stranger's name on their own dashboard is worse than no banner at all.
-   */
-  return (
-    <DashboardView
-      readinessScore={readinessScore}
-      acwrRisk={sp.risk === "1"}
-      data={data}
-    />
-  );
+  // Coaches read an athlete through /coach/athletes/[id], which is scoped by
+  // the roster; the athlete's own dashboard carries no coach banner.
+  return <DashboardView readinessScore={readinessScore} data={data} />;
 }
 
 /**
@@ -202,7 +154,8 @@ async function streamDerived() {
   const drift = rows.find((r) => r.cardiac_drift_pct !== null)?.cardiac_drift_pct;
 
   return {
-    prs: rows.length ? prs : undefined,
+    // Always the four rows: a distance never run shows as a dash.
+    prs,
     cardiacDrift: typeof drift === "number" ? drift : undefined,
   };
 }
@@ -383,37 +336,4 @@ async function recentActivityRows() {
       sparkColor: paceShapeColor(a.pace_shape),
     };
   });
-}
-
-/**
- * A narrative for the reference dataset, so the walkthrough can open "Show
- * reasoning" and see the real component.
- *
- * The demo score is *derived* from these inputs rather than taken from the
- * mockup's headline 82. The reasoning panel shows the weighted total, and a
- * worked example whose numbers do not add up is worse than useless — it is the
- * exact thing this panel exists to disprove.
- */
-function demoNarrative() {
-  const pmc = { ctl: 47, atl: 39, tsb: 6, rampRate: 2.4 };
-  const readiness = computeReadiness({
-    pmc,
-    loadRatio: 1.08,
-    cardiacDriftPct: 2.4,
-    sleepHours: 7.4,
-    hrvVsBaselinePct: 101,
-  });
-  return {
-    ...buildNarrative({
-      readiness,
-      pmc,
-      loadRatio: 1.08,
-      sleepHours: 7.4,
-      cardiacDriftPct: 2.4,
-      hrvVsBaselinePct: 101,
-      restingHr: 52,
-      longestRecentM: 26000,
-    }),
-    readiness,
-  };
 }

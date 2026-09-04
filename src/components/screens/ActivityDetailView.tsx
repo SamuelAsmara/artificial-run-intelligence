@@ -1,8 +1,7 @@
 "use client";
 
 /**
- * Activity analysis — a port of
- * design_handoff_ari_athlete_app/ARI Activity Detail.dc.html (v2).
+ * Activity analysis — one run, in full.
  *
  * ## The shape of the screen
  *
@@ -29,6 +28,7 @@
  */
 
 import * as React from "react";
+import Link from "next/link";
 import { Entrance, BrandMark } from "@/components/ui";
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
@@ -37,12 +37,12 @@ import {
   type Band, type BandRange,
   targetBand,
 } from "@/lib/activity/chartLayout";
-import { fastestSegment, readableSegments, summarise, type RangeSummary, type Segment } from "@/lib/activity/metrics";
+import { summarise, type RangeSummary, type Segment } from "@/lib/activity/metrics";
 import { paceAxisFor, type ChartStreams } from "@/lib/activity/resample";
 import { DataNote } from "@/components/activities/DataNote";
 import type { Provenance } from "@/lib/activity/provenance";
 import { zoneFor } from "@/lib/activity/zones";
-import { AD_COPY, buildStreams, fmt, fmtLong } from "@/lib/screens/activityDetail";
+import { AD_COPY, fmt, fmtLong } from "@/lib/screens/activityDetail";
 import { formatPace } from "@/lib/format/pace";
 import type { Comparison } from "@/lib/activity/plannedVsActual";
 import type { ActivityNote } from "@/lib/activity/buildActivityNote";
@@ -86,16 +86,16 @@ export function ActivityDetailView({
   data,
 }: {
   coachView?: boolean;
-  data?: ActivityDetailData;
+  data: ActivityDetailData;
 }) {
-  const streams = data?.streams ?? (data ? null : buildStreams());
+  const streams = data.streams;
   /*
    * The chart was rebuilt from the stored pace summary, so it draws the run
    * honestly at about forty points — but a range dragged across it would
    * report a distance and a time that were interpolated rather than measured.
    * Reading is offered; measuring is not.
    */
-  const coarse = data?.coarseChart ?? false;
+  const coarse = data.coarseChart ?? false;
 
   const [hover, setHover] = useState<{ i: number; y: number } | null>(null);
   const [sel, setSel] = useState<{ a: number; b: number } | null>(null);
@@ -106,7 +106,7 @@ export function ActivityDetailView({
   const geo = useMemo(() => (streams ? buildGeometry(streams) : null), [streams]);
 
   /* ---- the figures on show: the selection when there is one ---- */
-  const selected = sel && streams && !coarse ? summarise(streams, sel.a, sel.b, data?.movingS) : null;
+  const selected = sel && streams && !coarse ? summarise(streams, sel.a, sel.b, data.movingS) : null;
   /*
    * The header reports the run. Always.
    *
@@ -119,16 +119,9 @@ export function ActivityDetailView({
    * The selection still reports, in its own row beneath the chart, where it is
    * unmistakably about the selection.
    */
-  const shown = data?.summary ?? (streams && !coarse ? summarise(streams) : null);
-
-  // The reference run arrives without splits, so it derives its own — the same
-  // function the server uses, not a second copy that could disagree.
-  const derived = useMemo(
-    () => (data || !streams ? null : readableSegments(streams)),
-    [data, streams],
-  );
-  const segments = data?.segments ?? derived ?? [];
-  const fastest = data?.fastestIndex ?? (derived ? fastestSegment(derived) : -1);
+  const shown: RangeSummary | null = data.summary;
+  const segments = data.segments;
+  const fastest = data.fastestIndex;
 
   /* ---- pointer handling ---- */
   const indexAt = useCallback(
@@ -184,7 +177,7 @@ export function ActivityDetailView({
   };
 
   /* ---- header ---- */
-  const runTitle = data ? `${data.dateLabel} · ${(data.summary.distanceM / 1000).toFixed(1)} km` : "Reference run";
+  const runTitle = `${data.dateLabel} · ${(data.summary.distanceM / 1000).toFixed(1)} km`;
 
   return (
     <div data-entrance-root style={{
@@ -203,9 +196,9 @@ export function ActivityDetailView({
           <p style={{ margin: 0, fontSize: "12.5px", color: "var(--color-ink)", flex: 1 }}>
             {copy.coachViewMsg}
           </p>
-          <a className="btn btn-secondary" href="/coach" style={{ padding: "6px 12px", fontSize: "12px" }}>
+          <Link className="btn btn-secondary" href="/coach" style={{ padding: "6px 12px", fontSize: "12px" }}>
             {copy.coachBack}
-          </a>
+          </Link>
         </div>
       ) : null}
 
@@ -214,10 +207,9 @@ export function ActivityDetailView({
       <HeaderCard
         data={data}
         shown={shown}
-        calories={data?.calories ?? null}
-        drift={data?.cardiacDriftPct ?? null}
+        calories={data.calories}
+        drift={data.cardiacDriftPct}
         selection={selected ? sel : null}
-        title={runTitle}
       />
 
       <section className="card" style={{ padding: "16px 18px" }}>
@@ -228,8 +220,8 @@ export function ActivityDetailView({
 
         {segments.length > 0 && geo ? (
           <>
-            <SegmentStrip segments={segments} fastest={fastest} lthr={data?.lthr ?? null} totalM={geo.totalM} />
-            {data?.lthrBasis === "formula" ? (
+            <SegmentStrip segments={segments} fastest={fastest} lthr={data.lthr} totalM={geo.totalM} />
+            {data.lthrBasis === "formula" ? (
               <p className="num" style={{ margin: "6px 0 0", fontSize: "10.5px", color: "var(--color-faint)" }}>
                 Zone labels are based on a threshold estimated from your age, not measured. Add
                 your lactate threshold heart rate in Settings to make them yours.
@@ -244,12 +236,12 @@ export function ActivityDetailView({
             hover={hover}
             sel={sel}
             fastestSeg={fastest >= 0 ? segments[fastest] : null}
-            driftOnsetM={data?.driftOnsetM ?? null}
-            plannedPaceSec={data?.comparison?.plannedPaceSec ?? null}
-            plannedType={data?.comparison?.workoutType ?? null}
+            driftOnsetM={data.driftOnsetM}
+            plannedPaceSec={data.comparison?.plannedPaceSec ?? null}
+            plannedType={data.comparison?.workoutType ?? null}
             onDown={onDown} onMove={onMove} onUp={onUp} onLeave={onLeave}
           />
-        ) : data?.provenance ? null : (
+        ) : data.provenance ? null : (
           <p style={{ margin: "24px 0", textAlign: "center", fontSize: "12.5px", color: "var(--color-faint)" }}>
             {copy.noStream}
           </p>
@@ -260,7 +252,7 @@ export function ActivityDetailView({
             isn't one. One treatment for every route a run comes in by, so an
             absence reads as part of the product rather than as a failure.
         */}
-        {data?.provenance ? (
+        {data.provenance ? (
           <DataNote provenance={data.provenance} centred={!geo} />
         ) : null}
 
@@ -317,7 +309,7 @@ export function ActivityDetailView({
         ) : null}
       </section>
 
-      {data?.comparison ? <PlannedVsActual comparison={data.comparison} /> : null}
+      {data.comparison ? <PlannedVsActual comparison={data.comparison} /> : null}
 
       <section className="card" style={{ padding: "20px 26px", display: "flex", flexDirection: "column", gap: "12px" }}>
         <div>
@@ -326,7 +318,7 @@ export function ActivityDetailView({
           </span>
         </div>
         <p style={{ margin: 0, fontSize: "14px", lineHeight: 1.6, textWrap: "pretty" }}>
-          {data?.note?.text || copy.noNote}
+          {data.note?.text || copy.noNote}
         </p>
         {/*
           "Show reasoning" used to sit here with no handler and no panel behind
@@ -454,19 +446,19 @@ function Nav({ runTitle }: { runTitle?: string }) {
         {runTitle ? (<p className="num" style={{ margin: 0, fontSize: "11.5px", color: "var(--color-muted)", whiteSpace: "nowrap" }}>{runTitle}</p>) : null}
       </div>
       <nav className="topnav" style={{ display: "flex", gap: "20px", fontSize: "13px", color: "var(--color-muted)" }}>
-        <a href="/dashboard" style={{ color: "var(--color-muted)" }}>{copy.navHome}</a>
-        <a href="/plan" style={{ color: "var(--color-muted)" }}>{copy.navPlan}</a>
-        <a href="/activities" style={{ color: "var(--color-ink)" }}>{copy.navActivities}</a>
-        <a href="/numbers" style={{ color: "var(--color-muted)" }}>Numbers</a>
-        <a href="/settings" style={{ color: "var(--color-muted)" }}>{copy.navSettings}</a>
+        <Link href="/dashboard" style={{ color: "var(--color-muted)" }}>{copy.navHome}</Link>
+        <Link href="/plan" style={{ color: "var(--color-muted)" }}>{copy.navPlan}</Link>
+        <Link href="/activities" style={{ color: "var(--color-ink)" }}>{copy.navActivities}</Link>
+        <Link href="/numbers" style={{ color: "var(--color-muted)" }}>Numbers</Link>
+        <Link href="/settings" style={{ color: "var(--color-muted)" }}>{copy.navSettings}</Link>
       </nav>
       <div style={{ flex: 1 }} />
-      <a href="/dashboard" style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "var(--color-muted)" }}>
+      <Link href="/dashboard" style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "var(--color-muted)" }}>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="m15 18-6-6 6-6" />
         </svg>
         {copy.back}
-      </a>
+      </Link>
     </header>
   );
 }
@@ -532,14 +524,13 @@ const IconTraining = (
 );
 
 function HeaderCard({
-  data, shown, calories, drift, selection, title,
+  data, shown, calories, drift, selection,
 }: {
-  data?: ActivityDetailData;
+  data: ActivityDetailData;
   shown: RangeSummary | null;
   calories: number | null;
   drift: number | null;
   selection: { a: number; b: number } | null;
-  title: string;
 }) {
   const pct = (v: number | null, of: number | null) =>
     v && of ? `${Math.round((v / of) * 100)}%` : undefined;
@@ -552,8 +543,8 @@ function HeaderCard({
   ];
 
   const hrRows = [
-    { k: copy.kAvgHr, v: shown?.avgHr ? String(shown.avgHr) : DASH, sub: pct(shown?.avgHr ?? null, data?.hrMax ?? null) },
-    { k: copy.kMaxHr, v: shown?.maxHr ? String(shown.maxHr) : DASH, sub: pct(shown?.maxHr ?? null, data?.hrMax ?? null) },
+    { k: copy.kAvgHr, v: shown?.avgHr ? String(shown.avgHr) : DASH, sub: pct(shown?.avgHr ?? null, data.hrMax) },
+    { k: copy.kMaxHr, v: shown?.maxHr ? String(shown.maxHr) : DASH, sub: pct(shown?.maxHr ?? null, data.hrMax) },
   ];
 
   const driftColor =
@@ -589,18 +580,18 @@ function HeaderCard({
               in the layout as loose text rather than as a portrait slot.
             */}
             <Avatar
-              src={data?.athlete.avatarUrl ?? null}
-              name={data?.athlete.name}
+              src={data.athlete.avatarUrl}
+              name={data.athlete.name}
               size={40}
               zoomable
             />
             <div style={{ minWidth: 0, paddingInlineStart: "4px", display: "flex", flexDirection: "column", gap: "4px" }}>
               <span className="tag" style={{ background: "var(--color-accent-soft)", color: "var(--color-accent)", alignSelf: "start" }}>
-                {data?.runType ?? "Run"}
+                {data.runType}
               </span>
               <div style={{ whiteSpace: "nowrap" }}>
-                <span style={{ fontSize: "11.5px", fontWeight: 600 }}>{data?.fullDate ?? title}</span>
-                {data ? <span className="num" style={{ fontSize: "10px", color: "var(--color-faint)" }}> · {data.clock}</span> : null}
+                <span style={{ fontSize: "11.5px", fontWeight: 600 }}>{data.fullDate}</span>
+                <span className="num" style={{ fontSize: "10px", color: "var(--color-faint)" }}> · {data.clock}</span>
               </div>
             </div>
           </div>

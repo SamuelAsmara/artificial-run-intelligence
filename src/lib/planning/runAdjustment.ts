@@ -1,35 +1,53 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { decideAdjustments } from "./adjustPlan";
+import { decideAdjustments, highDriftRate } from "./adjustPlan";
 import type { DailyLoad } from "./acwr";
 import type { Database } from "@/types/database.types";
-import { todayIso } from "@/lib/time/week";
+import { addDays, todayIso } from "@/lib/time/week";
+
+/** Runs from the last two weeks feed the cardiac-drift rate. */
+const DRIFT_WINDOW_DAYS = 14;
+/** Runs from the last four weeks feed the acute:chronic workload ratio. */
+const LOAD_WINDOW_DAYS = 28;
 
 /**
- * הליבה של מנוע ההתאמה הדינמית, מנותקת מהקשר האימות.
- * נקראת משני מקומות שונים עם לקוחות Supabase שונים:
- *  - actions/plan.ts (adjustPlan Server Action) — anon client + בדיקת session, מופעל מה-UI.
- *  - api/cron/sync-strava/route.ts — service-role client, מופעל אוטומטית ע"י Vercel Cron
- *    (אין session בהקשר cron — ראו מסמך ארכיטקטורה §5).
+ * Runs the adaptation engine for one athlete and writes the result back.
+ *
+ * Called by the nightly cron (`api/cron/sync-intervals`) with a service-role
+ * client after new runs have been imported, so there is no session here: the
+ * caller decides whose plan this is. Reads the recent runs and the coming
+ * week's sessions, asks `decideAdjustments` what to do, and applies the two
+ * automatic decisions — reduce and restore. `shift_week` is advisory and is
+ * not applied (see `adjustPlan.ts`).
  */
 export async function runPlanAdjustment(
   supabase: SupabaseClient<Database>,
-  userId: string
+  userId: string,
 ): Promise<{ adjustedCount: number }> {
-  const since = new Date();
-  since.setDate(since.getDate() - 28);
+  const today = todayIso();
+  const todayDate = new Date(`${today}T12:00:00Z`);
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const loadSince = iso(addDays(todayDate, -LOAD_WINDOW_DAYS));
+  const driftSince = iso(addDays(todayDate, -DRIFT_WINDOW_DAYS));
 
   const { data: activities } = await supabase
     .from("activities")
-    .select("distance_m, started_at")
+    .select("distance_m, started_at, cardiac_drift_pct")
     .eq("user_id", userId)
-    .gte("started_at", since.toISOString());
+    .gte("started_at", `${loadSince}T00:00:00Z`);
 
-  const dailyLoads: DailyLoad[] = (activities ?? [])
-    .filter((a): a is { distance_m: number; started_at: string } => a.started_at != null && a.distance_m != null)
-    .map((a) => ({
-      date: a.started_at.slice(0, 10),
-      load: a.distance_m,
-    }));
+  const runs = (activities ?? []).filter(
+    (a): a is { distance_m: number; started_at: string; cardiac_drift_pct: number | null } =>
+      a.started_at != null && a.distance_m != null,
+  );
+
+  const dailyLoads: DailyLoad[] = runs.map((a) => ({
+    date: a.started_at.slice(0, 10),
+    load: a.distance_m,
+  }));
+
+  const driftRate = highDriftRate(
+    runs.filter((a) => a.started_at.slice(0, 10) >= driftSince).map((a) => a.cardiac_drift_pct),
+  );
 
   const { data: plan } = await supabase
     .from("training_plans")
@@ -38,21 +56,18 @@ export async function runPlanAdjustment(
     .eq("status", "active")
     .order("created_at", { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (!plan) {
     return { adjustedCount: 0 };
   }
 
-  const nextWeekStart = new Date();
-  nextWeekStart.setDate(nextWeekStart.getDate() + 7);
-
   const { data: upcomingWorkouts } = await supabase
     .from("plan_workouts")
     .select("id, week_number, status, planned_distance, origin, planned_distance_original")
     .eq("plan_id", plan.id)
-    .gte("day_date", todayIso())
-    .lte("day_date", nextWeekStart.toISOString().slice(0, 10));
+    .gte("day_date", today)
+    .lte("day_date", iso(addDays(todayDate, 7)));
 
   const decisions = decideAdjustments(
     (upcomingWorkouts ?? []).map((w) => ({
@@ -64,7 +79,7 @@ export async function runPlanAdjustment(
       plannedDistanceOriginal: w.planned_distance_original,
     })),
     dailyLoads,
-    0 // TODO: cumulativeHighDriftRate — דורש activity streams, מחוץ ל-MVP הראשוני
+    driftRate,
   );
 
   let adjustedCount = 0;
@@ -75,20 +90,15 @@ export async function runPlanAdjustment(
     if (decision.action === "reduce_intensity") {
       if (!workout.planned_distance) continue;
       /*
-       * Keep what it was.
-       *
-       * Without `planned_distance_original` the pre-adjustment distance was
-       * simply gone, so an athlete whose ACWR came back down two days later
-       * kept the reduced week for ever. `?? workout.planned_distance` matters:
-       * if an original is somehow already recorded we must not overwrite it
-       * with an already-reduced number and bake the cut in.
+       * Keep what it was. `planned_distance_original` is what `restore` puts
+       * back; `?? workout.planned_distance` keeps an already-recorded original
+       * from being overwritten with a reduced number.
        */
       await supabase
         .from("plan_workouts")
         .update({
           planned_distance: Math.round(workout.planned_distance * (decision.reductionFactor ?? 1)),
-          planned_distance_original:
-            workout.planned_distance_original ?? workout.planned_distance,
+          planned_distance_original: workout.planned_distance_original ?? workout.planned_distance,
           status: "adjusted",
           adjusted_reason: decision.reason,
           adjusted_at: new Date().toISOString(),
@@ -113,9 +123,6 @@ export async function runPlanAdjustment(
       adjustedCount++;
       continue;
     }
-
-    // "shift_week" — TODO: הרחבה עתידית, דורש הזזת week_number לכל
-    // plan_workouts עתידיים ולא רק לשבוע הקרוב.
   }
 
   return { adjustedCount };

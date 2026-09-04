@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { safePath } from "@/lib/auth/safePath";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 
@@ -16,14 +17,9 @@ export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
-  const requested = searchParams.get("next");
-  const next =
-    requested && requested.startsWith("/") && !requested.startsWith("//")
-      ? requested
-      : // "/" decides the front door by role — see app/page.tsx. Defaulting
-        // straight to /dashboard here sent coaches to the athlete screen and
-        // put the rule in three places instead of one.
-        "/";
+  // "/" decides the front door by role — see app/page.tsx — so it is the
+  // fallback here rather than /dashboard.
+  const next = safePath(searchParams.get("next"), "/");
 
   if (!tokenHash || !type) {
     return NextResponse.redirect(`${origin}/login?error=missing-token`);

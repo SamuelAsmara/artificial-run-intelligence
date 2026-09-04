@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { generatePlan, RaceTooSoonError } from "../generatePlan";
 
-// מסמך אפיון בדיקות §1+§6: generatePlan — מספר שבועות נכון, 4 פאזות ביחס
-// תקין, וזריקת שגיאה מפורשת (לא קריסה) כשתאריך המרוץ קרוב מדי.
+// Test plan §1 + §6: generatePlan — the right number of weeks, four phases in
+// sensible proportion, and an explicit error (not a crash) when the race is too close.
 
 const TODAY = new Date("2026-08-06");
 
 describe("generatePlan", () => {
-  it("מחלק תוכנית מרתון ל-4 פאזות שמכסות את כל השבועות ברצף", () => {
-    const raceDate = new Date("2026-12-06"); // ~17 שבועות קדימה
+  it("splits a marathon plan into four phases that cover every week in order", () => {
+    const raceDate = new Date("2026-12-06"); // ~17 weeks ahead
     const plan = generatePlan("full", raceDate, TODAY);
 
     expect(plan.phases.base.startWeek).toBe(1);
@@ -18,21 +18,21 @@ describe("generatePlan", () => {
     expect(plan.phases.taper.startWeek).toBe(plan.phases.peak.endWeek + 1);
   });
 
-  it("מייצר אימונים לכל שבוע בתוכנית", () => {
-    const raceDate = new Date("2026-10-01"); // ~8 שבועות
+  it("generates sessions for every week of the plan", () => {
+    const raceDate = new Date("2026-10-01"); // ~8 weeks
     const plan = generatePlan("10k", raceDate, TODAY);
     const weeksWithWorkouts = new Set(plan.workouts.map((w) => w.weekNumber));
     expect(weeksWithWorkouts.size).toBe(plan.totalWeeks);
   });
 
-  it("הטייפר קצר מהבנייה/שיא בתוכנית ארוכה (10-20% מהתקופה)", () => {
-    const raceDate = new Date("2027-01-10"); // תוכנית ארוכה
+  it("keeps the taper shorter than build/peak in a long plan (10–20% of the period)", () => {
+    const raceDate = new Date("2027-01-10"); // a long plan
     const plan = generatePlan("full", raceDate, TODAY);
     const taperLength = plan.phases.taper.endWeek - plan.phases.taper.startWeek + 1;
     expect(taperLength / plan.totalWeeks).toBeLessThanOrEqual(0.25);
   });
 
-  it("זורק RaceTooSoonError במקום ליצור תוכנית לא הגיונית כשהמרוץ קרוב מדי", () => {
+  it("throws RaceTooSoonError instead of building a nonsensical plan when the race is too close", () => {
     const tomorrow = new Date("2026-08-07");
     expect(() => generatePlan("5k", tomorrow, TODAY)).toThrow(RaceTooSoonError);
   });

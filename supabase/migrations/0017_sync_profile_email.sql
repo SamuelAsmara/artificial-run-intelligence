@@ -28,7 +28,7 @@
 -- that only fires on our own code path would go stale again the first time
 -- somebody used one of those.
 --
--- להריץ ב-Supabase → SQL Editor.
+-- Applied through the Supabase SQL editor.
 -- ============================================================================
 
 create or replace function public.sync_profile_email()

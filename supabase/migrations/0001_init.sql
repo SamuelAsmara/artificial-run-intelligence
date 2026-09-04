@@ -1,8 +1,8 @@
 -- ============================================================================
--- Artificial Run Intelligence — Schema Init (v1)
--- athlete + coach · event-driven · AI-explained · coach seats (mock)
--- Postgres / Supabase. RLS: אתלט רואה את עצמו; מאמן קורא את מתאמניו הפעילים.
--- מחליף את 0001 הקודם (טרם הורץ). להריץ ב-Supabase → SQL Editor.
+-- Runi — schema init (v1)
+-- athlete + coach · event-driven · explained decisions · coach seats
+-- Postgres / Supabase. RLS: an athlete sees their own rows; a coach reads
+-- their active athletes. Applied through the Supabase SQL editor.
 -- ============================================================================
 
 create extension if not exists "pgcrypto";
@@ -15,7 +15,7 @@ create table public.profiles (
   created_at timestamptz not null default now()
 );
 
--- יצירת profile אוטומטית בעת הרשמה
+-- a profile row is created automatically on signup
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
@@ -66,14 +66,14 @@ create table public.strava_connections (
   last_sync_status text
 );
 
--- ============ PLAN TEMPLATES (שלד גנרי — reference) ============
+-- ============ PLAN TEMPLATES (generic skeletons — reference data) ============
 create table public.plan_templates (
   id              uuid primary key default gen_random_uuid(),
   race_type       text not null check (race_type in ('5k','10k','half','full')),
   level           text not null check (level in ('beginner','experienced')),
   weeks           int  not null,
-  phase_structure jsonb not null,   -- {"base":N,"build":N,"peak":N,"taper":N} (שבועות)
-  weekly_mix      jsonb not null,   -- {"easy":N,"interval":N,"long":N,"rest":N} (ימים/שבוע)
+  phase_structure jsonb not null,   -- {"base":N,"build":N,"peak":N,"taper":N} (weeks)
+  weekly_mix      jsonb not null,   -- {"easy":N,"interval":N,"long":N,"rest":N} (days per week)
   unique (race_type, level)
 );
 
@@ -125,7 +125,7 @@ create table public.activities (
   avg_hr             int,
   avg_pace           interval,
   started_at         timestamptz,
-  unique (user_id, strava_activity_id)   -- מונע כפילות מ-webhook
+  unique (user_id, strava_activity_id)   -- no duplicates from a repeated webhook delivery
 );
 create index idx_activities_user_started on public.activities(user_id, started_at);
 
@@ -137,7 +137,7 @@ create table public.readiness_snapshots (
   ctl numeric, atl numeric, tsb numeric, acwr numeric,
   cardiac_drift   numeric,
   readiness_score int,
-  narrative       text,             -- cache של הסבר ה-AI
+  narrative       text,             -- cached explanation text
   unique (user_id, date)
 );
 create index idx_readiness_user_date on public.readiness_snapshots(user_id, date);
@@ -154,7 +154,7 @@ create table public.plan_adjustments (
 );
 create index idx_plan_adjustments_plan on public.plan_adjustments(plan_id);
 
--- ============ RECOVERY SIGNALS (אופציונלי) ============
+-- ============ RECOVERY SIGNALS (optional) ============
 create table public.recovery_signals (
   id          uuid primary key default gen_random_uuid(),
   user_id     uuid not null references public.profiles(id) on delete cascade,
@@ -181,8 +181,8 @@ alter table public.readiness_snapshots enable row level security;
 alter table public.plan_adjustments    enable row level security;
 alter table public.recovery_signals    enable row level security;
 
--- עוזר: האם המשתמש הנוכחי מאמן פעיל של :athlete
--- security definer כדי לעקוף RLS על coach_athletes ולמנוע רקורסיה.
+-- helper: is the current user an active coach of :athlete?
+-- security definer so it can read coach_athletes without recursing into RLS.
 create or replace function public.is_coach_of(athlete uuid)
 returns boolean language sql stable security definer set search_path = public as $$
   select exists (
@@ -191,25 +191,25 @@ returns boolean language sql stable security definer set search_path = public as
   );
 $$;
 
--- profiles: קריאה עצמית + קריאת מאמן; עדכון עצמי בלבד
+-- profiles: read own row and coached athletes; update own row only
 create policy profiles_read on public.profiles for select using (id = auth.uid() or public.is_coach_of(id));
 create policy profiles_upd  on public.profiles for update using (id = auth.uid());
 
--- plan_templates: reference data — קריאה לכולם, בלי כתיבה מהלקוח
+-- plan_templates: reference data — readable, no client writes (narrowed in 0008 and 0024)
 create policy templates_read on public.plan_templates for select using (true);
 
--- coach_athletes: הצדדים המעורבים רואים; המאמן מנהל
+-- coach_athletes: both sides read; the coach manages (revised in 0013 and 0024)
 create policy ca_select on public.coach_athletes for select using (coach_id = auth.uid() or athlete_id = auth.uid());
 create policy ca_insert on public.coach_athletes for insert with check (coach_id = auth.uid());
 create policy ca_update on public.coach_athletes for update using (coach_id = auth.uid() or athlete_id = auth.uid());
 create policy ca_delete on public.coach_athletes for delete using (coach_id = auth.uid());
 
--- subscriptions / billing / strava: עצמי בלבד (מאמן לא רואה)
+-- subscriptions / billing / strava: own rows only (a coach cannot see them)
 create policy subs_self    on public.subscriptions      for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy billing_self on public.billing_events     for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy strava_self  on public.strava_connections for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 
--- טבלאות נתוני אתלט: גישה מלאה עצמית + קריאת מאמן דרך is_coach_of
+-- athlete data tables: full access to own rows; coach reads through is_coach_of
 create policy gr_self  on public.goal_races          for all    using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy gr_coach on public.goal_races          for select using (public.is_coach_of(user_id));
 create policy tp_self  on public.training_plans      for all    using (user_id = auth.uid()) with check (user_id = auth.uid());
@@ -221,7 +221,7 @@ create policy rs_coach on public.readiness_snapshots for select using (public.is
 create policy rec_self on public.recovery_signals    for all    using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy rec_coach on public.recovery_signals   for select using (public.is_coach_of(user_id));
 
--- plan_workouts / plan_adjustments: דרך בעלות על התוכנית (אין user_id ישיר)
+-- plan_workouts / plan_adjustments: through ownership of the plan (no direct user_id)
 create policy pw_self  on public.plan_workouts for all
   using      (exists (select 1 from public.training_plans t where t.id = plan_workouts.plan_id and t.user_id = auth.uid()))
   with check (exists (select 1 from public.training_plans t where t.id = plan_workouts.plan_id and t.user_id = auth.uid()));
@@ -235,7 +235,7 @@ create policy pa_coach on public.plan_adjustments for select
   using (exists (select 1 from public.training_plans t where t.id = plan_adjustments.plan_id and public.is_coach_of(t.user_id)));
 
 -- ============================================================================
--- SEED — plan_templates (שלדים גנריים, מבוססי עקרונות פריודיזציה — לא העתקה)
+-- SEED — plan_templates (generic skeletons built on periodisation principles)
 -- ============================================================================
 insert into public.plan_templates (race_type, level, weeks, phase_structure, weekly_mix) values
 ('5k',  'beginner',    8,  '{"base":3,"build":3,"peak":1,"taper":1}', '{"easy":3,"interval":1,"long":1,"rest":2}'),

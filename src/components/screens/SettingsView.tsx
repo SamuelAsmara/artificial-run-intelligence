@@ -1,16 +1,13 @@
 "use client";
 
 /**
- * Settings — a port of design_handoff_ari_athlete_app/ARI Settings.dc.html (v2).
- *
- * The handoff this replaces is kept at _archive/design_handoffs_v1/.
+ * Settings — profile, connections and account.
  *
  * Three stacked cards, in this order:
  *
  *   1. **Profile.** Reads as a summary — photo, name, bio and four facts — and
- *      flips to a full editor when asked. The first handoff opened one field at
- *      a time; this one opens the whole card, which is better here because the
- *      fields are interdependent: changing the goal race changes the target
+ *      flips to a full editor when asked. The whole card opens at once, because
+ *      the fields are interdependent: changing the goal race changes the target
  *      time, which changes the required pace.
  *   2. **Connections.** A row of provider logos acting as tabs over a single
  *      detail panel.
@@ -63,6 +60,7 @@ import { METHOD_COPY } from "@/lib/screens/methodology";
 import { chooseAthletePlan, type AthletePlanView } from "@/actions/billing";
 import { ATHLETE_PLANS, type CoachTier } from "@/lib/billing/plans";
 import { PaymentMethodMock } from "@/components/settings/PaymentMethodMock";
+import Link from "next/link";
 
 const copy = SET_COPY;
 const DASH = "—";
@@ -108,11 +106,11 @@ export function SettingsView({
           <h1 style={{ margin: 0, fontSize: "15px", fontWeight: 600 }}>{copy.title}</h1>
           <p style={{ margin: 0, fontSize: "11.5px", color: "var(--color-muted)" }}>{copy.subtitle}</p>
         </div><nav className="topnav" style={{ display: "flex", gap: "20px", fontSize: "13px", color: "var(--color-muted)" }}>
-          <a href="/dashboard" style={{ color: "var(--color-muted)" }}>{copy.navHome}</a>
-          <a href="/plan" style={{ color: "var(--color-muted)" }}>{copy.navPlan}</a>
-          <a href="/activities" style={{ color: "var(--color-muted)" }}>{copy.navActivities}</a>
-          <a href="/numbers" style={{ color: "var(--color-muted)" }}>Numbers</a>
-          <a href="/settings" style={{ color: "var(--color-ink)" }}>{copy.navSettings}</a>
+          <Link href="/dashboard" style={{ color: "var(--color-muted)" }}>{copy.navHome}</Link>
+          <Link href="/plan" style={{ color: "var(--color-muted)" }}>{copy.navPlan}</Link>
+          <Link href="/activities" style={{ color: "var(--color-muted)" }}>{copy.navActivities}</Link>
+          <Link href="/numbers" style={{ color: "var(--color-muted)" }}>Numbers</Link>
+          <Link href="/settings" style={{ color: "var(--color-ink)" }}>{copy.navSettings}</Link>
         </nav>
         <div style={{ flex: 1 }} />
       </header>
@@ -148,7 +146,7 @@ export function SettingsView({
                         {plan ? `${plan.title} · ${plan.weeks} week${plan.weeks === 1 ? "" : "s"}` : "No active plan — the Plan tab offers three ways to start one."}
                       </p>
                     </div>
-                    {plan ? null : <a className="btn btn-secondary" href="/plan" style={{ fontSize: "12px" }}>Open Plan</a>}
+                    {plan ? null : <Link className="btn btn-secondary" href="/plan" style={{ fontSize: "12px" }}>Open Plan</Link>}
                   </div>
                   {plan ? <div style={{ marginBlockStart: "10px" }}><LeavePlan /></div> : null}
                 </section>
@@ -347,7 +345,7 @@ export function SettingsTabs({ tabs, numbersLink = true }: { tabs: SettingsTabDe
         })}
         </div>
         {numbersLink ? (
-          <a className="card st-tab st-tab-link" href="/numbers">
+          <Link className="card st-tab st-tab-link" href="/numbers">
             <span className="st-tab-icon">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={TAB_ICONS.numbers} /></svg>
             </span>
@@ -356,7 +354,7 @@ export function SettingsTabs({ tabs, numbersLink = true }: { tabs: SettingsTabDe
               <span className="st-tab-hint num">{METHOD_COPY.navHint}</span>
             </span>
             <svg className="st-tab-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m9 18 6-6-6-6" /></svg>
-          </a>
+          </Link>
         ) : null}
       </div>
       {current ? (

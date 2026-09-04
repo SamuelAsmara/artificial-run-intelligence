@@ -4,6 +4,7 @@
  */
 
 import { BrandMark } from "@/components/ui/BrandMark";
+import Link from "next/link";
 
 export default function NotFound() {
   return (
@@ -17,8 +18,8 @@ export default function NotFound() {
           That page does not exist, or it is not yours to see. The home screen has everything that is.
         </p>
         <div style={{ display: "flex", gap: "10px", justifyContent: "center", marginBlockStart: "18px" }}>
-          <a className="btn btn-primary" href="/dashboard">Home</a>
-          <a className="btn btn-secondary" href="/">Front page</a>
+          <Link className="btn btn-primary" href="/dashboard">Home</Link>
+          <Link className="btn btn-secondary" href="/">Front page</Link>
         </div>
       </section>
     </main>

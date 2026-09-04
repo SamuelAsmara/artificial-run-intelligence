@@ -19,6 +19,7 @@
  * sign-in screens, which have no nav at all.
  */
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { COACH_COPY } from "@/lib/screens/coachHome";
 
@@ -68,11 +69,11 @@ export function CoachModeBar({ isCoach }: { isCoach: boolean }) {
 
 function ModeHalf({ href, active, icon, label }: { href: string; active: boolean; icon: string; label: string }) {
   return (
-    <a href={href} role="tab" aria-selected={active} className={`nb-seg-btn modebar-half${active ? " is-on" : ""}`}>
+    <Link href={href} role="tab" aria-selected={active} className={`nb-seg-btn modebar-half${active ? " is-on" : ""}`}>
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         <path d={icon} />
       </svg>
       {label}
-    </a>
+    </Link>
   );
 }

@@ -1,14 +1,15 @@
 import { z } from "zod";
+import { todayIso } from "@/lib/time/week";
 
 const MAX_RACE_HORIZON_DAYS = 365 * 2;
 
-/** מסמך תכנון טכני §9: תאריך מרוץ עתידי ובטווח סביר (עד שנתיים). */
+/** Technical design §9: a race date in the future and within a sensible horizon (two years). */
 export const goalRaceSchema = z.object({
   raceType: z.enum(["5k", "10k", "half", "full"]),
   raceDate: z
     .string()
     .date()
-    .refine((v) => new Date(v) > new Date(), { message: "The race date has to be in the future." })
+    .refine((v) => v > todayIso(), { message: "The race date has to be in the future." })
     .refine((v) => {
       const h = new Date();
       h.setDate(h.getDate() + MAX_RACE_HORIZON_DAYS);
@@ -25,3 +26,15 @@ export const healthWebhookSchema = z.object({
   hrv: z.number().min(0).max(300).optional(),
 });
 export type HealthWebhookInput = z.infer<typeof healthWebhookSchema>;
+
+/**
+ * A coach's edit to one planned session. The type is the closed set the
+ * product knows, the distance is metres within a day's reach, and the pace is
+ * "m:ss" per kilometre. `null` clears a field; `undefined` leaves it alone.
+ */
+export const workoutPatchSchema = z.object({
+  workoutType: z.enum(["easy", "interval", "long", "rest"]).optional(),
+  plannedDistanceM: z.number().int().min(0).max(100_000).nullable().optional(),
+  plannedPace: z.string().regex(/^\d{1,2}:\d{2}$/, "Pace looks like 5:20").nullable().optional(),
+});
+export type WorkoutPatch = z.infer<typeof workoutPatchSchema>;

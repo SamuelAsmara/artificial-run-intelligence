@@ -148,12 +148,12 @@ details .inner p:first-child{margin-block-start:0}
 </p>
 
 <div class="kpi">
-  <div><div class="n">23</div><div class="l">עמודים ונתיבים</div></div>
-  <div><div class="n">55</div><div class="l">פעולות שרת</div></div>
+  <div><div class="n">22</div><div class="l">עמודים ונתיבים</div></div>
+  <div><div class="n">47</div><div class="l">פעולות שרת</div></div>
   <div><div class="n">17</div><div class="l">טבלאות</div></div>
-  <div><div class="n">44</div><div class="l">מדיניות הרשאה</div></div>
-  <div><div class="n">22</div><div class="l">מיגרציות</div></div>
-  <div><div class="n">835</div><div class="l">בדיקות</div></div>
+  <div><div class="n">41</div><div class="l">מדיניות הרשאה</div></div>
+  <div><div class="n">24</div><div class="l">מיגרציות</div></div>
+  <div><div class="n">842</div><div class="l">בדיקות</div></div>
 </div>
 
 <h2 id="start">מאיפה מתחילים</h2>
@@ -167,13 +167,13 @@ details .inner p:first-child{margin-block-start:0}
 הוא מקבל מספרים ומחזיר מספרים.</p>
 <p><span class="file">src/actions/</span> מדבר עם המסד וקורא ל-<code>lib</code>.
 <span class="file">src/components/</span> רק מציג — מסך לא שולף לבד, הוא מקבל נתונים כ-props.</p>
-<p class="note">זו הסיבה ש-835 בדיקות רצות בפחות מחצי דקה בלי מסד ובלי דפדפן. וזו גם
+<p class="note">זו הסיבה ש-842 בדיקות רצות בפחות מחצי דקה בלי מסד ובלי דפדפן. וזו גם
 התשובה לשאלה "איך בדקת את זה?" — הלוגיקה מבודדת, אז אפשר לבדוק אותה.</p>
 </div>
 
 <h2 id="map">מפת המערכת</h2>
 
-<p>חמישה רכיבים, <strong>ואף אחד מהם אינו שרת שאנחנו מתחזקים.</strong></p>
+<p>שישה רכיבים, <strong>ואף אחד מהם אינו שרת שאנחנו מתחזקים.</strong></p>
 
 <pre>
 <span class="c">                    ┌─────────────────────┐</span>
@@ -219,7 +219,7 @@ details .inner p:first-child{margin-block-start:0}
 <tr><td><span class="file">src/lib/readiness/</span></td><td>הצינור היומי</td><td><span class="file">readiness/pipeline.ts</span></td></tr>
 <tr><td><span class="file">src/lib/providers/</span></td><td>ייבוא מ-intervals.icu</td><td><span class="file">providers/syncIcu.ts</span></td></tr>
 <tr><td><span class="file">src/lib/time/</span></td><td>שבוע ואזור זמן</td><td><span class="file">time/week.ts</span> — מקור אמת אחד</td></tr>
-<tr><td><span class="file">supabase/migrations/</span></td><td>15 מיגרציות</td><td><span class="file">0013_coach_link_consent.sql</span></td></tr>
+<tr><td><span class="file">supabase/migrations/</span></td><td>24 מיגרציות</td><td><span class="file">0013_coach_link_consent.sql</span></td></tr>
 </table>
 
 <h2 id="flows">ששת התהליכים — מקצה לקצה</h2>
@@ -284,7 +284,7 @@ details .inner p:first-child{margin-block-start:0}
 <h3>3 · תוכנית נבנית</h3>
 <div class="flow">
   <div class="step"><div class="stepn">1</div><div class="body">
-    <p><strong>מרוץ יעד</strong> — <span class="file">actions/profile.ts</span>, <code>saveGoalRace()</code></p>
+    <p><strong>מרוץ יעד</strong> — <span class="file">actions/profile.ts</span>, <code>saveAthleteProfile()</code> (שומר גם את מרוץ היעד)</p>
     <p>מתעדכן <strong>במקום</strong> ולא נוצר מחדש — אחרת שינוי תאריך מייתם תוכנית
     שרצים לפיה כבר חודש.</p></div></div>
   <div class="step"><div class="stepn">2</div><div class="body">
@@ -396,7 +396,7 @@ details .inner p:first-child{margin-block-start:0}
 הכי בסיכון.</p>
 </div>
 
-<h3>סחיפת דופק <span class="file">lib/planning/cardiacDrift.ts</span></h3>
+<h3>סחיפת דופק <span class="file">lib/activity/metrics.ts</span></h3>
 <p>הדופק עולה בעוד <strong>הקצב נשמר</strong> — סימן לעייפות, חום או התייבשות.
 נמדד על המקטע, ונשמר גם <em>איפה</em> זה התחיל.</p>
 
@@ -416,7 +416,7 @@ details .inner p:first-child{margin-block-start:0}
 </div>
 
 <h2 id="db">מסד הנתונים</h2>
-<p class="lede">17 טבלאות, 44 מדיניויות, <strong>RLS על כל 17 בלי יוצא מן הכלל</strong>.</p>
+<p class="lede">17 טבלאות, 41 מדיניויות, <strong>RLS על כל 17 בלי יוצא מן הכלל</strong>.</p>
 
 <h3>שלוש עמודות שכדאי להכיר</h3>
 
@@ -549,7 +549,7 @@ details .inner p:first-child{margin-block-start:0}
 <p class="lede">תרגול לראיון. פתח, נסה לענות בעצמך, ואז בדוק.</p>
 
 <h3>ארכיטקטורה</h3>
-<details><summary>איפה בדיוק נאכפת ההרשאה?</summary><div class="inner"><p><strong>במסד.</strong> 44 מדיניויות RLS על 17 טבלאות — כולן. הדפוס: אתלט רואה שורה אם <code>user_id = auth.uid()</code>; מאמן אם <code>is_coach_of(user_id)</code>.</p><p>יש עוד שתי שכבות מעל — middleware ובדיקת <code>getUser()</code> בכל פעולה — אבל <strong>הן לא ההגנה.</strong> הן נוחות. ההגנה היא שהמסד מסרב.</p></div></details>
+<details><summary>איפה בדיוק נאכפת ההרשאה?</summary><div class="inner"><p><strong>במסד.</strong> 41 מדיניויות RLS על 17 טבלאות — כולן. הדפוס: אתלט רואה שורה אם <code>user_id = auth.uid()</code>; מאמן אם <code>is_coach_of(user_id)</code>.</p><p>יש עוד שתי שכבות מעל — middleware ובדיקת <code>getUser()</code> בכל פעולה — אבל <strong>הן לא ההגנה.</strong> הן נוחות. ההגנה היא שהמסד מסרב.</p></div></details>
 <details><summary>למה Server Actions ולא REST API?</summary><div class="inner"><p>אין API נפרד לתחזק, אין שני מודלי טיפוסים לסנכרן, ואין CORS. הקומפוננטה קוראת לפונקציה ו-Next.js עושה את הרשת.</p><p><strong>המחיר שצריך להכיר:</strong> כל ייצוא מקובץ <code>&quot;use server&quot;</code> הוא נקודת קצה ציבורית. לכן מייצאים רק פונקציות אסינכרוניות, וכל אחת בודקת אימות. ייצוא של קבוע הפיל לנו את הבנייה פעמיים — וזו התנהגות נכונה.</p></div></details>
 <details><summary>איך המידע זורם מהדפדפן למסד?</summary><div class="inner"><p><strong>הוא לא.</strong> הדפדפן לא מדבר עם המסד. העמוד נבנה בשרת (Server Component), קורא ל-Server Action, שקוראת ל-Supabase — ו-RLS מסננת. לדפדפן מגיע HTML מוכן.</p></div></details>
 <details><summary>למה בלי ניהול state גלובלי?</summary><div class="inner"><p>כי אין state גלובלי. מקור האמת הוא המסד, והעמודים נבנים בשרת. <code>useState</code> רק למה שבאמת מקומי — טאב פתוח, יום נבחר.</p><p>אחרי כתיבה קוראים ל-<code>revalidatePath</code> והשרת מרנדר מחדש.</p></div></details>
@@ -568,7 +568,7 @@ details .inner p:first-child{margin-block-start:0}
 <details><summary>איפה ה-AI במוצר?</summary><div class="inner"><p><strong>בגרסה הנוכחית אין מודל שפה</strong> — הגרסה הבאה מחברת את Ask Runi ל-Grok, מעל החישובים ולא במקומם. ההסבר <em>מחושב</em> — <span class="file">lib/narrative/buildNarrative.ts</span> מרכיב משפט מערכים שכבר חושבו.</p><p>וזה יתרון: אי אפשר להזות מספר שלא ניסחת, כל נתון ניתן למעקב, והמוצר עובד בלי רשת ובלי עלות. האינטליגנציה היא במודל הפיזיולוגי.</p></div></details>
 
 <h3>בדיקות ואיכות</h3>
-<details><summary>מה בדקת, ואיך?</summary><div class="inner"><p><strong>835 בדיקות ב-57 קבצים, שרצות ב-14 שניות</strong> בלי מסד ובלי דפדפן — כי כל הלוגיקה ב-<code>lib/</code> טהורה.</p><p>הכיסוי: המודל הפיזיולוגי, יצירת התוכנית, מנוע ההתאמה, אזורי זמן, גיאומטריית גרפים, הרוסטר והיומן.</p></div></details>
+<details><summary>מה בדקת, ואיך?</summary><div class="inner"><p><strong>842 בדיקות ב-57 קבצים, שרצות בכ-20 שניות</strong> בלי מסד ובלי דפדפן — כי כל הלוגיקה ב-<code>lib/</code> טהורה.</p><p>הכיסוי: המודל הפיזיולוגי, יצירת התוכנית, מנוע ההתאמה, אזורי זמן, גיאומטריית גרפים, הרוסטר והיומן.</p></div></details>
 <details><summary>למה אין Playwright ו-E2E?</summary><div class="inner"><p>תוכננו ולא מומשו. <strong>התקציב הוגבל והיה צריך לבחור</strong> בין לבדוק שכפתור מרונדר לבין לבדוק שהחישוב מאחוריו נכון.</p><p>בחרנו בחישוב: באג בכפתור נראה בעין; ריצה שנרשמה כשיא איטי יותר משהייתה — לא. במקום זאת בוצעה <strong>סריקה ידנית מתועדת</strong> שמצאה 47 ליקויים.</p></div></details>
 <details><summary>מה המגבלה שהכי מטרידה אותך בבדיקות?</summary><div class="inner"><p>שההרשאות נבדקות <strong>בעיניים ולא אוטומטית</strong> — וזה החלק שבו טעות עולה הכי ביוקר. הפרצה שנמצאה מוכיחה גם שהבדיקה הידנית עבדה, וגם שהיא הגיעה מאוחר.</p></div></details>
 
@@ -599,8 +599,8 @@ details .inner p:first-child{margin-block-start:0}
 
 <h3>המספרים</h3>
 <div class="kpi">
-  <div><div class="n">835</div><div class="l">בדיקות · 14 שניות</div></div>
-  <div><div class="n">44</div><div class="l">מדיניויות · 17 טבלאות</div></div>
+  <div><div class="n">842</div><div class="l">בדיקות · כ-20 שניות</div></div>
+  <div><div class="n">41</div><div class="l">מדיניויות · 17 טבלאות</div></div>
   <div><div class="n">42/7</div><div class="l">ימים · כושר/עייפות</div></div>
   <div><div class="n">1.5</div><div class="l">סף יחס העומס</div></div>
   <div><div class="n">47</div><div class="l">ליקויים שנמצאו ותוקנו</div></div>
@@ -609,7 +609,7 @@ details .inner p:first-child{margin-block-start:0}
 
 <hr>
 <p class="note">נוצר 19 באוגוסט 2026 · מסמך פנימי, לא להגשה ·
-<a href="https://ari-coach.vercel.app">ari-coach.vercel.app</a></p>
+<a href="https://runi-coach.vercel.app">runi-coach.vercel.app</a></p>
 </main>
 </div>
 <script>

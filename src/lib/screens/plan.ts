@@ -1,27 +1,11 @@
 /**
- * Training plan screen model — ported from
- * design_handoff_ari_athlete_app/ARI Plan.dc.html.
- * Maps to plan_workouts + goal_races.
+ * Training plan screen model. Maps to plan_workouts + goal_races.
  */
 
 import type { Week as ModelWeek } from "@/lib/dashboard/model";
 
 export type WType = "easy" | "tempo" | "int" | "long" | "rest";
 
-const NAMES: Record<WType, string> = {
-  easy: "Easy Run", tempo: "Tempo Run", int: "Intervals",
-  long: "Long Run", rest: "Rest",
-};
-const PACES: Partial<Record<WType, string>> = {
-  easy: "5:30", tempo: "4:45", int: "4:15", long: "5:40",
-};
-const BASE: [WType, number][] = [
-  ["easy", 5], ["tempo", 7], ["int", 9.6], ["easy", 6],
-  ["easy", 8], ["rest", 0], ["long", 26],
-];
-const MULT = [0.82, 0.88, 0.61, 1.0, 1.05, 1.1, 0.66, 1.15, 1.2, 0.7, 0.95, 0.55];
-const PHASES = ["Base","Base","Recovery","Build","Build","Build","Recovery","Peak","Peak","Recovery","Sharpen","Taper"];
-const DN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MO = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 export interface PlanDay {
@@ -42,66 +26,6 @@ export interface PlanWeek {
   label: string; range: string;
 }
 
-let _w: PlanWeek[] | null = null;
-export function planWeeks(): PlanWeek[] {
-  if (_w) return _w;
-  const start = new Date(2026, 6, 19);
-  const W: PlanWeek[] = [];
-  for (let w = 0; w < 12; w++) {
-    const days: PlanDay[] = BASE.map(([type, km], d) => {
-      const dt = new Date(start.getTime() + (w * 7 + d) * 86400000);
-      const dist = type === "rest" ? 0 : Math.round(km * MULT[w] * 10) / 10;
-      let status = "", done = false, missed = false;
-      if (w < 3) {
-        done = true; status = "Done";
-        if (w === 1 && d === 1) { done = false; missed = true; status = "Missed"; }
-      } else if (w === 3) {
-        if (d === 0) { done = true; status = "Done"; }
-        else if (d === 1) { missed = true; status = "Missed"; }
-        else if (d === 2) status = "Today";
-        else if (d === 3) status = "Adjusted";
-      }
-      if (type === "rest" && !done) status = status === "Today" ? status : "";
-      return {
-        type, name: NAMES[type], dist, pace: PACES[type] ?? "",
-        day: DN[d], dateNum: dt.getDate(), mon: MO[dt.getMonth()], monIdx: dt.getMonth(),
-        date: `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`,
-        status, done, missed, today: w === 3 && d === 2,
-      };
-    });
-    const km = days.reduce((s, d) => s + d.dist, 0);
-    const s = days[0], e = days[6];
-    W.push({
-      days, km: Math.round(km), phase: PHASES[w], monIdx: s.monIdx, monName: MO[s.monIdx],
-      label: "Week " + (w + 1),
-      range: s.mon + " " + s.dateNum + " – " + (e.mon === s.mon ? "" : e.mon + " ") + e.dateNum,
-    });
-  }
-  _w = W;
-  return W;
-}
-
-export function planSegsFor(type: WType) {
-  if (type === "easy") return [{ m: 1, h: 20, t: "Steady easy pace" }];
-  if (type === "long") return [{ m: 1, h: 28, t: "Steady long-run pace" }];
-  if (type === "tempo")
-    return [
-      { m: 10, h: 14, t: "Warm-up 10 min" },
-      { m: 20, h: 40, t: "Tempo 20 min" },
-      { m: 10, h: 14, t: "Cool-down 10 min" },
-    ];
-  if (type === "int") {
-    const s = [{ m: 10, h: 14, t: "Warm-up 10 min" }];
-    for (let i = 0; i < 6; i++) {
-      s.push({ m: 3.4, h: 44, t: "800 m rep @ 4:15" });
-      if (i < 5) s.push({ m: 1.5, h: 9, t: "90 s jog" });
-    }
-    s.push({ m: 10, h: 14, t: "Cool-down 10 min" });
-    return s;
-  }
-  return [];
-}
-
 /**
  * Why each kind of session exists.
  *
@@ -120,39 +44,14 @@ export const PURPOSE: Record<WType, string> = {
   rest: "Full rest. Recovery is where adaptation happens — no cross-training needed.",
 };
 
-export const MONTH_NAMES: Record<number, string> = {
-  6: "July", 7: "August", 8: "September", 9: "October",
-};
-
 export const PLAN_COPY = {
   brand: "Runi", navHome: "Home", navActivities: "Activities",
   navPlan: "Plan", navSettings: "Settings",
-  title: "Marathon Plan", subtitle: "Oct 11, 2026 · Target 3:45:00",
-  /* the two ways to look at a plan: the working list, and its shape */
-  viewWeeks: "Weeks", viewMonth: "Month",
-  raceTag: "Race day", raceLine: "Sun Oct 11, 2026 · Marathon · 42.2 km",
-  raceTarget: "Target 3:45:00 · 5:20/km",
+  raceTag: "Race day",
 };
 
-/* ------------------------------------------------------------------ */
-/* Real plans                                                          */
-/* ------------------------------------------------------------------ */
-
-
-/** Full month names, for any month rather than only July to October. */
-export const MONTHS_LONG = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
-
 /**
- * Turns the athlete's real plan into the shape this screen renders.
- *
- * The screen was a direct port of the prototype, which meant `planWeeks()` —
- * twelve weeks of invented distances, paces, Done/Missed history and a "today"
- * frozen on 11 August 2026 — was what every signed-in athlete saw when they
- * clicked Plan. The data to do this properly already existed and was already
- * being used by the dashboard.
+ * Turns the athlete's plan into the shape this screen renders.
  *
  * `phase` comes from the stored rows. The generator has always known its
  * phases and, as of migration 0020, they are saved with each workout — so a

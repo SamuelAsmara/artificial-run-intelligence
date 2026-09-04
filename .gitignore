@@ -1,61 +1,41 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
+# Dependencies
 /node_modules
 /.pnp
 .pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
 
-# testing
-/coverage
-
-# next.js
+# Next.js build output
 /.next/
 /out/
-
-# production
 /build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
-.vercel
-
-# typescript
 *.tsbuildinfo
 next-env.d.ts
 
-# קבצים שנוצרו אוטומטית ע"י כלי ה-scaffolding בסביבת הפיתוח, לא חלק מהריפו
-AGENTS.md
-CLAUDE.md
-
-# תיקיות עבודה מקומיות — לא חלק מהפרויקט
-/_to_delete/
-/docs/_to_delete/
-/דפי נחיתה אופציות/
-
-# תבנית env — כן נכנסת לריפו (ללא סודות)
+# Environment — secrets never enter the repo; the template does
+.env*
 !.env.example
 
-# ארכיון — קבצים ישנים שממתינים למחיקה, לא נטענים ולא נכנסים לריפו
-/_archive/
-.env.local
-_incoming/
+# Vercel
+.vercel
 
-# טיוטת הודעת קומיט — קובץ עבודה, לא חלק מהריפו
+# Test coverage
+/coverage
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS and editor files
+.DS_Store
+*.pem
+
+# Local working folders: archives, incoming drafts, files awaiting deletion
+/_archive/
+/_incoming/
+/_to_delete/
+/docs/_to_delete/
 COMMIT_MSG.txt
+
+# Local configuration of coding-assistant tools — not part of the project
+AGENTS.md
+CLAUDE.md

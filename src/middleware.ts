@@ -1,8 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { safePath } from "@/lib/auth/safePath";
 
 /**
- * Route-level auth guard (מסמך אבטחה §3): redirects to /login when there is
+ * Route-level auth guard (Security doc §3): redirects to /login when there is
  * no active session. Every protected Server Action ALSO checks auth.uid()
  * independently — this middleware is a first layer, not the only one.
  */
@@ -13,10 +14,8 @@ const PROTECTED_PREFIXES = [
   "/numbers",
   "/settings",
   "/coach",
-  // "/upgrade" was here and has no route — billing is deliberately disabled
-  // (see actions/billing.ts). A guard on a path that 404s protects nothing and
-  // reads as a feature somebody forgot to finish.
-  "/onboarding",
+  // "/upgrade" only redirects to /coach/settings#billing, which is covered by
+  // "/coach"; it needs no guard of its own.
 ];
 
 export async function middleware(request: NextRequest) {
@@ -74,8 +73,7 @@ export async function middleware(request: NextRequest) {
    * mid-handshake by definition.
    */
   if (user && (request.nextUrl.pathname === "/login" || request.nextUrl.pathname === "/signup")) {
-    const target = request.nextUrl.searchParams.get("redirectTo");
-    const safe = target && target.startsWith("/") && !target.startsWith("//") ? target : "/dashboard";
+    const safe = safePath(request.nextUrl.searchParams.get("redirectTo"));
     const homeResponse = NextResponse.redirect(new URL(safe, request.url));
     response.cookies.getAll().forEach((cookie) => homeResponse.cookies.set(cookie));
     return homeResponse;

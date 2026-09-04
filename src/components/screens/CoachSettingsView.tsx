@@ -33,6 +33,7 @@ import type { AthleteProfileView } from "@/actions/profile";
 import type { ProviderConnectionView } from "@/actions/providers";
 import type { CoachPlanView } from "@/actions/billing";
 import { COACH_PLANS } from "@/lib/billing/plans";
+import Link from "next/link";
 
 /**
  * The coach's settings — all of them, on one page.
@@ -118,9 +119,9 @@ export function CoachSettingsView({
           How you prepare somebody for each distance. Applied to whoever is training for it — edit a
           template and the change reaches the next athlete to start, never one already running a plan.
         </p>
-        <a className="btn btn-secondary" href="/coach/templates" style={{ display: "inline-block" }}>
+        <Link className="btn btn-secondary" href="/coach/templates" style={{ display: "inline-block" }}>
           Edit templates
-        </a>
+        </Link>
       </section>
                 </div>
       <section className="card" style={{ padding: "18px 22px" }}>

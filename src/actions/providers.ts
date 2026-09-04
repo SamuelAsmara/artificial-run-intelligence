@@ -33,15 +33,9 @@ const SYNC_BUDGET_MS = 20_000;
 import { recomputeForUser } from "@/lib/readiness/recompute";
 import {
   apiKeyHint,
-  fetchActivities,
-  fetchWellness,
   normaliseAthleteId,
   resolveAthleteFromKey,
-  toActivityImports,
-  toRecoverySignals,
   verifyCredentials,
-  type IcuConfig,
-  type RecoverySignal,
 } from "@/lib/wellness/intervalsIcu";
 
 export type ProviderId = "intervals_icu";
@@ -68,8 +62,6 @@ export interface ProviderConnectionView {
 }
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string };
-
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 /* ------------------------------------------------------------------ */
 /* Reading                                                             */

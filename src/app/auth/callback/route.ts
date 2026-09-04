@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { safePath } from "@/lib/auth/safePath";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -26,14 +27,9 @@ import { createClient } from "@/lib/supabase/server";
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const requested = searchParams.get("next");
-  const next =
-    requested && requested.startsWith("/") && !requested.startsWith("//")
-      ? requested
-      : // "/" decides the front door by role — see app/page.tsx. Defaulting
-        // straight to /dashboard here sent coaches to the athlete screen and
-        // put the rule in three places instead of one.
-        "/";
+  // "/" decides the front door by role — see app/page.tsx — so it is the
+  // fallback here rather than /dashboard.
+  const next = safePath(searchParams.get("next"), "/");
 
   if (!code) {
     return NextResponse.redirect(`${origin}/login?error=missing-code`);

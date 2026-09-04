@@ -21,6 +21,7 @@
 
 import { zoneFor } from "@/lib/activity/zones";
 import { formatDuration, formatPace } from "@/lib/format/pace";
+import { HIGH_DRIFT_PCT, HIGH_DRIFT_RATE_THRESHOLD, highDriftRate } from "@/lib/planning/adjustPlan";
 
 /* ------------------------------------------------------------------ */
 /* input                                                               */
@@ -522,13 +523,28 @@ export function buildNumbersTiles(live: NumbersLive): NumberTile[] {
     seenOn: "Every run with elevation",
   };
 
+  /*
+   * The engine's view of drift: the share of the last fortnight's scored runs
+   * above HIGH_DRIFT_PCT. This is the number `runAdjustment` acts on, so the
+   * board shows it next to the last run's own figure.
+   */
+  const recentRuns = live.series
+    ? live.series.runs.filter((r) => r.date >= daysBefore(live.series!.today, 14))
+    : [];
+  const scoredRecent = recentRuns.filter((r) => r.driftPct != null);
+  const recentRate = highDriftRate(recentRuns.map((r) => r.driftPct));
+  const recentHigh = scoredRecent.filter((r) => (r.driftPct as number) > HIGH_DRIFT_PCT).length;
+  const fortnight = scoredRecent.length >= 3
+    ? ` Last 14 days: ${recentHigh} of ${scoredRecent.length} runs above ${HIGH_DRIFT_PCT}% (${Math.round(recentRate * 100)}%)${recentRate >= HIGH_DRIFT_RATE_THRESHOLD ? " — above the 40% mark, so the plan engine lightens the coming week." : " — under the 40% mark the plan engine acts on."}`
+    : "";
+
   const drift: NumberTile = {
     id: "drift", lane: "perRun", abbr: "DRIFT", name: "Cardiac drift", icon: ICON.drift,
     value: n1(run?.driftPct) != null ? (n1(run?.driftPct) as number).toFixed(1) : "—", unit: "%",
     status: run?.driftPct != null ? driftBand(run.driftPct) : { label: "Needs a steady run ≥ 30 min", tone: "neutral" },
     letters: "How much your heart rate rose during the last run relative to your pace. Same pace, higher heart rate = drift.",
-    yours: run?.driftPct != null ? `Last run: ${(n1(run.driftPct) as number).toFixed(1)}% — ${driftBand(run.driftPct).label.toLowerCase()}. ${run.driftPct <= 3 ? "Your aerobic system held the pace comfortably." : run.driftPct <= 8 ? "Heat, dehydration or fatigue made the second half cost more." : "That run cost far more than its pace suggests; readiness will reflect it."}` : "Drift needs a steady run of at least 30 minutes with heart rate.",
-    formula: "drift = (HR/pace 2nd half ÷ HR/pace 1st half − 1) × 100   ·   ≤ 3% normal · > 8% high",
+    yours: run?.driftPct != null ? `Last run: ${(n1(run.driftPct) as number).toFixed(1)}% — ${driftBand(run.driftPct).label.toLowerCase()}. ${run.driftPct <= 3 ? "Your aerobic system held the pace comfortably." : run.driftPct <= 8 ? "Heat, dehydration or fatigue made the second half cost more." : "That run cost far more than its pace suggests; readiness will reflect it."}${fortnight}` : `Drift needs a steady run of at least 30 minutes with heart rate.${fortnight}`,
+    formula: "drift = (HR/pace 2nd half ÷ HR/pace 1st half − 1) × 100   ·   ≤ 3% normal · > 8% high   ·   plan engine: share of runs > 5% over 14 days ≥ 40% → lighter week",
     why: "It is the cheapest honest measure of aerobic fitness there is: no lab, no test, just a run you were doing anyway. (Maffetone's MAF test, formalised.)",
     seenOn: "Every run with heart rate",
   };

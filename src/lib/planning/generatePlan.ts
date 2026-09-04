@@ -18,9 +18,9 @@ import {
 } from "./capacity";
 
 /**
- * מנוע יצירת תוכנית (Periodization) — מסמך תכנון טכני §6.
- * מחלק את השבועות עד המרוץ לארבע פאזות: בסיס / בנייה / שיא / טייפר.
- * הטייפר תופס 10%-20% מהתקופה הכוללת.
+ * Plan generator (periodisation) — Technical design §6.
+ * Splits the weeks until the race into four phases: base / build / peak /
+ * taper. The taper takes 10–20% of the whole period.
  */
 
 export type Phase = "base" | "build" | "peak" | "taper";
@@ -30,7 +30,7 @@ export interface PlannedWorkout {
   dayDate: string; // ISO date
   workoutType: WorkoutType;
   phase: Phase;
-  plannedDistance: number | null; // מטרים, null עבור rest
+  plannedDistance: number | null; // metres; null for a rest day
 }
 
 export interface GeneratedPlan {
@@ -145,7 +145,7 @@ function ratiosFrom(structure: Record<string, number>): [number, number, number,
   return values.map((v) => v / total) as [number, number, number, number];
 }
 
-// יחס בסיסי לחלוקת שבועות לפי סוג מרוץ (base/build/peak/taper)
+// Default split of the weeks by race type (base / build / peak / taper).
 const PHASE_RATIOS: Record<RaceType, [number, number, number, number]> = {
   "5k": [0.3, 0.35, 0.2, 0.15],
   "10k": [0.3, 0.35, 0.2, 0.15],
@@ -153,7 +153,9 @@ const PHASE_RATIOS: Record<RaceType, [number, number, number, number]> = {
   full: [0.35, 0.3, 0.15, 0.2],
 };
 
-// ק"מ שיא שבועי בערך גס לפי סוג מרוץ — ממנו נגזר תמהיל האימונים (mock, לצורך MVP)
+// Reference peak weekly volume per race type. This is the ceiling the
+// session mix is derived from; the athlete's own capacity (`readCapacity`)
+// scales it down when their history does not support it.
 const PEAK_WEEKLY_KM: Record<RaceType, number> = {
   "5k": 30,
   "10k": 40,
@@ -171,8 +173,8 @@ export class RaceTooSoonError extends Error {
 }
 
 /**
- * @throws {RaceTooSoonError} אם תאריך המרוץ קרוב מדי לבניית תוכנית הגיונית
- *   (מסמך אפיון בדיקות §6 — "מקרי קצה").
+ * @throws {RaceTooSoonError} when the race is too close for a sensible plan
+ *   (Test plan §6, edge cases).
  */
 export function generatePlan(
   raceType: RaceType,
@@ -209,7 +211,7 @@ export function generatePlan(
    * given to somebody racing in nine weeks becomes nine weeks that keep the
    * coach's shape, instead of a plan that ends five weeks after the race.
    */
-  const [baseRatio, buildRatio, peakRatio, taperRatio] =
+  const [baseRatio, buildRatio, , taperRatio] =
     (template ? ratiosFrom(template.phaseStructure) : null) ?? PHASE_RATIOS[raceType];
 
   const baseWeeks = Math.max(1, Math.round(totalWeeks * baseRatio));
@@ -234,13 +236,13 @@ export function generatePlan(
     return "taper";
   };
 
-  // עצימות יחסית לשבוע (חלק מהעומס השיאי) — עולה עד השיא, יורדת בטייפר
+  // Relative intensity of the week (share of the peak load): rises to the peak, falls through the taper.
   const intensityForWeek = (week: number, phase: Phase): number => {
     if (phase === "base") return 0.5 + 0.3 * (week / Math.max(1, baseWeeks));
     if (phase === "build") return 0.65 + 0.25 * ((week - baseWeeks) / Math.max(1, buildWeeks));
     if (phase === "peak") return 0.95 + 0.05 * ((week - baseWeeks - buildWeeks) / Math.max(1, peakWeeks));
     const taperProgress = (week - baseWeeks - buildWeeks - peakWeeks) / Math.max(1, taperWeeks);
-    return 0.9 - 0.5 * taperProgress; // יורד לכ-40% מהשיא בשבוע האחרון
+    return 0.9 - 0.5 * taperProgress; // down to about 40% of the peak in the final week
   };
 
   // Weeks of actual building — the taper does not grow anything.

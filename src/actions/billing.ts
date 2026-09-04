@@ -1,5 +1,17 @@
 "use server";
 
+/**
+ * Packages — the coach's (Basic / Premium, which sets the roster's seat cap)
+ * and the athlete's.
+ *
+ * Billing is a mockup in this version: choosing a package writes the
+ * `subscriptions` row that `join_coach` reads for the seat cap, and the
+ * payment-method form in Settings → Billing (`PaymentMethodMock`) stores
+ * nothing. Nothing is charged. The row and this file are the seam where a
+ * payment provider (Stripe or similar) plugs in: its webhook will own the
+ * `plan` column, and the self-service update below goes away with it.
+ */
+
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { ATHLETE_PLANS, COACH_PLANS, tierOf, type CoachTier } from "@/lib/billing/plans";
@@ -18,8 +30,8 @@ export interface CoachPlanView {
 /**
  * The coach's package, and how full the roster is against it.
  *
- * Read by the layout (to send a new coach to choose), by settings (to show
- * it) and by the choice page itself (to mark the current one).
+ * Read by Settings → Billing, which shows the two package cards and marks
+ * the current one.
  */
 export async function getCoachPlan(): Promise<CoachPlanView | null> {
   const supabase = await createClient();

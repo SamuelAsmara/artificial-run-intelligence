@@ -151,7 +151,7 @@ programme built on the 10% rule against a standard 8-week programme: injury inci
 20.3%, p = 0.90**. A null RCT, and the highest-quality evidence in the area. "Don't increase a lot,
 quickly" survives; "exactly ≤10% per week" does not.
 
-## 5. What ARI should do
+## 5. What Runi should do
 
 **Metric hierarchy:**
 

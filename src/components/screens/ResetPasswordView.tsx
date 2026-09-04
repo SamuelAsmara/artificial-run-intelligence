@@ -13,6 +13,7 @@ import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { LOGIN_COPY, MIN_PASSWORD } from "@/lib/screens/login";
+import Link from "next/link";
 
 
 
@@ -107,7 +108,7 @@ export function ResetPasswordView() {
         )}
 
         <p style={{ margin: "16px 0 0", fontSize: "11px", color: "var(--color-faint)", textAlign: "center" }}>
-          <a href="/login" style={{ color: "var(--color-accent)" }}>Back to sign in</a>
+          <Link href="/login" style={{ color: "var(--color-accent)" }}>Back to sign in</Link>
         </p>
       </div>
     </main>

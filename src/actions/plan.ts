@@ -21,7 +21,6 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { generatePlan, RaceTooSoonError, type PlanStructure } from "@/lib/planning/generatePlan";
 import { zonedNow } from "@/lib/time/week";
-import { runPlanAdjustment } from "@/lib/planning/runAdjustment";
 import { readCapacity } from "@/lib/planning/readCapacity";
 import { estimateThresholds, type HistoryActivity } from "@/lib/planning/thresholds";
 import { paceLabel } from "@/lib/planning/paces";
@@ -116,8 +115,8 @@ async function readTemplate(
 }
 
 /**
- * Server Action: בונה את מבנה ה-periodization הראשוני (plan_workouts).
- * מסמך ארכיטקטורה §5, מסמך תכנון טכני §5.
+ * Server Action: builds the initial periodised structure (plan_workouts).
+ * Architecture doc §5, Technical design §5.
  */
 export async function generatePlanAction(
   goalRaceId: string,
@@ -208,7 +207,7 @@ export async function generatePlanAction(
     );
   } catch (err) {
     if (err instanceof RaceTooSoonError) {
-      // מסמך אפיון בדיקות §6: תאריך קרוב מדי -> הודעה מפורשת, לא קריסה
+      // Test plan §6: a race too close gets an explicit message, not a crash
       return { error: err.message };
     }
     console.error("[runi] generatePlan failed", { goalRaceId, athleteId }, err);
@@ -264,66 +263,6 @@ export async function generatePlanAction(
 }
 
 /**
- * Build a plan for whichever race the athlete has set, from the Plan screen.
- *
- * ## Why this exists
- *
- * `saveGoalRace` in `actions/profile.ts` deliberately does not regenerate the
- * plan — its docstring says "the Plan screen owns that decision and asks before
- * it acts". That was true of the intent and false of the code: nothing in the
- * entire UI called `generatePlanAction`, so the athlete set a race in Settings,
- * came back to /plan, and read "No plan yet — set one in Settings" forever. A
- * closed loop with no exit, and the single largest hole in the product.
- *
- * ## Why it refuses to overwrite
- *
- * Rebuilding discards every completed and coach-edited session in the existing
- * plan. That is a destructive act and it is not what "build my plan" reads
- * like, so this returns a plain refusal when a plan already exists rather than
- * silently replacing weeks of work.
- */
-export async function buildPlanForActiveRace(): Promise<
-  ActionResult<{ planId: string; notes: string[]; achievable: boolean }>
-> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Sign in first." };
-
-  const { data: race } = await supabase
-    .from("goal_races")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("status", "active")
-    .order("race_date", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  if (!race) {
-    return { error: "Set a goal race — a distance and a date — in Settings first." };
-  }
-
-  // Only an *active* plan blocks a rebuild. A plan the athlete has left is
-  // history, not an obstacle — without the status filter, leaving a plan
-  // still locked them out of ever building another for the same race.
-  const { data: existing } = await supabase
-    .from("training_plans")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("goal_race_id", race.id)
-    .eq("status", "active")
-    .limit(1)
-    .maybeSingle();
-
-  if (existing) {
-    return { error: "You already have a plan for this race." };
-  }
-
-  return generatePlanAction(race.id);
-}
-
-/**
  * Leave the active training plan.
  *
  * ## Why this exists
@@ -361,28 +300,6 @@ export async function abandonPlan(): Promise<ActionResult<null>> {
   revalidatePath("/plan");
   revalidatePath("/dashboard");
   return { data: null };
-}
-
-/**
- * Server Action: מריץ את מנוע ההתאמה הדינמית (ACWR + cardiac drift + אימונים
- * שפוספסו) ומעדכן אימונים עתידיים. מסמך ארכיטקטורה §5.
- * מופעלת מתוך /api/cron/sync-strava אחרי סנכרון אימונים חדשים.
- */
-export async function adjustPlan(userId: string): Promise<ActionResult<{ adjustedCount: number }>> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user || user.id !== userId) {
-    return { error: "Not allowed." };
-  }
-
-  const result = await runPlanAdjustment(supabase, userId);
-
-  revalidatePath("/plan");
-  revalidatePath("/dashboard");
-
-  return { data: result };
 }
 
 /**
@@ -461,10 +378,7 @@ export async function getDashboardPlan(): Promise<RealPlan | null> {
 
 /**
  * Everything the /plan screen shows: the athlete's plan and the race it is for.
- *
- * Both may be null, and the screen says so rather than falling back to the
- * prototype's twelve invented weeks — which is what it did until now, for every
- * signed-in athlete, with no `?demo=1` gate and no empty state.
+ * Both may be null; the screen then offers the three ways to start a plan.
  */
 export interface PlanStart {
   /** the coach the athlete is linked to, if any */

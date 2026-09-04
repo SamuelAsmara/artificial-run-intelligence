@@ -1,9 +1,6 @@
 /**
  * Geometry for the five-band activity chart.
  *
- * Ported from design_handoff_ari_athlete_app/ARI Activity Detail.dc.html (v2),
- * whose spec is in README_activity_chart_v2.md.
- *
  * ## Why bands instead of one plot with several axes
  *
  * The previous chart drew pace and heart rate on one frame with an axis on each

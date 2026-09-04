@@ -15,8 +15,9 @@ import { removeAthlete, updateWorkout, type AthleteDetail, type AthleteWorkout }
 import { formatDuration, formatPace } from "@/lib/format/pace";
 import { RACE_LABEL } from "@/lib/coach/templates";
 import { Avatar } from "@/components/ui/Avatar";
-import { Entrance, StatTile, STAT_ICONS, StatusChip } from "@/components/ui";
+import { Entrance, StatTile, StatusChip } from "@/components/ui";
 import { ICON as NB_ICON, NUMBERS_HUE } from "@/lib/screens/numbers";
+import Link from "next/link";
 
 /** why a past day does not open */
 const PAST_HINT = "This session has already happened. Past weeks are a record, not a plan.";
@@ -25,7 +26,7 @@ import {
 } from "@/lib/time/week";
 import {
   COACH_COPY, formColor, KIND_LABEL, loadColor,
-  raceLabel, readinessColor, sinceLabel, sinceParts, toneColor, untilLabel,
+  raceLabel, readinessColor, sinceParts, toneColor, untilLabel,
 } from "@/lib/screens/coachHome";
 
 const WORKOUT_TYPES = ["easy", "long", "interval", "rest"] as const;
@@ -606,7 +607,7 @@ export function CoachAthleteView({ detail, today }: { detail: AthleteDetail; tod
         ) : (
           <div style={{ display: "flex", flexDirection: "column", marginBlockStart: "8px" }}>
             {recentRuns.map((r) => (
-              <a
+              <Link
                 key={r.id}
                 className="dc-hover-bg"
                 href={`/activities/${r.id}?coach=1`}
@@ -623,7 +624,7 @@ export function CoachAthleteView({ detail, today }: { detail: AthleteDetail; tod
                 <span className="num" style={{ fontSize: "11.5px", color: "var(--color-faint)", minWidth: "54px", textAlign: "end" }}>
                   {r.avgHr ? `${r.avgHr} bpm` : "—"}
                 </span>
-              </a>
+              </Link>
             ))}
           </div>
         )}

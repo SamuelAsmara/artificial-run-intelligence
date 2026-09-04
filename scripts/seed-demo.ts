@@ -8,7 +8,7 @@
  *
  * ## What this is for
  *
- * Every screen in ARI is downstream of two things: a history of runs and a
+ * Every screen in Runi is downstream of two things: a history of runs and a
  * plan. Until now the only real account had 130 runs and no plan at all, so the
  * plan engine, the coach board and half the dashboard had never been seen with
  * data in them. This builds a population big enough to look at: two coaches
@@ -76,7 +76,10 @@ import { sessionSpikeVsRecentMax } from "../src/lib/planning/acwr";
  */
 const HISTORY_WEEKS = 16;
 
-const DEMO_DOMAIN = "demo.ari-coach.app";
+const DEMO_DOMAIN = "demo.runi-coach.app";
+/** The domain the first seed used, so `--reset` / `--purge` still find those accounts. */
+const LEGACY_DEMO_DOMAIN = "demo.ari-coach.app";
+const DEMO_DOMAINS = [DEMO_DOMAIN, LEGACY_DEMO_DOMAIN];
 
 /**
  * Two coaches rather than one.
@@ -119,10 +122,10 @@ interface Group {
 }
 
 const GROUPS: Group[] = [
-  { key: "A", label: "5 ק\"מ — מתקדמים",   raceType: "5k",   weeksToRace: 9,  elapsedWeeks: 5,  level: "advanced",     thresholdKmh: 16.4, weeklyKm: 48 },
-  { key: "B", label: "10 ק\"מ — ביניים",   raceType: "10k",  weeksToRace: 11, elapsedWeeks: 6,  level: "intermediate", thresholdKmh: 14.6, weeklyKm: 40 },
-  { key: "C", label: "חצי מרתון — ביניים", raceType: "half", weeksToRace: 14, elapsedWeeks: 8,  level: "intermediate", thresholdKmh: 13.2, weeklyKm: 46 },
-  { key: "D", label: "מרתון — מתחילים",    raceType: "full", weeksToRace: 24, elapsedWeeks: 10, level: "beginner",     thresholdKmh: 11.4, weeklyKm: 34 },
+  { key: "A", label: "5K — advanced",        raceType: "5k",   weeksToRace: 9,  elapsedWeeks: 5,  level: "advanced",     thresholdKmh: 16.4, weeklyKm: 48 },
+  { key: "B", label: "10K — intermediate",   raceType: "10k",  weeksToRace: 11, elapsedWeeks: 6,  level: "intermediate", thresholdKmh: 14.6, weeklyKm: 40 },
+  { key: "C", label: "Half — intermediate",  raceType: "half", weeksToRace: 14, elapsedWeeks: 8,  level: "intermediate", thresholdKmh: 13.2, weeklyKm: 46 },
+  { key: "D", label: "Marathon — beginner",  raceType: "full", weeksToRace: 24, elapsedWeeks: 10, level: "beginner",     thresholdKmh: 11.4, weeklyKm: 34 },
 ];
 
 /**
@@ -133,11 +136,11 @@ const GROUPS: Group[] = [
 type Character = "steady" | "ramping" | "returning" | "consistent" | "erratic";
 
 const CHARACTERS: { kind: Character; note: string }[] = [
-  { kind: "steady",     note: "מתאמן יציב, עומס עולה בהדרגה" },
-  { kind: "ramping",    note: "מעלה נפח מהר מדי — קפיצה בריצה הארוכה" },
-  { kind: "returning",  note: "חוזר מהפסקה, בסיס נמוך ועולה" },
-  { kind: "consistent", note: "נפח קבוע, טופס מאוזן" },
-  { kind: "erratic",    note: "מפספס אימונים, שינה גרועה" },
+  { kind: "steady",     note: "steady athlete, load rising gradually" },
+  { kind: "ramping",    note: "ramping volume too fast — a jump in the long run" },
+  { kind: "returning",  note: "returning from a break, low base and climbing" },
+  { kind: "consistent", note: "constant volume, balanced form" },
+  { kind: "erratic",    note: "misses sessions, poor sleep" },
 ];
 
 
@@ -645,6 +648,23 @@ async function findUserByEmail(admin: Client, email: string): Promise<string | n
   return null;
 }
 
+/**
+ * Finds a demo account under the current domain or the legacy one, and points
+ * the record at whichever address actually exists so reset/purge act on it.
+ */
+async function findDemoUser(admin: Client, rec: { email: string }): Promise<string | null> {
+  const local = rec.email.split("@")[0];
+  for (const domain of DEMO_DOMAINS) {
+    const candidate = `${local}@${domain}`;
+    const id = await findUserByEmail(admin, candidate);
+    if (id) {
+      rec.email = candidate;
+      return id;
+    }
+  }
+  return null;
+}
+
 async function ensureUser(admin: Client, a: Athlete, password: string): Promise<string> {
   const existing = await findUserByEmail(admin, a.email);
   if (existing) return existing;
@@ -860,7 +880,7 @@ async function writeAthlete(admin: Client, a: Athlete, coachId: string, today: D
         status,
         origin: trim ? ("coach" as const) : ("generated" as const),
         planned_distance_original: trim ? w.plannedDistance : null,
-        adjusted_reason: trim ? "עומס השבוע האחרון קפץ — מקצרים את הריצה הארוכה" : null,
+        adjusted_reason: trim ? "Last week's load jumped — shortening the long run" : null,
         adjusted_at: trim ? new Date(`${todayIso}T09:00:00+03:00`).toISOString() : null,
       };
     });
@@ -913,7 +933,7 @@ async function reset(admin: Client, roster: Athlete[]) {
  * The address check is not a formality. This runs with the service-role key,
  * which bypasses row-level security entirely, so a wrong id here deletes a real
  * person's account and every row that cascades from it. Refusing anything that
- * is not @demo.ari-coach.app is the one thing standing between a typo and that.
+ * is not on a demo domain is the one thing standing between a typo and that.
  */
 async function purge(admin: Client, roster: Athlete[], coaches: Coach[]) {
   const targets: { email: string; id?: string }[] = [
@@ -923,7 +943,7 @@ async function purge(admin: Client, roster: Athlete[], coaches: Coach[]) {
 
   for (const t of targets) {
     if (!t.id) continue;
-    if (!t.email.endsWith(`@${DEMO_DOMAIN}`)) {
+    if (!DEMO_DOMAINS.some((d) => t.email.endsWith(`@${d}`))) {
       throw new Error(`refusing to delete a non-demo user: ${t.email}`);
     }
     const { error } = await admin.auth.admin.deleteUser(t.id);
@@ -1095,8 +1115,8 @@ async function main() {
   const today = zonedNow();
 
   if (mode !== "seed") {
-    for (const c of COACHES) c.id = (await findUserByEmail(admin, c.email)) ?? undefined;
-    for (const a of roster) a.userId = (await findUserByEmail(admin, a.email)) ?? undefined;
+    for (const c of COACHES) c.id = (await findDemoUser(admin, c)) ?? undefined;
+    for (const a of roster) a.userId = (await findDemoUser(admin, a)) ?? undefined;
     if (mode === "reset") await reset(admin, roster);
     else await purge(admin, roster, COACHES);
     if (mode === "purge") {

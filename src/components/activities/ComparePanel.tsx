@@ -98,7 +98,6 @@ export function ComparePanel({
       ])
     : [];
   const band = bands.find((b) => b.id === "pace");
-  const hrBand = bands.find((b) => b.id === "hr");
 
   /**
    * The two lanes, each knowing which curve it draws and how to write a value.

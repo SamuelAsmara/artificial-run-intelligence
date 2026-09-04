@@ -5,7 +5,7 @@ import type { Database } from "@/types/database.types";
 
 /**
  * Supabase client for use in Server Components, Server Actions, and Route Handlers.
- * Reads/writes the session via httpOnly cookies (never localStorage — see מסמך אבטחה §1).
+ * Reads/writes the session via httpOnly cookies (never localStorage — see Security doc §1).
  * Still subject to RLS (anon key) — this is NOT the service-role client.
  */
 export async function createClient() {
@@ -37,7 +37,7 @@ export async function createClient() {
 /**
  * Service-role client — bypasses RLS entirely. Server-only (Cron Job, webhooks).
  * NEVER import this from a Client Component or expose the key to the browser.
- * See מסמך אבטחה §4: anon key vs. service-role key separation.
+ * See Security doc §4: anon key vs. service-role key separation.
  */
 export function createServiceRoleClient() {
   return createSupabaseJsClient<Database>(

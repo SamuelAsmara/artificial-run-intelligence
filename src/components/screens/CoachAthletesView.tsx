@@ -21,6 +21,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import {
   COACH_COPY, formColor, loadColor, readinessColor, sinceLabel, untilLabel,
 } from "@/lib/screens/coachHome";
+import Link from "next/link";
 
 const FAINT = "var(--color-faint)";
 
@@ -291,7 +292,7 @@ function Row({
   colors: Record<string, string>;
 }) {
   return (
-    <a
+    <Link
       className="dc-hover-bg"
       href={`/coach/athletes/${a.id}`}
       style={{ display: "grid", gridTemplateColumns: "minmax(190px,1.6fr) .5fr 1fr .7fr .7fr .6fr .6fr .8fr .8fr", gap: "10px", alignItems: "center", padding: "9px 10px", borderRadius: "var(--radius-control)" }}
@@ -348,6 +349,6 @@ function Row({
       <span className="num" style={{ fontSize: "11px", textAlign: "end", color: "var(--color-muted)" }}>
         {sinceLabel(a.lastRunAt, today)}
       </span>
-    </a>
+    </Link>
   );
 }

@@ -20,6 +20,7 @@ import {
 } from "@/lib/coach/templates";
 import { templateWeeks, type TemplateAthlete } from "@/lib/coach/templateWeeks";
 import { COACH_COPY } from "@/lib/screens/coachHome";
+import Link from "next/link";
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -258,9 +259,9 @@ export function CoachTemplatesView({
                 {pending ? COACH_COPY.saving : COACH_COPY.save}
               </button>
               {/* a template is a structure; a cycle is the structure applied to people on a date */}
-              <a className="btn btn-secondary" href={`/coach/cycles?new=1&race=${t.raceType}`} style={{ textDecoration: "none" }}>
+              <Link className="btn btn-secondary" href={`/coach/cycles?new=1&race=${t.raceType}`} style={{ textDecoration: "none" }}>
                 Start a cycle from this template →
-              </a>
+              </Link>
               <button
                 className="btn btn-secondary"
                 type="button"

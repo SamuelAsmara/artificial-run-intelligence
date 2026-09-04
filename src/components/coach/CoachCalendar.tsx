@@ -21,6 +21,7 @@ import {
 import { RACE_LABEL } from "@/lib/coach/templates";
 import { RACE_TYPES } from "@/lib/coach/templates";
 import { FilterChip } from "@/components/ui";
+import Link from "next/link";
 
 type Zoom = "year" | "month" | "week";
 
@@ -252,7 +253,7 @@ function WeekGrid({
             {day.sessions
               .filter((s) => s.workoutType !== "rest")
               .map((s, i) => (
-                <a
+                <Link
                   key={i}
                   href={`/coach/athletes/${s.athleteId}`}
                   title={`${s.athleteName} · ${s.workoutType}`}
@@ -276,7 +277,7 @@ function WeekGrid({
                     {s.plannedDistanceM ? ` ${(s.plannedDistanceM / 1000).toFixed(0)} km` : ""}
                     {s.done ? " ✓" : ""}
                   </span>
-                </a>
+                </Link>
               ))}
           </div>
         </div>

@@ -40,7 +40,7 @@
 -- exist: a pace stored as "5:49" landed as 5 hours 49 minutes, so the hours
 -- component is really minutes and the minutes component is really seconds.
 --
--- להריץ ב-Supabase → SQL Editor.
+-- Applied through the Supabase SQL editor.
 -- ============================================================================
 
 alter table public.plan_workouts

@@ -6,22 +6,16 @@
 
 ## הרצה
 
-**מיגרציה 0016 — כבר רצה ואומתה (20/8).** העמודה `planned_pace` היא `text`,
-ו-105 השורות שהיו שמורות כ-`06:07:00` שוחזרו ל-`6:07`. אין מה לעשות שם.
-
-נשאר רק:
-
 ```bash
-# 1. ב-.env.local:   DEMO_PASSWORD=<סיסמה לחשבונות ההדגמה>
+# ב-.env.local:   DEMO_PASSWORD=<סיסמה לחשבונות ההדגמה>
 npm run seed:dry      # לא כותב כלום — מדפיס את 40 הרצים לבדיקה
 npm run seed:demo     # ההזרעה. ~6 דקות
+npm run seed:reset    # מוחק ומזריע מחדש את הריצות והתוכניות של חשבונות הדמו
+npm run seed:purge    # מוחק את חשבונות הדמו בלבד (כתובות @demo.runi-coach.app
+                      # או הכתובת הקודמת @demo.ari-coach.app). לעולם לא חשבון אחר
 ```
 
-**מחיקה בסוף, לפני שמכניסים חברים אמיתיים:**
-
-```bash
-npm run seed:purge    # מוחק רק כתובות @demo.ari-coach.app. לעולם לא חשבון אחר
-```
+**לפני שמכניסים רצים אמיתיים** מריצים `seed:purge`, כדי שרוסטר הדמו לא יתערבב עם אנשים.
 
 ---
 
@@ -29,12 +23,11 @@ npm run seed:purge    # מוחק רק כתובות @demo.ari-coach.app. לעול
 
 | שם משתמש | קוד מאמן | רוסטר |
 |---|---|---|
-| `coach1@demo.ari-coach.app` | `COACH1` | Runner1-Coach1 … Runner20-Coach1 |
-| `coach2@demo.ari-coach.app` | `COACH2` | Runner1-Coach2 … Runner20-Coach2 |
+| `coach1@demo.runi-coach.app` | `COACH1` | Runner1-Coach1 … Runner20-Coach1 |
+| `coach2@demo.runi-coach.app` | `COACH2` | Runner1-Coach2 … Runner20-Coach2 |
 
 **הסיסמה לכל 42 החשבונות** היא מה שהגדרת ב-`DEMO_PASSWORD`. היא לא כתובה בשום קובץ בפרויקט.
 
-החשבון האישי שלי — `shmouelasmara@gmail.com` — **לא נוגעים בו.** הוא לא חלק מהמאגר הזה ולא יימחק ב-purge.
 
 ---
 
@@ -57,26 +50,26 @@ npm run seed:purge    # מוחק רק כתובות @demo.ari-coach.app. לעול
 
 | # | שם משתמש | מקצה | אופי | כושר | טופס | מוכנות |
 |---|---|---|---|---|---|---|
-| 1 | `runner1-coach1@demo.ari-coach.app` | 5 ק"מ | יציב — עומס עולה בהדרגה | 31 | -1 | 93 |
-| 2 | `runner2-coach1@demo.ari-coach.app` | 5 ק"מ | מעלה מהר מדי — קפיצה בריצה הארוכה + אימונים שקוצרו ע"י המאמן | 29 | -4 | 76 |
-| 3 | `runner3-coach1@demo.ari-coach.app` | 5 ק"מ | חוזר מהפסקה — 5 שבועות ריקים ואז בנייה | 19 | -2 | 95 |
-| 4 | `runner4-coach1@demo.ari-coach.app` | 5 ק"מ | קבוע — טופס מאוזן | 33 | -1 | 90 |
-| 5 | `runner5-coach1@demo.ari-coach.app` | 5 ק"מ | לא עקבי — מפספס ~28% מהאימונים, שינה גרועה | 22 | -1 | 80 |
-| 6 | `runner6-coach1@demo.ari-coach.app` | 10 ק"מ | יציב — עומס עולה בהדרגה | 27 | -1 | 93 |
-| 7 | `runner7-coach1@demo.ari-coach.app` | 10 ק"מ | מעלה מהר מדי — קפיצה בריצה הארוכה + אימונים שקוצרו ע"י המאמן | 29 | -8 | 83 |
-| 8 | `runner8-coach1@demo.ari-coach.app` | 10 ק"מ | חוזר מהפסקה — 5 שבועות ריקים ואז בנייה | 20 | -0 | 82 |
-| 9 | `runner9-coach1@demo.ari-coach.app` | 10 ק"מ | קבוע — טופס מאוזן | 28 | 1 | 89 |
-| 10 | `runner10-coach1@demo.ari-coach.app` | 10 ק"מ | לא עקבי — מפספס ~28% מהאימונים, שינה גרועה | 19 | -1 | 87 |
-| 11 | `runner11-coach1@demo.ari-coach.app` | חצי מרתון | יציב — עומס עולה בהדרגה | 30 | -1 | 93 |
-| 12 | `runner12-coach1@demo.ari-coach.app` | חצי מרתון | מעלה מהר מדי — קפיצה בריצה הארוכה + אימונים שקוצרו ע"י המאמן | 33 | -10 | 80 |
-| 13 | `runner13-coach1@demo.ari-coach.app` | חצי מרתון | חוזר מהפסקה — 5 שבועות ריקים ואז בנייה | 23 | 1 | 91 |
-| 14 | `runner14-coach1@demo.ari-coach.app` | חצי מרתון | קבוע — טופס מאוזן | 39 | -1 | 95 |
-| 15 | `runner15-coach1@demo.ari-coach.app` | חצי מרתון | לא עקבי — מפספס ~28% מהאימונים, שינה גרועה | 21 | 6 | 76 |
-| 16 | `runner16-coach1@demo.ari-coach.app` | מרתון | יציב — עומס עולה בהדרגה | 32 | 2 | 92 |
-| 17 | `runner17-coach1@demo.ari-coach.app` | מרתון | מעלה מהר מדי — קפיצה בריצה הארוכה + אימונים שקוצרו ע"י המאמן | 29 | -2 | 88 |
-| 18 | `runner18-coach1@demo.ari-coach.app` | מרתון | חוזר מהפסקה — 5 שבועות ריקים ואז בנייה | 25 | -3 | 90 |
-| 19 | `runner19-coach1@demo.ari-coach.app` | מרתון | קבוע — טופס מאוזן | 30 | 2 | 89 |
-| 20 | `runner20-coach1@demo.ari-coach.app` | מרתון | לא עקבי — מפספס ~28% מהאימונים, שינה גרועה | 20 | 0 | 87 |
+| 1 | `runner1-coach1@demo.runi-coach.app` | 5 ק"מ | יציב — עומס עולה בהדרגה | 31 | -1 | 93 |
+| 2 | `runner2-coach1@demo.runi-coach.app` | 5 ק"מ | מעלה מהר מדי — קפיצה בריצה הארוכה + אימונים שקוצרו ע"י המאמן | 29 | -4 | 76 |
+| 3 | `runner3-coach1@demo.runi-coach.app` | 5 ק"מ | חוזר מהפסקה — 5 שבועות ריקים ואז בנייה | 19 | -2 | 95 |
+| 4 | `runner4-coach1@demo.runi-coach.app` | 5 ק"מ | קבוע — טופס מאוזן | 33 | -1 | 90 |
+| 5 | `runner5-coach1@demo.runi-coach.app` | 5 ק"מ | לא עקבי — מפספס ~28% מהאימונים, שינה גרועה | 22 | -1 | 80 |
+| 6 | `runner6-coach1@demo.runi-coach.app` | 10 ק"מ | יציב — עומס עולה בהדרגה | 27 | -1 | 93 |
+| 7 | `runner7-coach1@demo.runi-coach.app` | 10 ק"מ | מעלה מהר מדי — קפיצה בריצה הארוכה + אימונים שקוצרו ע"י המאמן | 29 | -8 | 83 |
+| 8 | `runner8-coach1@demo.runi-coach.app` | 10 ק"מ | חוזר מהפסקה — 5 שבועות ריקים ואז בנייה | 20 | -0 | 82 |
+| 9 | `runner9-coach1@demo.runi-coach.app` | 10 ק"מ | קבוע — טופס מאוזן | 28 | 1 | 89 |
+| 10 | `runner10-coach1@demo.runi-coach.app` | 10 ק"מ | לא עקבי — מפספס ~28% מהאימונים, שינה גרועה | 19 | -1 | 87 |
+| 11 | `runner11-coach1@demo.runi-coach.app` | חצי מרתון | יציב — עומס עולה בהדרגה | 30 | -1 | 93 |
+| 12 | `runner12-coach1@demo.runi-coach.app` | חצי מרתון | מעלה מהר מדי — קפיצה בריצה הארוכה + אימונים שקוצרו ע"י המאמן | 33 | -10 | 80 |
+| 13 | `runner13-coach1@demo.runi-coach.app` | חצי מרתון | חוזר מהפסקה — 5 שבועות ריקים ואז בנייה | 23 | 1 | 91 |
+| 14 | `runner14-coach1@demo.runi-coach.app` | חצי מרתון | קבוע — טופס מאוזן | 39 | -1 | 95 |
+| 15 | `runner15-coach1@demo.runi-coach.app` | חצי מרתון | לא עקבי — מפספס ~28% מהאימונים, שינה גרועה | 21 | 6 | 76 |
+| 16 | `runner16-coach1@demo.runi-coach.app` | מרתון | יציב — עומס עולה בהדרגה | 32 | 2 | 92 |
+| 17 | `runner17-coach1@demo.runi-coach.app` | מרתון | מעלה מהר מדי — קפיצה בריצה הארוכה + אימונים שקוצרו ע"י המאמן | 29 | -2 | 88 |
+| 18 | `runner18-coach1@demo.runi-coach.app` | מרתון | חוזר מהפסקה — 5 שבועות ריקים ואז בנייה | 25 | -3 | 90 |
+| 19 | `runner19-coach1@demo.runi-coach.app` | מרתון | קבוע — טופס מאוזן | 30 | 2 | 89 |
+| 20 | `runner20-coach1@demo.runi-coach.app` | מרתון | לא עקבי — מפספס ~28% מהאימונים, שינה גרועה | 20 | 0 | 87 |
 
 ---
 
@@ -84,26 +77,26 @@ npm run seed:purge    # מוחק רק כתובות @demo.ari-coach.app. לעול
 
 | # | שם משתמש | מקצה | אופי | כושר | טופס | מוכנות |
 |---|---|---|---|---|---|---|
-| 1 | `runner1-coach2@demo.ari-coach.app` | 5 ק"מ | יציב — עומס עולה בהדרגה | 27 | -1 | 92 |
-| 2 | `runner2-coach2@demo.ari-coach.app` | 5 ק"מ | מעלה מהר מדי — קפיצה בריצה הארוכה + אימונים שקוצרו ע"י המאמן | 28 | -11 | 81 |
-| 3 | `runner3-coach2@demo.ari-coach.app` | 5 ק"מ | חוזר מהפסקה — 5 שבועות ריקים ואז בנייה | 23 | -2 | 87 |
-| 4 | `runner4-coach2@demo.ari-coach.app` | 5 ק"מ | קבוע — טופס מאוזן | 31 | 1 | 93 |
-| 5 | `runner5-coach2@demo.ari-coach.app` | 5 ק"מ | לא עקבי — מפספס ~28% מהאימונים, שינה גרועה | 16 | 11 | 85 |
-| 6 | `runner6-coach2@demo.ari-coach.app` | 10 ק"מ | יציב — עומס עולה בהדרגה | 26 | 5 | 92 |
-| 7 | `runner7-coach2@demo.ari-coach.app` | 10 ק"מ | מעלה מהר מדי — קפיצה בריצה הארוכה + אימונים שקוצרו ע"י המאמן | 27 | -3 | 84 |
-| 8 | `runner8-coach2@demo.ari-coach.app` | 10 ק"מ | חוזר מהפסקה — 5 שבועות ריקים ואז בנייה | 21 | -1 | 94 |
-| 9 | `runner9-coach2@demo.ari-coach.app` | 10 ק"מ | קבוע — טופס מאוזן | 29 | 0 | 88 |
-| 10 | `runner10-coach2@demo.ari-coach.app` | 10 ק"מ | לא עקבי — מפספס ~28% מהאימונים, שינה גרועה | 20 | 2 | 84 |
-| 11 | `runner11-coach2@demo.ari-coach.app` | חצי מרתון | יציב — עומס עולה בהדרגה | 33 | -1 | 96 |
-| 12 | `runner12-coach2@demo.ari-coach.app` | חצי מרתון | מעלה מהר מדי — קפיצה בריצה הארוכה + אימונים שקוצרו ע"י המאמן | 34 | -7 | 76 |
-| 13 | `runner13-coach2@demo.ari-coach.app` | חצי מרתון | חוזר מהפסקה — 5 שבועות ריקים ואז בנייה | 23 | -4 | 87 |
-| 14 | `runner14-coach2@demo.ari-coach.app` | חצי מרתון | קבוע — טופס מאוזן | 32 | 1 | 91 |
-| 15 | `runner15-coach2@demo.ari-coach.app` | חצי מרתון | לא עקבי — מפספס ~28% מהאימונים, שינה גרועה | 21 | 8 | 81 |
-| 16 | `runner16-coach2@demo.ari-coach.app` | מרתון | יציב — עומס עולה בהדרגה | 29 | -1 | 89 |
-| 17 | `runner17-coach2@demo.ari-coach.app` | מרתון | מעלה מהר מדי — קפיצה בריצה הארוכה + אימונים שקוצרו ע"י המאמן | 30 | -6 | 76 |
-| 18 | `runner18-coach2@demo.ari-coach.app` | מרתון | חוזר מהפסקה — 5 שבועות ריקים ואז בנייה | 22 | -1 | 92 |
-| 19 | `runner19-coach2@demo.ari-coach.app` | מרתון | קבוע — טופס מאוזן | 33 | 2 | 90 |
-| 20 | `runner20-coach2@demo.ari-coach.app` | מרתון | לא עקבי — מפספס ~28% מהאימונים, שינה גרועה | 15 | 7 | 74 |
+| 1 | `runner1-coach2@demo.runi-coach.app` | 5 ק"מ | יציב — עומס עולה בהדרגה | 27 | -1 | 92 |
+| 2 | `runner2-coach2@demo.runi-coach.app` | 5 ק"מ | מעלה מהר מדי — קפיצה בריצה הארוכה + אימונים שקוצרו ע"י המאמן | 28 | -11 | 81 |
+| 3 | `runner3-coach2@demo.runi-coach.app` | 5 ק"מ | חוזר מהפסקה — 5 שבועות ריקים ואז בנייה | 23 | -2 | 87 |
+| 4 | `runner4-coach2@demo.runi-coach.app` | 5 ק"מ | קבוע — טופס מאוזן | 31 | 1 | 93 |
+| 5 | `runner5-coach2@demo.runi-coach.app` | 5 ק"מ | לא עקבי — מפספס ~28% מהאימונים, שינה גרועה | 16 | 11 | 85 |
+| 6 | `runner6-coach2@demo.runi-coach.app` | 10 ק"מ | יציב — עומס עולה בהדרגה | 26 | 5 | 92 |
+| 7 | `runner7-coach2@demo.runi-coach.app` | 10 ק"מ | מעלה מהר מדי — קפיצה בריצה הארוכה + אימונים שקוצרו ע"י המאמן | 27 | -3 | 84 |
+| 8 | `runner8-coach2@demo.runi-coach.app` | 10 ק"מ | חוזר מהפסקה — 5 שבועות ריקים ואז בנייה | 21 | -1 | 94 |
+| 9 | `runner9-coach2@demo.runi-coach.app` | 10 ק"מ | קבוע — טופס מאוזן | 29 | 0 | 88 |
+| 10 | `runner10-coach2@demo.runi-coach.app` | 10 ק"מ | לא עקבי — מפספס ~28% מהאימונים, שינה גרועה | 20 | 2 | 84 |
+| 11 | `runner11-coach2@demo.runi-coach.app` | חצי מרתון | יציב — עומס עולה בהדרגה | 33 | -1 | 96 |
+| 12 | `runner12-coach2@demo.runi-coach.app` | חצי מרתון | מעלה מהר מדי — קפיצה בריצה הארוכה + אימונים שקוצרו ע"י המאמן | 34 | -7 | 76 |
+| 13 | `runner13-coach2@demo.runi-coach.app` | חצי מרתון | חוזר מהפסקה — 5 שבועות ריקים ואז בנייה | 23 | -4 | 87 |
+| 14 | `runner14-coach2@demo.runi-coach.app` | חצי מרתון | קבוע — טופס מאוזן | 32 | 1 | 91 |
+| 15 | `runner15-coach2@demo.runi-coach.app` | חצי מרתון | לא עקבי — מפספס ~28% מהאימונים, שינה גרועה | 21 | 8 | 81 |
+| 16 | `runner16-coach2@demo.runi-coach.app` | מרתון | יציב — עומס עולה בהדרגה | 29 | -1 | 89 |
+| 17 | `runner17-coach2@demo.runi-coach.app` | מרתון | מעלה מהר מדי — קפיצה בריצה הארוכה + אימונים שקוצרו ע"י המאמן | 30 | -6 | 76 |
+| 18 | `runner18-coach2@demo.runi-coach.app` | מרתון | חוזר מהפסקה — 5 שבועות ריקים ואז בנייה | 22 | -1 | 92 |
+| 19 | `runner19-coach2@demo.runi-coach.app` | מרתון | קבוע — טופס מאוזן | 33 | 2 | 90 |
+| 20 | `runner20-coach2@demo.runi-coach.app` | מרתון | לא עקבי — מפספס ~28% מהאימונים, שינה גרועה | 15 | 7 | 74 |
 
 ---
 

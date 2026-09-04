@@ -1,14 +1,10 @@
 /**
- * The activity list before anything has been synced.
- *
- * Previously this screen fell through to `buildActivities()` — a month of
- * invented runs with distances, paces and heart rates, indistinguishable from
- * real ones. A new athlete's first impression of the app was therefore somebody
- * else's training, and the number that mattered most to them ("have my runs
- * arrived?") was answered "yes" when the truth was "not yet".
+ * The activity list before anything has been synced — shown while the athlete
+ * has no runs on file. It answers "have my runs arrived?" honestly: not yet.
  */
 
 import { Entrance, BrandMark, EmptyState } from "@/components/ui";
+import Link from "next/link";
 
 const COPY = {
   brand: "Runi",
@@ -38,11 +34,11 @@ export function EmptyActivities() {
           <p style={{ margin: 0, fontSize: "11.5px", color: "var(--color-muted)" }}>{COPY.subtitle}</p>
         </div>
         <nav className="topnav" style={{ display: "flex", gap: "20px", fontSize: "13px", color: "var(--color-muted)" }}>
-          <a href="/dashboard" style={{ color: "var(--color-muted)" }}>{COPY.navHome}</a>
-          <a href="/plan" style={{ color: "var(--color-muted)" }}>{COPY.navPlan}</a>
-          <a href="/activities" style={{ color: "var(--color-ink)" }}>{COPY.navActivities}</a>
-          <a href="/numbers" style={{ color: "var(--color-muted)" }}>Numbers</a>
-          <a href="/settings" style={{ color: "var(--color-muted)" }}>{COPY.navSettings}</a>
+          <Link href="/dashboard" style={{ color: "var(--color-muted)" }}>{COPY.navHome}</Link>
+          <Link href="/plan" style={{ color: "var(--color-muted)" }}>{COPY.navPlan}</Link>
+          <Link href="/activities" style={{ color: "var(--color-ink)" }}>{COPY.navActivities}</Link>
+          <Link href="/numbers" style={{ color: "var(--color-muted)" }}>Numbers</Link>
+          <Link href="/settings" style={{ color: "var(--color-muted)" }}>{COPY.navSettings}</Link>
         </nav>
         <div style={{ flex: 1 }} />
       </header>
@@ -57,7 +53,7 @@ export function EmptyActivities() {
           </>
         }
         style={{ maxWidth: "620px", marginInline: "auto", width: "100%" }}
-        action={<a className="btn btn-primary" href="/settings#connections">{COPY.cta}</a>}
+        action={<Link className="btn btn-primary" href="/settings#connections">{COPY.cta}</Link>}
       />
     </div>
   );

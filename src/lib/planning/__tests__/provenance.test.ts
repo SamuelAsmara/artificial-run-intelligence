@@ -63,7 +63,8 @@ describe("the engine does not overrule a person", () => {
   });
 
   it("treats a row with no origin as generated, so existing plans keep working", () => {
-    const { origin: _omitted, ...noOrigin } = coachSet;
+    const noOrigin = { ...coachSet };
+    delete noOrigin.origin;
     const [decision] = decide([noOrigin], spikedLoad());
     expect(decision.action).toBe("reduce_intensity");
   });

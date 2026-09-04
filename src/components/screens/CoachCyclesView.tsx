@@ -8,8 +8,8 @@
  * roster when nothing is ticked is one people stop trusting.
  */
 
-import { useEffect, useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { CoachNav } from "@/components/coach/CoachNav";
 import type { CoachWorkspace } from "@/actions/coach";
 import { assignToCycle, createCycle, deleteCycle, rebuildCyclePlans, removeFromCycle, updateCycle, type CoachCycle, type TemplateOption } from "@/actions/cycles";
@@ -18,6 +18,7 @@ import { buildCycles, cyclesSummary } from "@/lib/coach/programs";
 import { colorFor } from "@/lib/coach/calendar";
 import { RACE_LABEL } from "@/lib/coach/templates";
 import { Entrance, EmptyState, FilterChip } from "@/components/ui";
+import Link from "next/link";
 
 /** two figures — a cycle is a group of athletes, not a document */
 const GROUP_ICON = "M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM2 20a7 7 0 0 1 14 0M17 11a3 3 0 1 0 0-6M16 20h6a5 5 0 0 0-4-4.9";
@@ -62,12 +63,14 @@ export function CoachCyclesView({ data, today, cycles: managed = [], templates =
     return (["5k", "10k", "half", "full"] as RaceType[]).filter((rt) => set.has(rt));
   }, [managed, cycles]);
 
-  // ?new=1&race=half — arriving from a template's "Start a cycle" button
-  const [creating, setCreating] = useState<{ raceType: RaceType; raceDate?: string } | null>(null);
-  useEffect(() => {
-    const q = new URLSearchParams(window.location.search);
-    if (q.get("new") === "1") setCreating({ raceType: (q.get("race") as RaceType) || "half" });
-  }, []);
+  // ?new=1&race=half — arriving from a template's "Start a cycle" button opens
+  // the form straight away. Read once, when the screen mounts.
+  const searchParams = useSearchParams();
+  const [creating, setCreating] = useState<{ raceType: RaceType; raceDate?: string } | null>(() =>
+    searchParams.get("new") === "1"
+      ? { raceType: (searchParams.get("race") as RaceType) || "half" }
+      : null,
+  );
 
   /*
    * Cycles open one at a time, and start closed.
@@ -357,7 +360,7 @@ function AthleteRows({
         <span style={{ textAlign: "end" }}>{COACH_COPY.colLastRun}</span>
       </div>
       {athletes.map((a) => (
-        <a
+        <Link
           key={a.id}
           className="dc-hover-bg"
           href={`/coach/athletes/${a.id}`}
@@ -386,7 +389,7 @@ function AthleteRows({
           <span className="num" style={{ fontSize: "11px", textAlign: "end", color: "var(--color-muted)" }}>
             {sinceLabel(a.lastRunAt, today)}
           </span>
-        </a>
+        </Link>
       ))}
     </div>
   );
@@ -523,10 +526,10 @@ function ManagedCycle({ cycle, today, color, candidates, templates }: {
             <div className="cy-members">
               {cycle.members.map((m) => (
                 <div key={m.athleteId} className="cy-member">
-                  <a href={`/coach/athletes/${m.athleteId}`} style={{ display: "flex", alignItems: "center", gap: "9px", minWidth: 0, color: "inherit", textDecoration: "none" }}>
+                  <Link href={`/coach/athletes/${m.athleteId}`} style={{ display: "flex", alignItems: "center", gap: "9px", minWidth: 0, color: "inherit", textDecoration: "none" }}>
                     <span className="num" style={{ width: "26px", height: "26px", flex: "none", borderRadius: "50%", background: "var(--color-elevated)", color: "var(--color-muted)", fontSize: "10px", display: "flex", alignItems: "center", justifyContent: "center" }}>{initials(m.name)}</span>
                     <span style={{ fontSize: "12.5px", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</span>
-                  </a>
+                  </Link>
                   {/* the week they are on — the reason two people in one cycle are not the same */}
                   {m.week != null && m.weeks != null ? (
                     <span className="cy-week num" title={m.planFromCycle ? "Plan built from this cycle" : "A plan they already had"}>
@@ -620,7 +623,7 @@ function NewCycleForm({ initialRace, initialDate = "", templates, onDone }: { in
         <div className="cy-field"><span>Template</span>
           <span className="cy-input" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{template ? `${template.name} · ${template.weeks} wk` : "—"}</span>
-            <a href="/coach/templates" className="num" style={{ fontSize: "10.5px", color: "var(--color-accent)", whiteSpace: "nowrap" }}>{template?.own ? "edit" : "write yours"}</a>
+            <Link href="/coach/templates" className="num" style={{ fontSize: "10.5px", color: "var(--color-accent)", whiteSpace: "nowrap" }}>{template?.own ? "edit" : "write yours"}</Link>
           </span>
         </div>
       </div>

@@ -1,28 +1,16 @@
 /**
- * The dashboard before there is anything to show.
+ * The dashboard before there is anything to show — shown while the athlete
+ * has fewer than two runs.
  *
- * ## Why this component exists
- *
- * Until now `/dashboard` fell back to the demo dataset whenever the athlete had
- * no history. That looked fine in a screenshot and was quietly dishonest: a new
- * account saw a readiness score of 82, a 10K personal best of 47:12 and a
- * marathon "in 61 days" — none of it theirs, and nothing on screen said so.
- *
- * So the empty state shows *nothing* rather than something borrowed. Every
- * number is a dash. The chart is a placeholder. The personal-record band is
- * present but blank, so the athlete can see what the app will fill in once
- * their runs arrive.
- *
- * The layout is the empty state from the Claude Design handoff (the `isEmpty`
- * branch of the sign-up prototype), ported as-is: same 12-column grid, same
- * tokens, same dashed readiness ring. The only addition is the personal-record
- * band, built from the same gold treatment the populated dashboard uses.
- *
- * Demo data still exists — it now lives behind `/dashboard?demo=1`, which is
- * what the walkthrough and the screenshots use.
+ * It shows *nothing* rather than something borrowed. Every number is a dash.
+ * The chart is a placeholder. The personal-record band is present but blank,
+ * so the athlete can see what the app will fill in once their runs arrive.
+ * Same 12-column grid, same tokens and same dashed readiness ring as the
+ * populated dashboard, and the same gold treatment on the record band.
  */
 
 import { Entrance, BrandMark } from "@/components/ui";
+import Link from "next/link";
 
 const COPY = {
   brand: "Runi",
@@ -116,11 +104,11 @@ export function EmptyDashboard({ name, plan }: { name?: string | null; plan?: Em
           className="topnav"
           style={{ display: "flex", gap: "20px", fontSize: "13px", color: "var(--color-muted)" }}
         >
-          <a href="/dashboard" style={{ color: "var(--color-ink)" }}>{COPY.navHome}</a>
-          <a href="/plan" style={{ color: "var(--color-muted)" }}>{COPY.navPlan}</a>
-          <a href="/activities" style={{ color: "var(--color-muted)" }}>{COPY.navActivities}</a>
-          <a href="/numbers" style={{ color: "var(--color-muted)" }}>Numbers</a>
-          <a href="/settings" style={{ color: "var(--color-muted)" }}>{COPY.navSettings}</a>
+          <Link href="/dashboard" style={{ color: "var(--color-ink)" }}>{COPY.navHome}</Link>
+          <Link href="/plan" style={{ color: "var(--color-muted)" }}>{COPY.navPlan}</Link>
+          <Link href="/activities" style={{ color: "var(--color-muted)" }}>{COPY.navActivities}</Link>
+          <Link href="/numbers" style={{ color: "var(--color-muted)" }}>Numbers</Link>
+          <Link href="/settings" style={{ color: "var(--color-muted)" }}>{COPY.navSettings}</Link>
         </nav>
         <div style={{ flex: 1 }} />
       </header>
@@ -182,8 +170,8 @@ export function EmptyDashboard({ name, plan }: { name?: string | null; plan?: Em
             </p>
           )}
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBlockStart: "4px" }}>
-            <a className="btn btn-primary" href="/settings#connections">{COPY.ctaConnect}</a>
-            <a className="btn btn-secondary" href="/plan">{plan ? COPY.ctaPlan : COPY.ctaBuild}</a>
+            <Link className="btn btn-primary" href="/settings#connections">{COPY.ctaConnect}</Link>
+            <Link className="btn btn-secondary" href="/plan">{plan ? COPY.ctaPlan : COPY.ctaBuild}</Link>
           </div>
         </div>
       </section>

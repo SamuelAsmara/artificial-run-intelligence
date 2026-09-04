@@ -26,6 +26,7 @@ import { Entrance, BrandMark } from "@/components/ui";
 import { NUMBERS_COPY, NUMBERS_HUE, type History, type HistoryRange, type Lane, type NumberTile, type Scale, type ScaleFormat, type Tone } from "@/lib/screens/numbers";
 import { formatDuration, formatPace } from "@/lib/format/pace";
 import { NUMBERS_FORMULAS } from "@/components/screens/numbersFormulas";
+import Link from "next/link";
 
 const TONE: Record<Tone, string> = {
   positive: "var(--color-positive)",
@@ -39,20 +40,22 @@ const LANES: Lane[] = ["inputs", "load", "fitness", "form", "readiness"];
 const hueOf = (tile: NumberTile) => NUMBERS_HUE[tile.id] ?? TONE[tile.status.tone];
 
 export function NumbersView({ tiles, asOf }: { tiles: NumberTile[]; asOf: string }) {
-  const [selectedId, setSelectedId] = useState<string | null>("readiness");
-  const selected = selectedId ? tiles.find((t) => t.id === selectedId) ?? null : null;
-
   /*
    * The selected tile lives in the URL hash — /numbers#tsb — so a coach can
    * send an athlete straight to one figure, and back/forward move between
-   * tiles. Read once on mount; write on every change without adding history
-   * entries for each click.
+   * tiles. Read once when the screen mounts (readiness when there is no hash,
+   * or an unknown one); written on every change without adding a history
+   * entry per click.
    */
+  const [selectedId, setSelectedId] = useState<string | null>(() => {
+    const fromHash = typeof window !== "undefined" ? window.location.hash.slice(1) : "";
+    return fromHash && tiles.some((t) => t.id === fromHash) ? fromHash : "readiness";
+  });
+  const selected = selectedId ? tiles.find((t) => t.id === selectedId) ?? null : null;
+
   useEffect(() => {
-    const fromHash = window.location.hash.replace("#", "");
-    if (fromHash && tiles.some((t) => t.id === fromHash)) setSelectedId(fromHash);
     const onHash = () => {
-      const id = window.location.hash.replace("#", "");
+      const id = window.location.hash.slice(1);
       if (id && tiles.some((t) => t.id === id)) setSelectedId(id);
     };
     window.addEventListener("hashchange", onHash);
@@ -85,11 +88,11 @@ export function NumbersView({ tiles, asOf }: { tiles: NumberTile[]; asOf: string
           <p style={{ margin: 0, fontSize: "11.5px", color: "var(--color-muted)" }}>{NUMBERS_COPY.subtitle}</p>
         </div>
         <nav className="topnav" style={{ display: "flex", gap: "20px", fontSize: "13px", color: "var(--color-muted)" }}>
-          <a href="/dashboard" style={{ color: "var(--color-muted)" }}>{nav.home}</a>
-          <a href="/plan" style={{ color: "var(--color-muted)" }}>{nav.plan}</a>
-          <a href="/activities" style={{ color: "var(--color-muted)" }}>{nav.activities}</a>
-          <a href="/numbers" style={{ color: "var(--color-ink)" }}>{nav.numbers}</a>
-          <a href="/settings" style={{ color: "var(--color-muted)" }}>{nav.settings}</a>
+          <Link href="/dashboard" style={{ color: "var(--color-muted)" }}>{nav.home}</Link>
+          <Link href="/plan" style={{ color: "var(--color-muted)" }}>{nav.plan}</Link>
+          <Link href="/activities" style={{ color: "var(--color-muted)" }}>{nav.activities}</Link>
+          <Link href="/numbers" style={{ color: "var(--color-ink)" }}>{nav.numbers}</Link>
+          <Link href="/settings" style={{ color: "var(--color-muted)" }}>{nav.settings}</Link>
         </nav>
         <div style={{ flex: 1 }} />
         <span className="num hide-m" style={{ fontSize: "11px", color: "var(--color-faint)" }}>{asOf}</span>

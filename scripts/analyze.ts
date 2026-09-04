@@ -104,7 +104,7 @@ async function main() {
   const newest = iso(today);
   const oldest = iso(new Date(today.getTime() - 400 * 86400000));
 
-  console.log(`\nArtificial Run Intelligence — engine check`);
+  console.log(`\nRuni — engine check`);
   console.log(`athlete ${athleteId} · ${oldest} → ${newest}`);
 
   const [acts, wellnessRows] = await Promise.all([
@@ -223,7 +223,7 @@ async function main() {
   console.log(`\n  ${readiness.basis}`);
 
   /* --- narrative --- */
-  rule("What ARI would tell you today");
+  rule("What Runi would tell you today");
 
   const narrative = buildNarrative({
     readiness,

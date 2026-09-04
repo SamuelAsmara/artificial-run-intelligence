@@ -1,7 +1,10 @@
 /**
- * Types matching supabase/migrations/0001_init.sql (v1: athlete + coach).
- * Regenerate from the live schema when possible:
- *   npx supabase gen types typescript --project-id gmhazouoxurtxtlahfjl > src/types/database.types.ts
+ * Database types, kept by hand in step with supabase/migrations (0001–0024).
+ * Every table, view function and enum the app touches is declared here so a
+ * query against a column that does not exist fails at compile time.
+ * They can be regenerated from the live schema with
+ *   npx supabase gen types typescript --project-id <ref> > src/types/database.types.ts
+ * and diffed against this file.
  */
 
 export type Role = "athlete" | "coach";
@@ -27,8 +30,6 @@ export type Plan = "free" | "pro";
 /** which role a subscriptions/billing_events row belongs to — a coach who also trains holds one of each */
 export type SubscriptionScope = "athlete" | "coach";
 
-type Row<T> = T;
-type Ins<T> = T;
 type Upd<T> = Partial<T>;
 
 /** Data sources the athlete connects themselves (no OAuth flow available). */

@@ -1,15 +1,9 @@
 /**
- * Settings screen copy, provider tiles and helpers — ported from
- * design_handoff_ari_athlete_app/ARI Settings.dc.html (v2).
+ * Settings screen copy, provider tiles and helpers.
  *
- * The handoff this replaces is kept at _archive/design_handoffs_v1/.
- *
- * ## What changed from the first handoff
- *
- * The page went from "a row per setting, each expanding in place" to three
- * stacked cards: a profile that flips between a summary and a full editor, a
- * row of provider logos acting as tabs over one detail panel, and account
- * details that still expand inline.
+ * The page is three stacked cards: a profile that flips between a summary and
+ * a full editor, a row of provider logos acting as tabs over one detail panel,
+ * and account details that expand inline.
  *
  * Nothing here consults the database. It holds the words, the tile artwork and
  * two pure functions, so the design can be read and changed without reading the

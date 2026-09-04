@@ -165,9 +165,9 @@ section.s>*:not(.wm):not(.bg):not(.grain):not(.foot){position:relative;z-index:1
 </div>
 <div class="grid g4" style="margin-top:7vh;max-width:900px">
  <div class="stat"><span class="v num">17</span><span class="l">טבלאות · כולן RLS</span></div>
- <div class="stat"><span class="v num">44</span><span class="l">מדיניויות הרשאה</span></div>
- <div class="stat"><span class="v num">835</span><span class="l">בדיקות אוטומטיות</span></div>
- <div class="stat"><span class="v num">55</span><span class="l">Server Actions</span></div>
+ <div class="stat"><span class="v num">41</span><span class="l">מדיניויות הרשאה</span></div>
+ <div class="stat"><span class="v num">842</span><span class="l">בדיקות אוטומטיות</span></div>
+ <div class="stat"><span class="v num">47</span><span class="l">Server Actions</span></div>
 </div>
 <div class="foot"><span>סמואל אסמרה · ספטמבר 2026</span><span style="direction:ltr">runi-coach.vercel.app</span></div>
 </section>
@@ -234,11 +234,11 @@ section.s>*:not(.wm):not(.bg):not(.grain):not(.foot){position:relative;z-index:1
 <div class="arch">
   <div class="box"><h3>דפדפן</h3><div class="w">React · "use client" only where it clicks</div><p style="margin:0;color:var(--muted);font-size:14.5px;line-height:1.6">מציג HTML שהשרת בנה. useState רק למצב מקומי. אין שאילתות, אין מפתחות, אין לוגיקה עסקית.</p></div>
   <div class="lk">Server Actions<br>קריאת פונקציה, לא REST</div>
-  <div class="box dk"><h3>שרת · Vercel</h3><div class="w">Next.js 16 · Server Components · Cron 03:00</div><p style="margin:0;color:var(--muted);font-size:14.5px;line-height:1.6">שולף ובונה את העמוד מוכן. 55 פעולות — כל אחת: אימות → ולידציה → כתיבה → revalidate. כל החישוב בפונקציות טהורות ב-lib/, בלי React ובלי מסד.</p></div>
+  <div class="box dk"><h3>שרת · Vercel</h3><div class="w">Next.js 16 · Server Components · Cron 03:00</div><p style="margin:0;color:var(--muted);font-size:14.5px;line-height:1.6">שולף ובונה את העמוד מוכן. 47 פעולות — כל אחת: אימות → ולידציה → כתיבה → revalidate. כל החישוב בפונקציות טהורות ב-lib/, בלי React ובלי מסד.</p></div>
   <div class="lk">שאילתה עם הסשן<br>RLS על כל שורה</div>
-  <div class="box"><h3>Supabase</h3><div class="w">Postgres + RLS · Auth</div><p style="margin:0;color:var(--muted);font-size:14.5px;line-height:1.6">17 טבלאות, 44 מדיניויות — מי רואה מה נקבע כאן, לא בקוד. Auth: סיסמה, אימות מייל (דרך Resend), סשן בעוגייה.</p></div>
+  <div class="box"><h3>Supabase</h3><div class="w">Postgres + RLS · Auth</div><p style="margin:0;color:var(--muted);font-size:14.5px;line-height:1.6">17 טבלאות, 41 מדיניויות — מי רואה מה נקבע כאן, לא בקוד. Auth: סיסמה, אימות מייל (דרך Resend), סשן בעוגייה.</p></div>
  </div>
- <p class="quote">לכן 835 הבדיקות רצות בלי מסד ובלי דפדפן, בפחות מחצי דקה — הלוגיקה לא יודעת שהם קיימים.</p>
+ <p class="quote">לכן 842 הבדיקות רצות בלי מסד ובלי דפדפן, בפחות מחצי דקה — הלוגיקה לא יודעת שהם קיימים.</p>
 <div class="foot"><span>Runi — Run with Intelligence · הצגת פרויקט גמר</span><span></span></div>
 </section>
 <section class="s" id="s6" data-note="הסבר את הזרימה מימין לשמאל: מקורות → שכבה אחת → משיכה בלילה → ארבעה שלבים → שלוש תוצאות. אם שואלים למה לא webhook: פשטות ואפס endpoint ציבורי.">
@@ -290,7 +290,7 @@ section.s>*:not(.wm):not(.bg):not(.grain):not(.foot){position:relative;z-index:1
    <div class="tb"><code>training_plans</code><i>למרוץ, או של הרץ עצמו · cycle_id</i></div>
    <div class="tb"><code>plan_workouts</code><i>אימון · origin · מה היה לפני ולמה</i></div>
    <div class="tb"><code>plan_templates</code><i>שלד הפאזות, לכל מאמן משלו</i></div>
-   <div class="rls"><span><b>RLS על 17/17 · 44 מדיניויות.</b> אתלט: <code style="font-family:var(--mono);color:var(--accent)">user_id = auth.uid()</code></span><span>מאמן: <code style="font-family:var(--mono);color:var(--gold)">is_coach_of(user_id)</code></span></div>
+   <div class="rls"><span><b>RLS על 17/17 · 41 מדיניויות.</b> אתלט: <code style="font-family:var(--mono);color:var(--accent)">user_id = auth.uid()</code></span><span>מאמן: <code style="font-family:var(--mono);color:var(--gold)">is_coach_of(user_id)</code></span></div>
   </div>
   <div class="grp"><div class="h"><span>מאמן</span><span>הקשר וניהולו</span></div>
    <div class="tb key" style="background:#1e1a10;border-color:#4a3a14"><code>coach_athletes</code><i style="color:var(--gold)">כל גבול צד המאמן · cycle_id</i></div>
@@ -334,7 +334,7 @@ section.s>*:not(.wm):not(.bg):not(.grain):not(.foot){position:relative;z-index:1
   <div style="display:flex;flex-direction:column;gap:12px;align-items:stretch">
    <div class="tier" style="width:46%;border-color:var(--gold)"><div class="v num" style="color:var(--gold)">3</div><div class="t"><b>סבב פרודקשן · 31.8</b>מעבר מלא באתר החי, כמאמן וכרץ. תפס רגרסיות במעברים בין מסכים.</div></div>
    <div class="tier" style="width:72%;border-color:var(--caution)"><div class="v num" style="color:var(--caution)">56</div><div class="t"><b>שני סבבים ידניים · 19.8, 25.8</b>סריקת עומק (47, ובהם פרצת ההרשאה) וביקורת חישוב (9: ממוצע של ממוצעים, קצב הופכי, מילישניות).</div></div>
-   <div class="tier" style="width:100%;border-color:var(--accent)"><div class="v num" style="color:var(--accent)">835</div><div class="t"><b>אוטומטיות · Vitest · 57 קבצים · 14 שניות</b>המודל הפיזיולוגי, יצירת התוכנית ומנוע ההתאמה, קלטים לא תקינים, אזורי זמן, גיאומטריית גרפים, עשר השאלות של Ask Runi.</div></div>
+   <div class="tier" style="width:100%;border-color:var(--accent)"><div class="v num" style="color:var(--accent)">842</div><div class="t"><b>אוטומטיות · Vitest · 57 קבצים · כ-20 שניות</b>המודל הפיזיולוגי, יצירת התוכנית ומנוע ההתאמה, קלטים לא תקינים, אזורי זמן, גיאומטריית גרפים, עשר השאלות של Ask Runi.</div></div>
   </div>
   <div>
    <ul class="cl"><li><b>למה זה רץ ב-14 שניות:</b> כל הלוגיקה ב-lib/ טהורה — מקבלת מספרים, מחזירה מספרים. בלי מסד, בלי דפדפן.</li><li><b>מה נבדק ידנית, במכוון:</b> מדיניות RLS, מסכים בדפדפן וספקים חיצוניים — מתועד במסמך הבדיקות.</li><li><b>הלקח:</b> הסריקה תפסה שבירות מבניות, ביקורת החישוב תפסה טעות שיטתית שהתפזרה, הפרודקשן תפס רגרסיות. אף סוג אחד לא היה מספיק לבד.</li></ul>
@@ -390,7 +390,7 @@ section.s>*:not(.wm):not(.bg):not(.grain):not(.foot){position:relative;z-index:1
      <text x="260" y="40" font-size="13" fill="#8792a3" letter-spacing="1">MIDDLEWARE · ניתוב בלבד</text>
      <text x="260" y="112" font-size="13" fill="#a4aebe" letter-spacing="1">SERVER ACTION · getUser() · Zod</text>
      <text x="260" y="248" font-size="22" font-weight="600" fill="#e9edf3">POSTGRES · RLS</text>
-     <text x="260" y="276" font-size="14" fill="#a4aebe">44 מדיניויות · 17 טבלאות</text>
+     <text x="260" y="276" font-size="14" fill="#a4aebe">41 מדיניויות · 17 טבלאות</text>
      <text x="260" y="300" font-size="12.5" fill="#4e8ef7">ההגנה. השאר — נוחות.</text>
     </g>
     <circle cx="404" cy="380" r="9" fill="#f0705c"/><line x1="404" y1="380" x2="470" y2="440" stroke="#f0705c" stroke-width="1.5"/>
@@ -446,7 +446,7 @@ section.s>*:not(.wm):not(.bg):not(.grain):not(.foot){position:relative;z-index:1
   <div class="card" style="text-align:center"><div class="k">חשבונות דמו</div><p style="direction:ltr;font-family:var(--mono);color:var(--ink);font-size:13px">coach1@demo.ari-coach.app<br>runner1-coach1@demo.ari-coach.app</p></div>
  </div>
 </div>
-<div class="foot"><span>סמואל אסמרה · ספטמבר 2026</span><span>ששה מסמכים · 835 בדיקות · 24 מיגרציות</span></div>
+<div class="foot"><span>סמואל אסמרה · ספטמבר 2026</span><span>ששה מסמכים · 842 בדיקות · 24 מיגרציות</span></div>
 </section>
 <div id="notes"></div>
 <script>

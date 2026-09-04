@@ -133,10 +133,6 @@ export async function createCycle(input: { name: string; raceType: RaceType; rac
   return { ok: true, data: { id: data.id } };
 }
 
-export async function renameCycle(id: string, name: string): Promise<Result<null>> {
-  return updateCycle(id, { name });
-}
-
 /**
  * Edit a cycle that is running. Name, race day, template and notes; the
  * distance is fixed because every member's goal race carries it. Changing
