@@ -93,6 +93,9 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+-- The OUT columns are named like the table's columns; inside the body an
+-- unqualified name must mean the column (the ON CONFLICT target below).
+#variable_conflict use_column
 declare
   found uuid;
   found_name text;
