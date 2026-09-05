@@ -37,11 +37,12 @@ export default async function DashboardPage() {
 
   // Fewer than two snapshots is nothing to chart yet: show the empty state.
   if (series.length < 2) {
-    const [name, plan] = await Promise.all([athleteName(), getDashboardPlan()]);
+    const [name, plan, avatar] = await Promise.all([athleteName(), getDashboardPlan(), athletePhoto()]);
     const next = plan?.next;
     return (
       <EmptyDashboard
         name={name}
+        avatarUrl={avatar.url}
         plan={plan ? {
           weekLabel: plan.weeks[plan.currentWeek]?.label ?? null,
           nextSession: next ? `${next.isToday ? "Today" : next.date}: ${next.name} · ${next.summary}` : null,

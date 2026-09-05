@@ -10,6 +10,7 @@
  */
 
 import { Entrance, BrandMark } from "@/components/ui";
+import { Avatar } from "@/components/ui/Avatar";
 import Link from "next/link";
 
 const COPY = {
@@ -71,8 +72,13 @@ export interface EmptyDashboardPlan {
 /**
  * `plan` is set when the athlete already has a plan but no runs yet — the
  * page then points at the plan instead of offering to build one.
+ *
+ * `avatarUrl` is the photo from Settings. The populated dashboard shows it
+ * inside the readiness ring; here the ring is dashed because there is no
+ * score yet, but the photo is still theirs to see — a coach opening their
+ * own training view before any run had a blank ring next to a name.
  */
-export function EmptyDashboard({ name, plan }: { name?: string | null; plan?: EmptyDashboardPlan | null }) {
+export function EmptyDashboard({ name, plan, avatarUrl }: { name?: string | null; plan?: EmptyDashboardPlan | null; avatarUrl?: string | null }) {
   const context = plan
     ? [COPY.contextWithPlan, plan.weekLabel].filter(Boolean).join(" · ")
     : COPY.context;
@@ -136,7 +142,9 @@ export function EmptyDashboard({ name, plan }: { name?: string | null; plan?: Em
               justifyContent: "center",
             }}
           >
-            <span className="num" style={{ fontSize: "30px", color: "var(--color-faint)" }}>{DASH}</span>
+            {avatarUrl
+              ? <Avatar src={avatarUrl} name={name} size={104} zoomable ring={false} />
+              : <span className="num" style={{ fontSize: "30px", color: "var(--color-faint)" }}>{DASH}</span>}
           </div>
           <p className="num" style={{ margin: 0, fontSize: "11px", color: "var(--color-faint)" }}>
             {COPY.readinessCaption}
