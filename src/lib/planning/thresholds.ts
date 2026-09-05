@@ -12,7 +12,7 @@ import { formatMinSec } from "@/lib/format/pace";
  * take a high percentile of sustained efforts, correct for duration, clamp to
  * a physiologically plausible band, and only ever let the estimate fall slowly.
  *
- * See docs/research/01-training-load-metrics.md §6.
+ * See docs/הגשה סופית/8 - המספרים של Runi.docx §3.
  */
 
 import type { Sex } from "./load";

@@ -2,7 +2,7 @@
  * Load-ratio and progression signals.
  *
  * ⚠️ Rewritten 17 Aug 2026 after a literature review
- * (docs/research/02-fitness-fatigue-and-acwr.md). The previous version used
+ * (docs/הגשה סופית/8 - המספרים של Runi.docx §4.3). The previous version used
  * distance in metres as "load" and exported `isHighInjuryRisk()` on a 1.5
  * threshold. Both are wrong:
  *

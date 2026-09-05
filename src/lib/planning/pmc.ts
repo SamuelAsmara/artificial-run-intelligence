@@ -7,7 +7,7 @@
  *
  * This is the TrainingPeaks simplification of Banister's impulse-response
  * model. Three things worth knowing, all documented in
- * docs/research/02-fitness-fatigue-and-acwr.md:
+ * docs/הגשה סופית/8 - המספרים של Runi.docx §4.3:
  *
  *  1. We use the exact decay `1 − e^(−1/τ)`, not the `1/τ` approximation
  *     TrainingPeaks publishes. The difference is 7.3% on the fatigue series.

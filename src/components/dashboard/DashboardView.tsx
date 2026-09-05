@@ -375,7 +375,7 @@ export function DashboardView({
     })(),
     (() => {
       // Descriptive only. The literature does not support presenting this as
-      // an injury-risk verdict — see docs/research/02-fitness-fatigue-and-acwr.md.
+      // an injury-risk verdict — see docs/הגשה סופית/8 - המספרים של Runi.docx §4.3.
       const lr = data.loadRatio;
       if (lr === null) {
         return {

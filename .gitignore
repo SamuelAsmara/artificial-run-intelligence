@@ -39,3 +39,7 @@ COMMIT_MSG.txt
 # Local configuration of coding-assistant tools — not part of the project
 AGENTS.md
 CLAUDE.md
+
+# personal preparation notes — never part of the repository
+docs/Runi_technical_guide.html
+docs/Runi_code_map.html

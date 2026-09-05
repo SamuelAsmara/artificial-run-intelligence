@@ -140,7 +140,7 @@ src/
 supabase/migrations/   24 numbered, backward-compatible migrations (0001 … 0024; two independent files share 0020)
 scripts/               Engine check against real data, wellness check, demo data seeding
 email/                 Branded auth e-mail templates and the Resend / Supabase setup
-docs/                  Submission documents, presentation, technical guide, code map, process notes
+docs/                  Submission documents (1–10), presentation, audit notes and project log
 ```
 
 ---
@@ -157,7 +157,7 @@ npm run dev                    # http://localhost:3000
 
 1. **Database.** Run every file in `supabase/migrations/` in numeric order in the Supabase SQL Editor (Dashboard → SQL Editor). The two files numbered `0020` are independent and can run in either order.
 2. **Auth.** In Supabase → Authentication, keep e-mail sign-in on. `email/README.md` has the SMTP settings for Resend and the branded templates.
-3. **Demo data (optional).** `npm run seed:demo` creates two coaches with twenty athletes each and a full run history; credentials and what to look at are in `docs/DEMO_LOGINS.md`.
+3. **Demo data (optional).** Set `DEMO_PASSWORD`, then `npm run seed:demo` creates two coaches with twenty athletes each and a full run history (`npm run seed:dry` previews without writing; `seed:reset` and `seed:purge` rebuild or remove only the demo accounts).
 4. **Checks.** `npm run lint`, `npx tsc --noEmit`, `npm test`, `npm run build` — all four are clean on the submitted commit.
 
 ---
@@ -221,9 +221,12 @@ All submission documents are in `docs/הגשה סופית/` (Hebrew); `0 - Runi 
 | 4 | Test Specification |
 | 5 | Information Security |
 | 6 | Scale and Performance |
-| 7 | Presentation — `7 - מצגת - Runi.html`, open in a browser; F for full screen, arrow keys to navigate, N for speaker notes |
+| 7 | Presentation — `7 - מצגת - Runi.html`, open in a browser (also served live at [runi-coach.vercel.app/deck.html](https://runi-coach.vercel.app/deck.html)); F for full screen, arrow keys to navigate, N for speaker notes |
+| 8 | The Numbers — what the watch sends, how every metric is computed, and where it appears in the product |
+| 9 | Links and review accounts |
+| 10 | What was built, how to use it, what was easy and what was hard |
 
-Alongside them in `docs/`: the technical guide (`Runi_technical_guide.html`), the code map (`Runi_code_map.html`), the demo accounts (`DEMO_LOGINS.md`), the literature behind the training model (`research/`) and the QA and audit rounds (`process/`).
+Alongside them, `docs/process/` holds the pre-release audit and QA rounds and the project log.
 
 ---
 
@@ -236,7 +239,7 @@ Alongside them in `docs/`: the technical guide (`Runi_technical_guide.html`), th
 - **Google and Apple sign-in are not connected.** The buttons on the login screen say so when pressed; e-mail sign-in is the path today.
 - **Email domain.** Auth e-mails go out through Resend's shared test sender, which delivers only to the project owner. A verified domain lifts that.
 - **Sync throughput.** The nightly job processes athletes one by one. It holds up to a few hundred users; beyond that a queue is required (see the scale document).
-- **Role is chosen at signup.** An account is an athlete or a coach from the start, and the same person may hold both kinds; there is no in-product switch.
+- **Role is chosen at signup.** An account is an athlete or a coach from the start. A coach account also has its own training view ("My training"); an athlete account cannot become a coach from inside the product.
 - **Native app.** There is none. Runi is a web application built to be used fully from a phone.
 
 ---

@@ -13,7 +13,7 @@
  * Known limitation, disclosed in the UI: every load metric applies a convex
  * function to intensity, so computing from an *average* systematically
  * under-scores variable sessions and never over-scores them. Interval sessions
- * come out roughly 10–20% low. See docs/research/01-training-load-metrics.md.
+ * come out roughly 10–20% low. See docs/הגשה סופית/8 - המספרים של Runi.docx §4.2.
  */
 
 export type Sex = "male" | "female";
