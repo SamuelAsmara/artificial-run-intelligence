@@ -16,6 +16,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { generatePlanAction } from "./plan";
+import { fetchAllPages } from "@/lib/supabase/pages";
 import type { RaceType } from "@/types/database.types";
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -64,9 +65,14 @@ export async function getCoachCycles(): Promise<{ cycles: CoachCycle[]; template
     memberIds.length ? supabase.from("training_plans").select("id, user_id, cycle_id").in("user_id", memberIds).eq("status", "active") : Promise.resolve({ data: [] as { id: string; user_id: string; cycle_id: string | null }[] }),
   ]);
   const planIds = (plans ?? []).map((p) => p.id);
-  const { data: rows } = planIds.length
-    ? await supabase.from("plan_workouts").select("plan_id, week_number, day_date").in("plan_id", planIds)
-    : { data: [] as { plan_id: string; week_number: number; day_date: string }[] };
+  // Every session of every member — well over PostgREST's thousand-row cap
+  // once a few cycles are full, so it is read in pages (see lib/supabase/pages).
+  const rows = planIds.length
+    ? await fetchAllPages<{ plan_id: string; week_number: number; day_date: string }>((from, to) =>
+        supabase.from("plan_workouts").select("plan_id, week_number, day_date").in("plan_id", planIds)
+          .order("plan_id", { ascending: true }).order("day_date", { ascending: true }).range(from, to),
+      )
+    : [];
 
   // week today = weeks since the plan's first day, +1; length = the highest week number
   const today = new Date().toISOString().slice(0, 10);
